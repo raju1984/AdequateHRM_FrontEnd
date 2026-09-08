@@ -1,4 +1,5 @@
 import React, {
+  useEffect,
   useMemo,
   useState,
 } from "react";
@@ -16,12 +17,23 @@ import {
   Trash2,
 } from "lucide-react";
 
+import {
+  getRoles,
+  addRole,
+  updateRole,
+  deleteRole,
+} from "../../services/hrservices";
+
+/* =====================================================
+   TYPES
+===================================================== */
+
 type RoleStatus =
   | "Active"
   | "Inactive";
 
 interface Role {
-  id: number;
+  id: string;
   name: string;
   createdDate: string;
   status: RoleStatus;
@@ -32,85 +44,174 @@ interface RoleForm {
   status: RoleStatus | "";
 }
 
-const initialRoles: Role[] = [
-  {
-    id: 1,
-    name: "Admin",
-    createdDate: "12 Sep 2024",
-    status: "Active",
-  },
-  {
-    id: 2,
-    name: "HR Manager",
-    createdDate: "24 Oct 2024",
-    status: "Active",
-  },
-  {
-    id: 3,
-    name: "Recruitment Manager",
-    createdDate: "18 Feb 2024",
-    status: "Active",
-  },
-  {
-    id: 4,
-    name: "Payroll Manager",
-    createdDate: "17 Oct 2024",
-    status: "Active",
-  },
-  {
-    id: 5,
-    name: "Leave Manager",
-    createdDate: "20 Jul 2024",
-    status: "Active",
-  },
-  {
-    id: 6,
-    name: "Performance Manager",
-    createdDate: "10 Apr 2024",
-    status: "Active",
-  },
-  {
-    id: 7,
-    name: "Reports Analyst",
-    createdDate: "29 Aug 2024",
-    status: "Active",
-  },
-  {
-    id: 8,
-    name: "Employee",
-    createdDate: "22 Feb 2024",
-    status: "Inactive",
-  },
-  {
-    id: 9,
-    name: "Client",
-    createdDate: "03 Nov 2024",
-    status: "Active",
-  },
-  {
-    id: 10,
-    name: "Department Head",
-    createdDate: "17 Dec 2024",
-    status: "Active",
-  },
-];
+/* =====================================================
+   CONSTANTS
+===================================================== */
+
+const GOLD = "#c39237";
+
+/* =====================================================
+   RESPONSE HELPERS
+===================================================== */
+
+const extractRoles = (
+  response: any
+): any[] => {
+  if (!response) {
+    return [];
+  }
+
+  /*
+    Possible API responses:
+
+    {
+      data: [...]
+    }
+
+    {
+      data: {
+        items: [...]
+      }
+    }
+
+    {
+      data: {
+        records: [...]
+      }
+    }
+
+    {
+      data: {
+        roles: [...]
+      }
+    }
+  */
+
+  const candidates = [
+    response?.data,
+    response?.data?.data,
+    response?.data?.items,
+    response?.data?.records,
+    response?.data?.roles,
+    response?.data?.roleList,
+    response?.items,
+    response?.records,
+    response?.roles,
+  ];
+
+  for (const candidate of candidates) {
+    if (Array.isArray(candidate)) {
+      return candidate;
+    }
+  }
+
+  if (Array.isArray(response)) {
+    return response;
+  }
+
+  return [];
+};
+
+const normalizeRole = (
+  item: any
+): Role => {
+  const active =
+    item?.isActive ??
+    item?.IsActive ??
+    item?.active ??
+    item?.Active ??
+    false;
+
+  return {
+    id: String(
+      item?.id ??
+        item?.Id ??
+        ""
+    ),
+
+    name:
+      item?.roleName ??
+      item?.RoleName ??
+      item?.name ??
+      item?.Name ??
+      "",
+
+    createdDate:
+      item?.createdDate ??
+      item?.CreatedDate ??
+      item?.createdAt ??
+      item?.CreatedAt ??
+      item?.dateCreated ??
+      item?.DateCreated ??
+      "",
+
+    status:
+      active === true ||
+      active === 1 ||
+      active === "true"
+        ? "Active"
+        : "Inactive",
+  };
+};
+
+const formatDate = (
+  value: string
+) => {
+  if (!value) {
+    return "-";
+  }
+
+  const date =
+    new Date(value);
+
+  if (
+    Number.isNaN(
+      date.getTime()
+    )
+  ) {
+    return value;
+  }
+
+  return date.toLocaleDateString(
+    "en-GB",
+    {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    }
+  );
+};
+
+/* =====================================================
+   COMPONENT
+===================================================== */
 
 const Roles: React.FC = () => {
   const navigate = useNavigate();
 
-  const [roles, setRoles] =
-    useState<Role[]>(initialRoles);
+  /* ===================================================
+     STATE
+  =================================================== */
 
-  const [search, setSearch] =
-    useState("");
+  const [
+    roles,
+    setRoles,
+  ] = useState<Role[]>([]);
+
+  const [
+    search,
+    setSearch,
+  ] = useState("");
 
   const [
     statusFilter,
     setStatusFilter,
   ] = useState("");
 
-  const [sortBy, setSortBy] =
-    useState("Last 7 Days");
+  const [
+    sortBy,
+    setSortBy,
+  ] = useState("Last 7 Days");
 
   const [
     rowsPerPage,
@@ -125,7 +226,7 @@ const Roles: React.FC = () => {
   const [
     selectedIds,
     setSelectedIds,
-  ] = useState<number[]>([]);
+  ] = useState<string[]>([]);
 
   const [
     showAddModal,
@@ -165,9 +266,121 @@ const Roles: React.FC = () => {
     status: "",
   });
 
+  const [
+    loading,
+    setLoading,
+  ] = useState(false);
+
+  const [
+    saving,
+    setSaving,
+  ] = useState(false);
+
+  const [
+    deleting,
+    setDeleting,
+  ] = useState(false);
+
+  const [
+    error,
+    setError,
+  ] = useState("");
+
+  const [
+    success,
+    setSuccess,
+  ] = useState("");
+
+  /* ===================================================
+     LOAD ROLES
+  =================================================== */
+
+  const loadRoles = async () => {
+    try {
+      setLoading(true);
+      setError("");
+
+      const response =
+        await getRoles({
+          PageNumber: 1,
+          PageSize: 100,
+        });
+
+      console.log(
+        "ROLE API RESPONSE =>",
+        response
+      );
+
+      const apiRoles =
+        extractRoles(response);
+
+      console.log(
+        "ROLE ARRAY =>",
+        apiRoles
+      );
+
+      const normalizedRoles =
+        apiRoles
+          .map(normalizeRole)
+          .filter(
+            (role) =>
+              role.id &&
+              role.name
+          );
+
+      console.log(
+        "NORMALIZED ROLES =>",
+        normalizedRoles
+      );
+
+      setRoles(
+        normalizedRoles
+      );
+
+      /*
+        Remove selected IDs which
+        no longer exist.
+      */
+      setSelectedIds(
+        (previous) =>
+          previous.filter(
+            (id) =>
+              normalizedRoles.some(
+                (role) =>
+                  role.id === id
+              )
+          )
+      );
+    } catch (err: any) {
+      console.error(
+        "GET ROLES ERROR =>",
+        err
+      );
+
+      setError(
+        err?.response?.data
+          ?.message ||
+          err?.message ||
+          "Failed to load roles."
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadRoles();
+  }, []);
+
+  /* ===================================================
+     FILTER + SORT
+  =================================================== */
+
   const filteredRoles =
     useMemo(() => {
-      let result = [...roles];
+      let result = [
+        ...roles,
+      ];
 
       const text =
         search
@@ -175,45 +388,51 @@ const Roles: React.FC = () => {
           .toLowerCase();
 
       if (text) {
-        result = result.filter(
-          (role) =>
-            role.name
-              .toLowerCase()
-              .includes(text) ||
-            role.createdDate
-              .toLowerCase()
-              .includes(text) ||
-            role.status
-              .toLowerCase()
-              .includes(text)
-        );
+        result =
+          result.filter(
+            (role) =>
+              role.name
+                .toLowerCase()
+                .includes(text) ||
+              role.createdDate
+                .toLowerCase()
+                .includes(text) ||
+              role.status
+                .toLowerCase()
+                .includes(text)
+          );
       }
 
       if (statusFilter) {
-        result = result.filter(
-          (role) =>
-            role.status ===
-            statusFilter
+        result =
+          result.filter(
+            (role) =>
+              role.status ===
+              statusFilter
+          );
+      }
+
+      if (
+        sortBy ===
+        "Ascending"
+      ) {
+        result.sort(
+          (a, b) =>
+            a.name.localeCompare(
+              b.name
+            )
         );
       }
 
       if (
-        sortBy === "Ascending"
+        sortBy ===
+        "Descending"
       ) {
-        result.sort((a, b) =>
-          a.name.localeCompare(
-            b.name
-          )
-        );
-      }
-
-      if (
-        sortBy === "Descending"
-      ) {
-        result.sort((a, b) =>
-          b.name.localeCompare(
-            a.name
-          )
+        result.sort(
+          (a, b) =>
+            b.name.localeCompare(
+              a.name
+            )
         );
       }
 
@@ -223,7 +442,9 @@ const Roles: React.FC = () => {
       ) {
         result.sort(
           (a, b) =>
-            b.id - a.id
+            b.id.localeCompare(
+              a.id
+            )
         );
       }
 
@@ -235,13 +456,18 @@ const Roles: React.FC = () => {
       sortBy,
     ]);
 
-  const totalPages = Math.max(
-    1,
-    Math.ceil(
-      filteredRoles.length /
-        rowsPerPage
-    )
-  );
+  /* ===================================================
+     PAGINATION
+  =================================================== */
+
+  const totalPages =
+    Math.max(
+      1,
+      Math.ceil(
+        filteredRoles.length /
+          rowsPerPage
+      )
+    );
 
   const safeCurrentPage =
     Math.min(
@@ -266,36 +492,48 @@ const Roles: React.FC = () => {
         )
     );
 
-  const handleSelectAll = () => {
-    const visibleIds =
-      visibleRoles.map(
-        (role) => role.id
-      );
+  /* ===================================================
+     SELECT ALL
+  =================================================== */
 
-    if (allVisibleSelected) {
-      setSelectedIds(
-        (previous) =>
-          previous.filter(
-            (id) =>
-              !visibleIds.includes(
-                id
-              )
-          )
-      );
-    } else {
-      setSelectedIds(
-        (previous) => [
-          ...new Set([
-            ...previous,
-            ...visibleIds,
-          ]),
-        ]
-      );
-    }
-  };
+  const handleSelectAll =
+    () => {
+      const visibleIds =
+        visibleRoles.map(
+          (role) =>
+            role.id
+        );
+
+      if (
+        allVisibleSelected
+      ) {
+        setSelectedIds(
+          (previous) =>
+            previous.filter(
+              (id) =>
+                !visibleIds.includes(
+                  id
+                )
+            )
+        );
+      } else {
+        setSelectedIds(
+          (previous) => [
+            ...new Set([
+              ...previous,
+              ...visibleIds,
+            ]),
+          ]
+        );
+      }
+    };
+
+  /* ===================================================
+     SELECT ROLE
+  =================================================== */
 
   const handleSelectRole = (
-    id: number
+    id: string
   ) => {
     setSelectedIds(
       (previous) =>
@@ -311,16 +549,27 @@ const Roles: React.FC = () => {
     );
   };
 
+  /* ===================================================
+     ADD MODAL
+  =================================================== */
+
   const openAddModal = () => {
     setAddForm({
       name: "",
       status: "",
     });
 
+    setError("");
+    setSuccess("");
+
     setShowAddModal(true);
   };
 
   const closeAddModal = () => {
+    if (saving) {
+      return;
+    }
+
     setShowAddModal(false);
 
     setAddForm({
@@ -329,41 +578,86 @@ const Roles: React.FC = () => {
     });
   };
 
-  const handleAddRole = () => {
-    if (
-      !addForm.name.trim() ||
-      !addForm.status
-    ) {
-      return;
-    }
+  /* ===================================================
+     ADD ROLE API
+  =================================================== */
 
-    const newRole: Role = {
-      id:
-        roles.length > 0
-          ? Math.max(
-              ...roles.map(
-                (role) =>
-                  role.id
-              )
-            ) + 1
-          : 1,
-      name:
-        addForm.name.trim(),
-      createdDate:
-        "03 Sep 2026",
-      status:
-        addForm.status,
+  const handleAddRole =
+    async () => {
+      if (
+        !addForm.name.trim() ||
+        !addForm.status
+      ) {
+        setError(
+          "Please enter role name and select status."
+        );
+        return;
+      }
+
+      try {
+        setSaving(true);
+        setError("");
+
+        const payload = {
+          roleName:
+            addForm.name.trim(),
+
+          isActive:
+            addForm.status ===
+            "Active",
+        };
+
+        console.log(
+          "ADD ROLE PAYLOAD =>",
+          payload
+        );
+
+        const response =
+          await addRole(
+            payload
+          );
+
+        console.log(
+          "ADD ROLE RESULT =>",
+          response
+        );
+
+        setShowAddModal(
+          false
+        );
+
+        setAddForm({
+          name: "",
+          status: "",
+        });
+
+        setSuccess(
+          "Role added successfully."
+        );
+
+        setCurrentPage(1);
+
+        await loadRoles();
+      } catch (err: any) {
+        console.error(
+          "ADD ROLE ERROR =>",
+          err
+        );
+
+        setError(
+          err?.response?.data
+            ?.message ||
+            err?.message ||
+            "Failed to add role."
+        );
+      } finally {
+        setSaving(false);
+      }
     };
 
-    setRoles(
-      (previous) => [
-        ...previous,
-        newRole,
-      ]
-    );
-
-    closeAddModal();
-  };
+  /* ===================================================
+     EDIT MODAL
+  =================================================== */
 
   const openEditModal = (
     role: Role
@@ -372,83 +666,208 @@ const Roles: React.FC = () => {
 
     setEditForm({
       name: role.name,
-      status:
-        role.status,
+      status: role.status,
     });
+
+    setError("");
+    setSuccess("");
 
     setShowEditModal(true);
   };
 
   const closeEditModal = () => {
-    setShowEditModal(false);
-    setSelectedRole(null);
-  };
-
-  const handleUpdateRole = () => {
-    if (
-      !selectedRole ||
-      !editForm.name.trim() ||
-      !editForm.status
-    ) {
+    if (saving) {
       return;
     }
 
-    setRoles((previous) =>
-      previous.map((role) =>
-        role.id ===
-        selectedRole.id
-          ? {
-              ...role,
-              name:
-                editForm.name.trim(),
-              status:
-                editForm.status as RoleStatus,
-            }
-          : role
-      )
-    );
+    setShowEditModal(false);
+    setSelectedRole(null);
 
-    closeEditModal();
+    setEditForm({
+      name: "",
+      status: "",
+    });
   };
+
+  /* ===================================================
+     UPDATE ROLE API
+  =================================================== */
+
+  const handleUpdateRole =
+    async () => {
+      if (
+        !selectedRole
+      ) {
+        return;
+      }
+
+      if (
+        !editForm.name.trim() ||
+        !editForm.status
+      ) {
+        setError(
+          "Please enter role name and select status."
+        );
+        return;
+      }
+
+      try {
+        setSaving(true);
+        setError("");
+
+        const payload = {
+          id: selectedRole.id,
+
+          roleName:
+            editForm.name.trim(),
+
+          isActive:
+            editForm.status ===
+            "Active",
+        };
+
+        console.log(
+          "UPDATE ROLE PAYLOAD =>",
+          payload
+        );
+
+        const response =
+          await updateRole(
+            payload
+          );
+
+        console.log(
+          "UPDATE ROLE RESULT =>",
+          response
+        );
+
+        setShowEditModal(
+          false
+        );
+
+        setSelectedRole(null);
+
+        setSuccess(
+          "Role updated successfully."
+        );
+
+        await loadRoles();
+      } catch (err: any) {
+        console.error(
+          "UPDATE ROLE ERROR =>",
+          err
+        );
+
+        setError(
+          err?.response?.data
+            ?.message ||
+            err?.message ||
+            "Failed to update role."
+        );
+      } finally {
+        setSaving(false);
+      }
+    };
+
+  /* ===================================================
+     DELETE MODAL
+  =================================================== */
 
   const openDeleteModal = (
     role: Role
   ) => {
     setSelectedRole(role);
+
+    setError("");
+    setSuccess("");
+
     setShowDeleteModal(true);
   };
 
   const closeDeleteModal =
     () => {
-      setShowDeleteModal(false);
-      setSelectedRole(null);
-    };
-
-  const handleDeleteRole =
-    () => {
-      if (!selectedRole) {
+      if (deleting) {
         return;
       }
 
-      setRoles((previous) =>
-        previous.filter(
-          (role) =>
-            role.id !==
-            selectedRole.id
-        )
+      setShowDeleteModal(
+        false
       );
 
-      setSelectedIds(
-        (previous) =>
-          previous.filter(
-            (id) =>
-              id !==
-              selectedRole.id
-          )
-      );
-
-      closeDeleteModal();
+      setSelectedRole(null);
     };
+
+  /* ===================================================
+     DELETE ROLE API
+  =================================================== */
+
+  const handleDeleteRole =
+    async () => {
+      if (
+        !selectedRole
+      ) {
+        return;
+      }
+
+      try {
+        setDeleting(true);
+        setError("");
+
+        console.log(
+          "DELETE ROLE ID =>",
+          selectedRole.id
+        );
+
+        const response =
+          await deleteRole(
+            selectedRole.id
+          );
+
+        console.log(
+          "DELETE ROLE RESULT =>",
+          response
+        );
+
+        setSelectedIds(
+          (previous) =>
+            previous.filter(
+              (id) =>
+                id !==
+                selectedRole.id
+            )
+        );
+
+        setShowDeleteModal(
+          false
+        );
+
+        setSelectedRole(null);
+
+        setSuccess(
+          "Role deleted successfully."
+        );
+
+        await loadRoles();
+      } catch (err: any) {
+        console.error(
+          "DELETE ROLE ERROR =>",
+          err
+        );
+
+        setError(
+          err?.response?.data
+            ?.message ||
+            err?.message ||
+            "Failed to delete role."
+        );
+      } finally {
+        setDeleting(false);
+      }
+    };
+
+  /* ===================================================
+     JSX
+  =================================================== */
 
   return (
     <>
@@ -477,8 +896,6 @@ const Roles: React.FC = () => {
           line-height: 1.2;
           font-weight: 700;
         }
-
-        /* BREADCRUMB EXACT SCREENSHOT STYLE */
 
         .roles-breadcrumb {
           display: flex;
@@ -523,7 +940,7 @@ const Roles: React.FC = () => {
           padding: 0 15px;
           border: 0;
           border-radius: 5px;
-          background: #c39237;
+          background: ${GOLD};
           color: #fff;
           display: inline-flex;
           align-items: center;
@@ -534,22 +951,24 @@ const Roles: React.FC = () => {
           cursor: pointer;
         }
 
+        .roles-add-btn:disabled {
+          opacity: .6;
+          cursor: not-allowed;
+        }
+
         .roles-card {
           width: 100%;
           overflow: hidden;
           border: 1px solid #dde2e8;
           border-radius: 5px;
           background: #fff;
-          box-shadow:
-            0 1px 2px
-            rgba(0,0,0,.03);
+          box-shadow: 0 1px 2px rgba(0,0,0,.03);
         }
 
         .roles-card-header {
           min-height: 72px;
           padding: 14px 20px;
-          border-bottom:
-            1px solid #dde2e8;
+          border-bottom: 1px solid #dde2e8;
           display: flex;
           align-items: center;
           justify-content: space-between;
@@ -572,8 +991,7 @@ const Roles: React.FC = () => {
         .roles-filter {
           height: 38px;
           padding: 0 11px;
-          border:
-            1px solid #dce1e7;
+          border: 1px solid #dce1e7;
           border-radius: 5px;
           outline: none;
           background: #fff;
@@ -596,8 +1014,7 @@ const Roles: React.FC = () => {
         .roles-toolbar {
           min-height: 61px;
           padding: 10px 16px;
-          border-bottom:
-            1px solid #e2e5e9;
+          border-bottom: 1px solid #e2e5e9;
           display: flex;
           align-items: center;
           justify-content: space-between;
@@ -615,8 +1032,7 @@ const Roles: React.FC = () => {
           width: 49px;
           height: 29px;
           padding: 0 5px;
-          border:
-            1px solid #dce1e7;
+          border: 1px solid #dce1e7;
           border-radius: 6px;
           outline: none;
           background: #fff;
@@ -628,8 +1044,7 @@ const Roles: React.FC = () => {
           width: 160px;
           height: 30px;
           padding: 0 14px;
-          border:
-            1px solid #dce1e7;
+          border: 1px solid #dce1e7;
           border-radius: 5px;
           outline: none;
           background: #fff;
@@ -646,8 +1061,7 @@ const Roles: React.FC = () => {
           width: 100%;
           min-width: 850px;
           margin: 0;
-          border-collapse:
-            collapse;
+          border-collapse: collapse;
         }
 
         .roles-table thead {
@@ -668,8 +1082,7 @@ const Roles: React.FC = () => {
           height: 47px;
           padding: 0 16px;
           vertical-align: middle;
-          border-bottom:
-            1px solid #dfe3e8;
+          border-bottom: 1px solid #dfe3e8;
           background: #fff;
           color: #637083;
           font-size: 13px;
@@ -701,7 +1114,7 @@ const Roles: React.FC = () => {
           width: 18px;
           height: 18px;
           margin: 0;
-          accent-color: #c39237;
+          accent-color: ${GOLD};
           cursor: pointer;
         }
 
@@ -715,8 +1128,7 @@ const Roles: React.FC = () => {
         .roles-status {
           height: 18px;
           min-width: 57px;
-          padding:
-            0 7px;
+          padding: 0 7px;
           border-radius: 4px;
           color: #fff;
           display: inline-flex;
@@ -768,11 +1180,15 @@ const Roles: React.FC = () => {
           cursor: pointer;
         }
 
+        .roles-action-btn:disabled {
+          opacity: .5;
+          cursor: not-allowed;
+        }
+
         .roles-table-footer {
           min-height: 57px;
           padding: 0 16px;
-          border-top:
-            1px solid #dfe3e8;
+          border-top: 1px solid #dfe3e8;
           display: flex;
           align-items: center;
           justify-content: space-between;
@@ -799,16 +1215,60 @@ const Roles: React.FC = () => {
           cursor: pointer;
         }
 
+        .roles-page-arrow:disabled {
+          opacity: .4;
+          cursor: not-allowed;
+        }
+
         .roles-current-page {
           width: 27px;
           height: 27px;
           border-radius: 50%;
-          background: #c39237;
+          background: ${GOLD};
           color: #fff;
           display: inline-flex;
           align-items: center;
           justify-content: center;
           font-size: 12px;
+        }
+
+        .roles-loading {
+          height: 120px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          color: #637083;
+          font-size: 13px;
+        }
+
+        .roles-empty {
+          height: 120px;
+          text-align: center;
+          color: #7b8794;
+          font-size: 13px;
+        }
+
+        .roles-empty td {
+          height: 120px;
+        }
+
+        .roles-message {
+          margin-bottom: 15px;
+          padding: 11px 14px;
+          border-radius: 5px;
+          font-size: 13px;
+        }
+
+        .roles-success {
+          border: 1px solid #b7e4c7;
+          background: #eaf8ef;
+          color: #18743a;
+        }
+
+        .roles-error {
+          border: 1px solid #f2b8b5;
+          background: #fff0ef;
+          color: #b42318;
         }
 
         .roles-modal-overlay {
@@ -819,28 +1279,22 @@ const Roles: React.FC = () => {
           display: flex;
           align-items: center;
           justify-content: center;
-          background:
-            rgba(0,0,0,.42);
+          background: rgba(0,0,0,.42);
         }
 
         .roles-form-modal {
           width: 500px;
-          max-width:
-            calc(100vw - 30px);
+          max-width: calc(100vw - 30px);
           overflow: hidden;
           border-radius: 5px;
           background: #fff;
-          box-shadow:
-            0 15px 45px
-            rgba(0,0,0,.2);
+          box-shadow: 0 15px 45px rgba(0,0,0,.2);
         }
 
         .roles-modal-header {
           height: 64px;
-          padding:
-            0 16px;
-          border-bottom:
-            1px solid #e5e7eb;
+          padding: 0 16px;
+          border-bottom: 1px solid #e5e7eb;
           display: flex;
           align-items: center;
           justify-content: space-between;
@@ -869,8 +1323,7 @@ const Roles: React.FC = () => {
         }
 
         .roles-modal-body {
-          padding:
-            18px 16px;
+          padding: 18px 16px;
         }
 
         .roles-form-group {
@@ -889,10 +1342,8 @@ const Roles: React.FC = () => {
         .roles-form-group select {
           width: 100%;
           height: 40px;
-          padding:
-            0 10px;
-          border:
-            1px solid #d9dee7;
+          padding: 0 10px;
+          border: 1px solid #d9dee7;
           border-radius: 5px;
           outline: none;
           background: #fff;
@@ -900,10 +1351,14 @@ const Roles: React.FC = () => {
           font-size: 14px;
         }
 
+        .roles-form-group input:focus,
+        .roles-form-group select:focus {
+          border-color: ${GOLD};
+        }
+
         .roles-modal-footer {
           padding: 12px;
-          border-top:
-            1px solid #e5e7eb;
+          border-top: 1px solid #e5e7eb;
           display: flex;
           justify-content: flex-end;
           gap: 8px;
@@ -912,8 +1367,7 @@ const Roles: React.FC = () => {
         .roles-modal-cancel,
         .roles-modal-save {
           height: 40px;
-          padding:
-            0 16px;
+          padding: 0 16px;
           border: 0;
           border-radius: 5px;
           font-size: 14px;
@@ -926,30 +1380,31 @@ const Roles: React.FC = () => {
         }
 
         .roles-modal-save {
-          background: #c49135;
+          background: ${GOLD};
           color: #fff;
           font-weight: 600;
         }
 
+        .roles-modal-save:disabled,
+        .roles-modal-cancel:disabled {
+          opacity: .6;
+          cursor: not-allowed;
+        }
+
         .roles-delete-modal {
           width: 400px;
-          max-width:
-            calc(100vw - 30px);
-          padding:
-            17px 30px;
+          max-width: calc(100vw - 30px);
+          padding: 17px 30px;
           border-radius: 5px;
           background: #fff;
           text-align: center;
-          box-shadow:
-            0 15px 45px
-            rgba(0,0,0,.2);
+          box-shadow: 0 15px 45px rgba(0,0,0,.2);
         }
 
         .roles-delete-icon {
           width: 58px;
           height: 58px;
-          margin:
-            0 auto 14px;
+          margin: 0 auto 14px;
           border-radius: 4px;
           background: #f6cccc;
           color: #f10f18;
@@ -959,8 +1414,7 @@ const Roles: React.FC = () => {
         }
 
         .roles-delete-modal h3 {
-          margin:
-            0 0 6px;
+          margin: 0 0 6px;
           color: #1d2b48;
           font-size: 19px;
           font-weight: 600;
@@ -968,8 +1422,7 @@ const Roles: React.FC = () => {
 
         .roles-delete-modal p {
           max-width: 330px;
-          margin:
-            0 auto 17px;
+          margin: 0 auto 17px;
           color: #3e4654;
           font-size: 13px;
           line-height: 1.5;
@@ -985,8 +1438,7 @@ const Roles: React.FC = () => {
         .roles-delete-cancel,
         .roles-delete-confirm {
           height: 39px;
-          padding:
-            0 16px;
+          padding: 0 16px;
           border: 0;
           border-radius: 5px;
           font-size: 13px;
@@ -1003,17 +1455,47 @@ const Roles: React.FC = () => {
           color: #fff;
           font-weight: 600;
         }
+
+        .roles-delete-confirm:disabled,
+        .roles-delete-cancel:disabled {
+          opacity: .6;
+          cursor: not-allowed;
+        }
+
+        @media (max-width: 900px) {
+          .roles-card-header {
+            align-items: flex-start;
+            flex-direction: column;
+          }
+
+          .roles-filters {
+            width: 100%;
+            flex-wrap: wrap;
+          }
+
+          .roles-filter {
+            flex: 1;
+            min-width: 130px;
+          }
+        }
         `}
       </style>
 
       <div className="roles-page">
+
+        {/* =================================================
+            HEADER
+        ================================================= */}
+
         <div className="roles-page-header">
+
           <div>
             <h1 className="roles-page-title">
               Roles
             </h1>
 
             <div className="roles-breadcrumb">
+
               <button
                 type="button"
                 className="roles-breadcrumb-home"
@@ -1033,6 +1515,7 @@ const Roles: React.FC = () => {
               <span className="roles-breadcrumb-text">
                 Roles
               </span>
+
             </div>
           </div>
 
@@ -1043,27 +1526,51 @@ const Roles: React.FC = () => {
               openAddModal
             }
           >
-            <CirclePlus
-              size={15}
-            />
+            <CirclePlus size={15} />
 
             Add Roles
           </button>
+
         </div>
 
+        {/* =================================================
+            SUCCESS / ERROR
+        ================================================= */}
+
+        {success && (
+          <div className="roles-message roles-success">
+            {success}
+          </div>
+        )}
+
+        {error && (
+          <div className="roles-message roles-error">
+            {error}
+          </div>
+        )}
+
+        {/* =================================================
+            CARD
+        ================================================= */}
+
         <div className="roles-card">
+
+          {/* CARD HEADER */}
+
           <div className="roles-card-header">
+
             <h5 className="roles-card-title">
               Roles List
             </h5>
 
             <div className="roles-filters">
+
               <select
                 className="roles-filter roles-date-filter"
                 defaultValue="range"
               >
                 <option value="range">
-                  08/28/2026 - 09/03/20
+                  08/28/2026 - 09/03/2026
                 </option>
 
                 <option value="7">
@@ -1089,7 +1596,9 @@ const Roles: React.FC = () => {
                     e.target.value
                   );
 
-                  setCurrentPage(1);
+                  setCurrentPage(
+                    1
+                  );
                 }}
               >
                 <option value="">
@@ -1113,7 +1622,9 @@ const Roles: React.FC = () => {
                     e.target.value
                   );
 
-                  setCurrentPage(1);
+                  setCurrentPage(
+                    1
+                  );
                 }}
               >
                 <option value="Last 7 Days">
@@ -1136,11 +1647,16 @@ const Roles: React.FC = () => {
                   Last Month
                 </option>
               </select>
+
             </div>
           </div>
 
+          {/* TOOLBAR */}
+
           <div className="roles-toolbar">
+
             <div className="roles-row-control">
+
               <span>
                 Row Per Page
               </span>
@@ -1157,7 +1673,9 @@ const Roles: React.FC = () => {
                     )
                   );
 
-                  setCurrentPage(1);
+                  setCurrentPage(
+                    1
+                  );
                 }}
               >
                 <option value={10}>
@@ -1176,6 +1694,7 @@ const Roles: React.FC = () => {
               <span>
                 Entries
               </span>
+
             </div>
 
             <input
@@ -1188,15 +1707,24 @@ const Roles: React.FC = () => {
                   e.target.value
                 );
 
-                setCurrentPage(1);
+                setCurrentPage(
+                  1
+                );
               }}
             />
+
           </div>
 
+          {/* TABLE */}
+
           <div className="roles-table-wrapper">
+
             <table className="roles-table">
+
               <thead>
+
                 <tr>
+
                   <th className="roles-check-column">
                     <input
                       type="checkbox"
@@ -1206,6 +1734,11 @@ const Roles: React.FC = () => {
                       }
                       onChange={
                         handleSelectAll
+                      }
+                      disabled={
+                        loading ||
+                        visibleRoles.length ===
+                          0
                       }
                     />
                   </th>
@@ -1235,114 +1768,165 @@ const Roles: React.FC = () => {
                   </th>
 
                   <th className="roles-action-column">
-                    <span className="roles-sort-icon">
-                      ↑↓
-                    </span>
+                    Actions
                   </th>
+
                 </tr>
+
               </thead>
 
               <tbody>
-                {visibleRoles.map(
-                  (role) => (
-                    <tr
-                      key={role.id}
+
+                {loading ? (
+                  <tr>
+                    <td
+                      colSpan={5}
+                      className="roles-loading"
                     >
-                      <td className="roles-check-column">
-                        <input
-                          type="checkbox"
-                          className="roles-checkbox"
-                          checked={selectedIds.includes(
-                            role.id
-                          )}
-                          onChange={() =>
-                            handleSelectRole(
-                              role.id
-                            )
-                          }
-                        />
-                      </td>
-
-                      <td>
-                        {role.name}
-                      </td>
-
-                      <td>
-                        {
-                          role.createdDate
+                      Loading roles...
+                    </td>
+                  </tr>
+                ) : visibleRoles.length ===
+                  0 ? (
+                  <tr className="roles-empty">
+                    <td colSpan={5}>
+                      No roles found
+                    </td>
+                  </tr>
+                ) : (
+                  visibleRoles.map(
+                    (role) => (
+                      <tr
+                        key={
+                          role.id
                         }
-                      </td>
+                      >
 
-                      <td>
-                        <span
-                          className={`roles-status ${
-                            role.status ===
-                            "Active"
-                              ? "roles-status-active"
-                              : "roles-status-inactive"
-                          }`}
-                        >
-                          <span className="roles-status-dot" />
+                        <td className="roles-check-column">
 
+                          <input
+                            type="checkbox"
+                            className="roles-checkbox"
+                            checked={selectedIds.includes(
+                              role.id
+                            )}
+                            onChange={() =>
+                              handleSelectRole(
+                                role.id
+                              )
+                            }
+                          />
+
+                        </td>
+
+                        <td>
                           {
-                            role.status
+                            role.name
                           }
-                        </span>
-                      </td>
+                        </td>
 
-                      <td>
-                        <div className="roles-actions">
-                          <button
-                            type="button"
-                            className="roles-action-btn"
-                            title="Permissions"
+                        <td>
+                          {formatDate(
+                            role.createdDate
+                          )}
+                        </td>
+
+                        <td>
+
+                          <span
+                            className={`roles-status ${
+                              role.status ===
+                              "Active"
+                                ? "roles-status-active"
+                                : "roles-status-inactive"
+                            }`}
                           >
-                            <Shield
-                              size={15}
-                            />
-                          </button>
 
-                          <button
-                            type="button"
-                            className="roles-action-btn"
-                            title="Edit"
-                            onClick={() =>
-                              openEditModal(
-                                role
-                              )
+                            <span className="roles-status-dot" />
+
+                            {
+                              role.status
                             }
-                          >
-                            <Pencil
-                              size={15}
-                            />
-                          </button>
 
-                          <button
-                            type="button"
-                            className="roles-action-btn"
-                            title="Delete"
-                            onClick={() =>
-                              openDeleteModal(
-                                role
-                              )
-                            }
-                          >
-                            <Trash2
-                              size={15}
-                            />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
+                          </span>
+
+                        </td>
+
+                        <td>
+
+                          <div className="roles-actions">
+
+                            <button
+                              type="button"
+                              className="roles-action-btn"
+                              title="Permissions"
+                            >
+                              <Shield
+                                size={15}
+                              />
+                            </button>
+
+                            <button
+                              type="button"
+                              className="roles-action-btn"
+                              title="Edit"
+                              onClick={() =>
+                                openEditModal(
+                                  role
+                                )
+                              }
+                              disabled={
+                                saving ||
+                                deleting
+                              }
+                            >
+                              <Pencil
+                                size={15}
+                              />
+                            </button>
+
+                            <button
+                              type="button"
+                              className="roles-action-btn"
+                              title="Delete"
+                              onClick={() =>
+                                openDeleteModal(
+                                  role
+                                )
+                              }
+                              disabled={
+                                saving ||
+                                deleting
+                              }
+                            >
+                              <Trash2
+                                size={15}
+                              />
+                            </button>
+
+                          </div>
+
+                        </td>
+
+                      </tr>
+                    )
                   )
                 )}
+
               </tbody>
+
             </table>
+
           </div>
 
+          {/* FOOTER */}
+
           <div className="roles-table-footer">
+
             <div>
+
               Showing{" "}
+
               {filteredRoles.length ===
               0
                 ? 0
@@ -1350,20 +1934,27 @@ const Roles: React.FC = () => {
                     1) *
                     rowsPerPage +
                   1}
+
               {" - "}
+
               {Math.min(
                 safeCurrentPage *
                   rowsPerPage,
                 filteredRoles.length
-              )}{" "}
-              of{" "}
+              )}
+
+              {" "}of{" "}
+
               {
                 filteredRoles.length
-              }{" "}
-              entries
+              }
+
+              {" "}entries
+
             </div>
 
             <div className="roles-pagination">
+
               <button
                 type="button"
                 className="roles-page-arrow"
@@ -1413,15 +2004,25 @@ const Roles: React.FC = () => {
                   size={16}
                 />
               </button>
+
             </div>
+
           </div>
+
         </div>
       </div>
 
+      {/* =================================================
+          ADD ROLE MODAL
+      ================================================= */}
+
       {showAddModal && (
         <div className="roles-modal-overlay">
+
           <div className="roles-form-modal">
+
             <div className="roles-modal-header">
+
               <h3>
                 Add Role
               </h3>
@@ -1432,13 +2033,19 @@ const Roles: React.FC = () => {
                 onClick={
                   closeAddModal
                 }
+                disabled={
+                  saving
+                }
               >
                 ×
               </button>
+
             </div>
 
             <div className="roles-modal-body">
+
               <div className="roles-form-group">
+
                 <label>
                   Role Name
                 </label>
@@ -1458,10 +2065,13 @@ const Roles: React.FC = () => {
                       })
                     )
                   }
+                  placeholder="Enter role name"
                 />
+
               </div>
 
               <div className="roles-form-group">
+
                 <label>
                   Status
                 </label>
@@ -1481,6 +2091,7 @@ const Roles: React.FC = () => {
                     )
                   }
                 >
+
                   <option value="">
                     Select
                   </option>
@@ -1492,16 +2103,23 @@ const Roles: React.FC = () => {
                   <option value="Inactive">
                     Inactive
                   </option>
+
                 </select>
+
               </div>
+
             </div>
 
             <div className="roles-modal-footer">
+
               <button
                 type="button"
                 className="roles-modal-cancel"
                 onClick={
                   closeAddModal
+                }
+                disabled={
+                  saving
                 }
               >
                 Cancel
@@ -1513,19 +2131,34 @@ const Roles: React.FC = () => {
                 onClick={
                   handleAddRole
                 }
+                disabled={
+                  saving
+                }
               >
-                Add Role
+                {saving
+                  ? "Adding..."
+                  : "Add Role"}
               </button>
+
             </div>
+
           </div>
+
         </div>
       )}
+
+      {/* =================================================
+          EDIT ROLE MODAL
+      ================================================= */}
 
       {showEditModal &&
         selectedRole && (
           <div className="roles-modal-overlay">
+
             <div className="roles-form-modal">
+
               <div className="roles-modal-header">
+
                 <h3>
                   Edit Role
                 </h3>
@@ -1536,13 +2169,19 @@ const Roles: React.FC = () => {
                   onClick={
                     closeEditModal
                   }
+                  disabled={
+                    saving
+                  }
                 >
                   ×
                 </button>
+
               </div>
 
               <div className="roles-modal-body">
+
                 <div className="roles-form-group">
+
                   <label>
                     Role Name
                   </label>
@@ -1564,10 +2203,13 @@ const Roles: React.FC = () => {
                         })
                       )
                     }
+                    placeholder="Enter role name"
                   />
+
                 </div>
 
                 <div className="roles-form-group">
+
                   <label>
                     Status
                   </label>
@@ -1589,6 +2231,7 @@ const Roles: React.FC = () => {
                       )
                     }
                   >
+
                     <option value="">
                       Select
                     </option>
@@ -1600,16 +2243,23 @@ const Roles: React.FC = () => {
                     <option value="Inactive">
                       Inactive
                     </option>
+
                   </select>
+
                 </div>
+
               </div>
 
               <div className="roles-modal-footer">
+
                 <button
                   type="button"
                   className="roles-modal-cancel"
                   onClick={
                     closeEditModal
+                  }
+                  disabled={
+                    saving
                   }
                 >
                   Cancel
@@ -1621,25 +2271,39 @@ const Roles: React.FC = () => {
                   onClick={
                     handleUpdateRole
                   }
+                  disabled={
+                    saving
+                  }
                 >
-                  Save
+                  {saving
+                    ? "Saving..."
+                    : "Save"}
                 </button>
+
               </div>
+
             </div>
+
           </div>
         )}
+
+      {/* =================================================
+          DELETE MODAL
+      ================================================= */}
 
       {showDeleteModal &&
         selectedRole && (
           <div className="roles-modal-overlay">
+
             <div className="roles-delete-modal">
+
               <div className="roles-delete-icon">
+
                 <Trash2
                   size={31}
-                  strokeWidth={
-                    2.2
-                  }
+                  strokeWidth={2.2}
                 />
+
               </div>
 
               <h3>
@@ -1647,18 +2311,26 @@ const Roles: React.FC = () => {
               </h3>
 
               <p>
-                You want to delete all
-                the marked items, this
-                cant be undone once you
+                You want to delete
+                <strong>
+                  {" "}
+                  {selectedRole.name}
+                </strong>
+                . This can't be
+                undone once you
                 delete.
               </p>
 
               <div className="roles-delete-actions">
+
                 <button
                   type="button"
                   className="roles-delete-cancel"
                   onClick={
                     closeDeleteModal
+                  }
+                  disabled={
+                    deleting
                   }
                 >
                   Cancel
@@ -1670,13 +2342,22 @@ const Roles: React.FC = () => {
                   onClick={
                     handleDeleteRole
                   }
+                  disabled={
+                    deleting
+                  }
                 >
-                  Yes, Delete
+                  {deleting
+                    ? "Deleting..."
+                    : "Yes, Delete"}
                 </button>
+
               </div>
+
             </div>
+
           </div>
         )}
+
     </>
   );
 };

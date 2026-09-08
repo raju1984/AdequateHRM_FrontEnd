@@ -105,15 +105,66 @@ const EmployeLogin = () => {
         // SAVE ACCESS TOKEN
         // =============================
 
-        const accessToken =
-          userData?.tokens?.accessToken;
+   const rawAccessToken = userData?.tokens?.accessToken;
 
-        if (accessToken) {
-          localStorage.setItem(
-            "token",
-            accessToken
-          );
-        }
+console.log(
+  "ACCESS TOKEN TYPE:",
+  typeof rawAccessToken
+);
+
+console.log(
+  "ACCESS TOKEN KEYS:",
+  rawAccessToken &&
+    typeof rawAccessToken === "object"
+    ? Object.keys(rawAccessToken)
+    : []
+);
+
+let accessToken = "";
+
+if (typeof rawAccessToken === "string") {
+  accessToken = rawAccessToken;
+} else if (
+  rawAccessToken &&
+  typeof rawAccessToken === "object"
+) {
+  accessToken =
+    rawAccessToken.token ||
+    rawAccessToken.accessToken ||
+    "";
+}
+
+if (!accessToken) {
+  console.error(
+    "Valid access token was not found in login response."
+  );
+
+  alert(
+    "Login successful but valid access token was not received."
+  );
+
+  return;
+}
+
+localStorage.setItem(
+  "token",
+  accessToken
+);
+
+console.log(
+  "ACCESS TOKEN SAVED:",
+  !!localStorage.getItem("token")
+);
+
+console.log(
+  "SAVED TOKEN TYPE:",
+  typeof localStorage.getItem("token")
+);
+
+console.log(
+  "SAVED TOKEN LENGTH:",
+  localStorage.getItem("token")?.length
+);
 
         // Optional Refresh Token
         const refreshToken =

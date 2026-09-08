@@ -1,10 +1,18 @@
-import React, { useMemo, useState } from "react";
+
+import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import avatar27 from "../../assets/img/profiles/avatar-27.jpg";
+
+import {
+  getEmployeeAttendance,
+  logoutAttendance,
+  type AttendancePageParams,
+} from "../../services/employeservices";
 
 type AttendanceStatus = "Present" | "Absent";
 
 interface AttendanceRow {
+  id?: string;
   date: string;
   checkIn: string;
   status: AttendanceStatus;
@@ -14,6 +22,7 @@ interface AttendanceRow {
   overtime: string;
   productionHours: string;
   productionColor: "green" | "blue" | "red";
+  raw?: any;
 }
 
 const AttendancePage: React.FC = () => {
@@ -24,179 +33,463 @@ const AttendancePage: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState("");
   const [sortFilter, setSortFilter] = useState("Last 7 Days");
 
-  const attendanceData: AttendanceRow[] = [
-    {
-      date: "02 Sep 2024",
-      checkIn: "09:00 AM",
-      status: "Present",
-      checkOut: "09:17 PM",
-      breakTime: "14 Min",
-      late: "12 Min",
-      overtime: "-",
-      productionHours: "8.35Hrs",
-      productionColor: "green",
-    },
-    {
-      date: "06 Jul 2024",
-      checkIn: "09:00 AM",
-      status: "Present",
-      checkOut: "07:13 PM",
-      breakTime: "32 Min",
-      late: "-",
-      overtime: "-",
-      productionHours: "9.15 Hrs",
-      productionColor: "blue",
-    },
-    {
-      date: "10 Dec 2024",
-      checkIn: "09:00 AM",
-      status: "Absent",
-      checkOut: "09:23 PM",
-      breakTime: "10 Min",
-      late: "-",
-      overtime: "45 Min",
-      productionHours: "9.25 Hrs",
-      productionColor: "green",
-    },
-    {
-      date: "12 Apr 2024",
-      checkIn: "09:00 AM",
-      status: "Present",
-      checkOut: "06:43 PM",
-      breakTime: "23 Min",
-      late: "-",
-      overtime: "10 Min",
-      productionHours: "8.22 Hrs",
-      productionColor: "green",
-    },
-    {
-      date: "14 Jan 2024",
-      checkIn: "09:00 AM",
-      status: "Present",
-      checkOut: "06:45 PM",
-      breakTime: "30 Min",
-      late: "32 Min",
-      overtime: "20 Min",
-      productionHours: "8.55 Hrs",
-      productionColor: "green",
-    },
-    {
-      date: "15 Mar 2024",
-      checkIn: "09:00 AM",
-      status: "Present",
-      checkOut: "06:23 PM",
-      breakTime: "41 Min",
-      late: "-",
-      overtime: "50 Min",
-      productionHours: "8.35 Hrs",
-      productionColor: "green",
-    },
-    {
-      date: "15 Nov 2024",
-      checkIn: "09:00 AM",
-      status: "Present",
-      checkOut: "08:15 PM",
-      breakTime: "12 Min",
-      late: "-",
-      overtime: "-",
-      productionHours: "8.35Hrs",
-      productionColor: "green",
-    },
-    {
-      date: "20 Apr 2024",
-      checkIn: "09:00 AM",
-      status: "Present",
-      checkOut: "07:15 PM",
-      breakTime: "03 Min",
-      late: "-",
-      overtime: "-",
-      productionHours: "8.32 Hrs",
-      productionColor: "green",
-    },
-    {
-      date: "20 Feb 2024",
-      checkIn: "09:00 AM",
-      status: "Present",
-      checkOut: "06:13 PM",
-      breakTime: "50 Min",
-      late: "-",
-      overtime: "33 Min",
-      productionHours: "8.45 Hrs",
-      productionColor: "green",
-    },
-    {
-      date: "21 Jan 2024",
-      checkIn: "09:00 AM",
-      status: "Present",
-      checkOut: "06:12 PM",
-      breakTime: "20 Min",
-      late: "-",
-      overtime: "45 Min",
-      productionHours: "7.54 Hrs",
-      productionColor: "red",
-    },
-  ];
+  const [attendanceData, setAttendanceData] = useState<AttendanceRow[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [punchingOut, setPunchingOut] = useState(false);
+  const [error, setError] = useState("");
+
+  /* =====================================================
+     HELPERS
+  ===================================================== */
+
+  const getValue = (
+    item: any,
+    keys: string[],
+    fallback = "-"
+  ): any => {
+    for (const key of keys) {
+      if (
+        item &&
+        item[key] !== undefined &&
+        item[key] !== null &&
+        item[key] !== ""
+      ) {
+        return item[key];
+      }
+    }
+
+    return fallback;
+  };
+
+  const formatDate = (value: any): string => {
+    if (!value || value === "-") return "-";
+
+    const date = new Date(value);
+
+    if (Number.isNaN(date.getTime())) {
+      return String(value);
+    }
+
+    return date.toLocaleDateString("en-GB", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    });
+  };
+
+  const formatTime = (value: any): string => {
+    if (!value || value === "-") return "-";
+
+    const valueString = String(value);
+
+    // Already formatted time
+    if (
+      valueString.includes("AM") ||
+      valueString.includes("PM")
+    ) {
+      return valueString;
+    }
+
+    const date = new Date(value);
+
+    if (!Number.isNaN(date.getTime())) {
+      return date.toLocaleTimeString("en-US", {
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+    }
+
+    return valueString;
+  };
+
+  const normalizeStatus = (value: any): AttendanceStatus => {
+    const status = String(value ?? "")
+      .trim()
+      .toLowerCase();
+
+    if (
+      status === "absent" ||
+      status === "2" ||
+      status === "false"
+    ) {
+      return "Absent";
+    }
+
+    return "Present";
+  };
+
+  const normalizeProductionColor = (
+    value: any
+  ): "green" | "blue" | "red" => {
+    const text = String(value ?? "").toLowerCase();
+
+    if (text.includes("red")) return "red";
+    if (text.includes("blue")) return "blue";
+
+    return "green";
+  };
+
+  const extractAttendanceArray = (response: any): any[] => {
+    if (Array.isArray(response)) {
+      return response;
+    }
+
+    if (Array.isArray(response?.data)) {
+      return response.data;
+    }
+
+    if (Array.isArray(response?.Data)) {
+      return response.Data;
+    }
+
+    if (Array.isArray(response?.items)) {
+      return response.items;
+    }
+
+    if (Array.isArray(response?.Items)) {
+      return response.Items;
+    }
+
+    if (Array.isArray(response?.result)) {
+      return response.result;
+    }
+
+    if (Array.isArray(response?.Result)) {
+      return response.Result;
+    }
+
+    if (Array.isArray(response?.data?.items)) {
+      return response.data.items;
+    }
+
+    if (Array.isArray(response?.data?.Items)) {
+      return response.data.Items;
+    }
+
+    return [];
+  };
+
+  const mapAttendanceItem = (
+    item: any
+  ): AttendanceRow => {
+    const statusValue = getValue(item, [
+      "status",
+      "Status",
+      "attendanceStatus",
+      "AttendanceStatus",
+      "statusName",
+      "StatusName",
+    ]);
+
+    const productionValue = getValue(item, [
+      "productionHours",
+      "ProductionHours",
+      "productiveHours",
+      "ProductiveHours",
+      "productionHour",
+      "ProductionHour",
+    ]);
+
+    return {
+      id: String(
+        getValue(
+          item,
+          [
+            "id",
+            "Id",
+            "attendanceId",
+            "AttendanceId",
+            "employeeAttendanceId",
+            "EmployeeAttendanceId",
+          ],
+          ""
+        )
+      ),
+
+      date: formatDate(
+        getValue(item, [
+          "date",
+          "Date",
+          "attendanceDate",
+          "AttendanceDate",
+          "createdDate",
+          "CreatedDate",
+        ])
+      ),
+
+      checkIn: formatTime(
+        getValue(item, [
+          "checkIn",
+          "CheckIn",
+          "checkInTime",
+          "CheckInTime",
+          "inTime",
+          "InTime",
+          "punchIn",
+          "PunchIn",
+        ])
+      ),
+
+      status: normalizeStatus(statusValue),
+
+      checkOut: formatTime(
+        getValue(item, [
+          "checkOut",
+          "CheckOut",
+          "checkOutTime",
+          "CheckOutTime",
+          "outTime",
+          "OutTime",
+          "punchOut",
+          "PunchOut",
+        ])
+      ),
+
+      breakTime: String(
+        getValue(item, [
+          "breakTime",
+          "BreakTime",
+          "breakHours",
+          "BreakHours",
+          "totalBreak",
+          "TotalBreak",
+        ])
+      ),
+
+      late: String(
+        getValue(item, [
+          "late",
+          "Late",
+          "lateTime",
+          "LateTime",
+          "lateMinutes",
+          "LateMinutes",
+        ])
+      ),
+
+      overtime: String(
+        getValue(item, [
+          "overtime",
+          "Overtime",
+          "overTime",
+          "OverTime",
+          "overtimeMinutes",
+          "OvertimeMinutes",
+        ])
+      ),
+
+      productionHours: String(productionValue),
+
+      productionColor: normalizeProductionColor(
+        getValue(item, [
+          "productionColor",
+          "ProductionColor",
+          "color",
+          "Color",
+        ])
+      ),
+
+      raw: item,
+    };
+  };
+
+  /* =====================================================
+     GET ATTENDANCE
+  ===================================================== */
+
+  const loadAttendance = async () => {
+    try {
+      setLoading(true);
+      setError("");
+
+      const params: AttendancePageParams = {
+        PageNumber: 1,
+        PageSize: 100,
+      };
+
+      /*
+       * Status API ko tab bhej rahe hain jab filter selected hai.
+       *
+       * NOTE:
+       * Agar backend me Present/Absent ka numeric enum different hai,
+       * to yahan backend ke according mapping change kar sakte hain.
+       */
+      if (statusFilter) {
+        params.Status =
+          statusFilter === "Present" ? 1 : 2;
+      }
+
+      /*
+       * SortBy ko backend ke expected value ke according
+       * bheja ja sakta hai.
+       */
+      if (sortFilter) {
+        params.SortBy = sortFilter;
+      }
+
+      const response = await getEmployeeAttendance(params);
+
+      const apiData = extractAttendanceArray(response);
+
+      const mappedData = apiData.map(
+        mapAttendanceItem
+      );
+
+      setAttendanceData(mappedData);
+    } catch (err: any) {
+      console.error(
+        "Get employee attendance error:",
+        err
+      );
+
+      setAttendanceData([]);
+
+      setError(
+        err?.response?.data?.message ||
+          err?.response?.data?.Message ||
+          err?.message ||
+          "Unable to load attendance data."
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadAttendance();
+  }, [statusFilter, sortFilter]);
+
+  /* =====================================================
+     SEARCH + FRONTEND FILTER
+  ===================================================== */
 
   const filteredData = useMemo(() => {
     let data = [...attendanceData];
 
-    if (statusFilter) {
-      data = data.filter(
-        (item) => item.status.toLowerCase() === statusFilter.toLowerCase()
-      );
-    }
-
     if (search.trim()) {
-      const value = search.toLowerCase();
+      const value = search.toLowerCase().trim();
 
       data = data.filter((item) =>
         Object.values(item).some((field) =>
-          String(field).toLowerCase().includes(value)
+          String(field ?? "")
+            .toLowerCase()
+            .includes(value)
         )
       );
     }
 
     return data.slice(0, rowsPerPage);
-  }, [search, statusFilter, rowsPerPage]);
+  }, [
+    attendanceData,
+    search,
+    rowsPerPage,
+  ]);
+
+  /* =====================================================
+     PUNCH OUT
+  ===================================================== */
+
+  const handlePunchOut = async () => {
+    try {
+      setPunchingOut(true);
+      setError("");
+
+      await logoutAttendance();
+
+      /*
+       * Logout API successful hone ke baad
+       * latest attendance data dobara fetch.
+       */
+      await loadAttendance();
+    } catch (err: any) {
+      console.error(
+        "Attendance logout error:",
+        err
+      );
+
+      setError(
+        err?.response?.data?.message ||
+          err?.response?.data?.Message ||
+          err?.message ||
+          "Unable to punch out."
+      );
+    } finally {
+      setPunchingOut(false);
+    }
+  };
+
+  /* =====================================================
+     UI
+  ===================================================== */
 
   return (
     <div className="attendance-page">
       {/* =========================
           PAGE HEADER
       ========================= */}
+
       <div className="attendance-page-header">
         <h2>Attendance</h2>
 
         <div className="attendance-breadcrumb">
           <button
             type="button"
-            onClick={() => navigate("/Employee/EmployeDashboard")}
+            onClick={() =>
+              navigate(
+                "/Employee/EmployeDashboard"
+              )
+            }
           >
             <i className="ti ti-home"></i>
           </button>
 
           <span>/</span>
-          <span className="active">Attendance</span>
+          <span className="active">
+            Attendance
+          </span>
         </div>
       </div>
+
+      {/* ERROR */}
+      {error && (
+        <div className="attendance-error">
+          <i className="ti ti-alert-circle"></i>
+          <span>{error}</span>
+
+          <button
+            type="button"
+            onClick={loadAttendance}
+          >
+            Retry
+          </button>
+        </div>
+      )}
 
       {/* =========================
           TOP SECTION
       ========================= */}
+
       <div className="row g-4 top-attendance-row">
         {/* LEFT CARD */}
+
         <div className="col-xl-3 col-lg-4 d-flex">
           <div className="card attendance-main-card flex-fill">
             <div className="card-body">
               <div className="text-center attendance-greeting">
                 <p>Good Morning, Adrian</p>
-                <h4>08:35 AM, 11 Mar 2025</h4>
+                <h4>
+                  08:35 AM, 11 Mar 2025
+                </h4>
               </div>
 
               {/* PROFILE CIRCLE */}
+
               <div className="attendance-circle">
                 <div className="attendance-circle-inner">
-                  <img src={avatar27} alt="Profile" />
+                  <img
+                    src={avatar27}
+                    alt="Profile"
+                  />
                 </div>
               </div>
 
@@ -207,11 +500,20 @@ const AttendancePage: React.FC = () => {
 
                 <div className="punch-info">
                   <i className="ti ti-fingerprint"></i>
-                  <span>Punch In at 10.00 AM</span>
+                  <span>
+                    Punch In at 10.00 AM
+                  </span>
                 </div>
 
-                <button type="button" className="punch-out-btn">
-                  Punch Out
+                <button
+                  type="button"
+                  className="punch-out-btn"
+                  onClick={handlePunchOut}
+                  disabled={punchingOut}
+                >
+                  {punchingOut
+                    ? "Punching Out..."
+                    : "Punch Out"}
                 </button>
               </div>
             </div>
@@ -219,6 +521,7 @@ const AttendancePage: React.FC = () => {
         </div>
 
         {/* RIGHT */}
+
         <div className="col-xl-9 col-lg-8 d-flex">
           <div className="row g-4 flex-fill">
             <SummaryCard
@@ -262,6 +565,7 @@ const AttendancePage: React.FC = () => {
             />
 
             {/* TIMELINE */}
+
             <div className="col-12">
               <div className="card timeline-card">
                 <div className="card-body">
@@ -324,9 +628,15 @@ const AttendancePage: React.FC = () => {
                       "09:00",
                       "10:00",
                       "11:00",
-                    ].map((time, index) => (
-                      <span key={`${time}-${index}`}>{time}</span>
-                    ))}
+                    ].map(
+                      (time, index) => (
+                        <span
+                          key={`${time}-${index}`}
+                        >
+                          {time}
+                        </span>
+                      )
+                    )}
                   </div>
                 </div>
               </div>
@@ -338,6 +648,7 @@ const AttendancePage: React.FC = () => {
       {/* =========================
           EMPLOYEE ATTENDANCE TABLE
       ========================= */}
+
       <div className="card employee-attendance-card">
         <div className="employee-attendance-header">
           <h5>Employee Attendance</h5>
@@ -348,42 +659,77 @@ const AttendancePage: React.FC = () => {
               defaultValue="date"
             >
               <option value="date">
-                08/28/2026 - 09/03/20
+                08/28/2026 - 09/03/2026
               </option>
             </select>
 
             <select
               value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
+              onChange={(e) =>
+                setStatusFilter(
+                  e.target.value
+                )
+              }
               className="attendance-filter-control"
             >
-              <option value="">Select Status</option>
-              <option value="Present">Present</option>
-              <option value="Absent">Absent</option>
+              <option value="">
+                Select Status
+              </option>
+
+              <option value="Present">
+                Present
+              </option>
+
+              <option value="Absent">
+                Absent
+              </option>
             </select>
 
             <select
               value={sortFilter}
-              onChange={(e) => setSortFilter(e.target.value)}
+              onChange={(e) =>
+                setSortFilter(
+                  e.target.value
+                )
+              }
               className="attendance-filter-control sort-filter"
             >
-              <option>Sort By : Last 7 Days</option>
-              <option>Recently Added</option>
-              <option>Ascending</option>
-              <option>Descending</option>
-              <option>Last Month</option>
+              <option value="Last 7 Days">
+                Sort By : Last 7 Days
+              </option>
+
+              <option value="Recently Added">
+                Recently Added
+              </option>
+
+              <option value="Ascending">
+                Ascending
+              </option>
+
+              <option value="Descending">
+                Descending
+              </option>
+
+              <option value="Last Month">
+                Last Month
+              </option>
             </select>
           </div>
         </div>
 
         {/* TABLE CONTROLS */}
+
         <div className="table-top-controls">
           <div className="entries-control">
             <span>Row Per Page</span>
 
             <select
               value={rowsPerPage}
-              onChange={(e) => setRowsPerPage(Number(e.target.value))}
+              onChange={(e) =>
+                setRowsPerPage(
+                  Number(e.target.value)
+                )
+              }
             >
               <option value={10}>10</option>
               <option value={25}>25</option>
@@ -397,11 +743,14 @@ const AttendancePage: React.FC = () => {
             className="attendance-search"
             placeholder="Search"
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) =>
+              setSearch(e.target.value)
+            }
           />
         </div>
 
         {/* TABLE */}
+
         <div className="table-responsive">
           <table className="attendance-table">
             <thead>
@@ -418,47 +767,105 @@ const AttendancePage: React.FC = () => {
             </thead>
 
             <tbody>
-              {filteredData.map((row, index) => (
-                <tr key={`${row.date}-${index}`}>
-                  <td>{row.date}</td>
-                  <td>{row.checkIn}</td>
-
-                  <td>
-                    <span
-                      className={`attendance-status ${
-                        row.status === "Present"
-                          ? "present"
-                          : "absent"
-                      }`}
-                    >
-                      <span className="status-dot">•</span>
-                      {row.status}
-                    </span>
+              {loading ? (
+                <tr>
+                  <td
+                    colSpan={8}
+                    className="attendance-loading"
+                  >
+                    <div className="attendance-loader">
+                      <span className="spinner-border spinner-border-sm"></span>
+                      Loading attendance...
+                    </div>
                   </td>
-
-                  <td>{row.checkOut}</td>
-                  <td>{row.breakTime}</td>
-                  <td>{row.late}</td>
-                  <td>{row.overtime}</td>
-
-                  <td>
-                    <span
-                      className={`production-hours ${row.productionColor}`}
-                    >
-                      <i className="ti ti-clock-hour-11"></i>
-                      {row.productionHours}
+                </tr>
+              ) : filteredData.length === 0 ? (
+                <tr>
+                  <td
+                    colSpan={8}
+                    className="attendance-empty"
+                  >
+                    <i className="ti ti-calendar-off"></i>
+                    <span>
+                      No attendance records found
                     </span>
                   </td>
                 </tr>
-              ))}
+              ) : (
+                filteredData.map(
+                  (row, index) => (
+                    <tr
+                      key={
+                        row.id ||
+                        `${row.date}-${index}`
+                      }
+                    >
+                      <td>{row.date}</td>
+
+                      <td>
+                        {row.checkIn}
+                      </td>
+
+                      <td>
+                        <span
+                          className={`attendance-status ${
+                            row.status ===
+                            "Present"
+                              ? "present"
+                              : "absent"
+                          }`}
+                        >
+                          <span className="status-dot">
+                            •
+                          </span>
+
+                          {row.status}
+                        </span>
+                      </td>
+
+                      <td>
+                        {row.checkOut}
+                      </td>
+
+                      <td>
+                        {row.breakTime}
+                      </td>
+
+                      <td>
+                        {row.late}
+                      </td>
+
+                      <td>
+                        {row.overtime}
+                      </td>
+
+                      <td>
+                        <span
+                          className={`production-hours ${row.productionColor}`}
+                        >
+                          <i className="ti ti-clock-hour-11"></i>
+
+                          {row.productionHours}
+                        </span>
+                      </td>
+                    </tr>
+                  )
+                )
+              )}
             </tbody>
           </table>
         </div>
 
         {/* FOOTER */}
+
         <div className="attendance-table-footer">
           <span>
-            Showing 1 - {filteredData.length} of {filteredData.length} entries
+            Showing{" "}
+            {filteredData.length > 0
+              ? `1 - ${filteredData.length}`
+              : "0"}{" "}
+            of {attendanceData.length}{" "}
+            entries
           </span>
 
           <div className="pagination-box">
@@ -466,7 +873,10 @@ const AttendancePage: React.FC = () => {
               <i className="ti ti-chevron-left"></i>
             </button>
 
-            <button type="button" className="active-page">
+            <button
+              type="button"
+              className="active-page"
+            >
               1
             </button>
 
@@ -480,6 +890,7 @@ const AttendancePage: React.FC = () => {
       {/* =========================
           CSS
       ========================= */}
+
       <style>{`
         .attendance-page {
           min-height: calc(100vh - 50px);
@@ -532,7 +943,38 @@ const AttendancePage: React.FC = () => {
           background: #fff;
         }
 
+        /* ERROR */
+
+        .attendance-error {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          min-height: 42px;
+          margin-bottom: 20px;
+          padding: 10px 14px;
+          border: 1px solid #f5c2c7;
+          border-radius: 5px;
+          background: #fff1f2;
+          color: #b42318;
+          font-size: 13px;
+        }
+
+        .attendance-error i {
+          font-size: 17px;
+        }
+
+        .attendance-error button {
+          margin-left: auto;
+          border: 0;
+          border-radius: 4px;
+          background: #b42318;
+          color: #fff;
+          padding: 5px 12px;
+          font-size: 12px;
+        }
+
         /* LEFT ATTENDANCE CARD */
+
         .attendance-main-card {
           width: 100%;
         }
@@ -626,9 +1068,20 @@ const AttendancePage: React.FC = () => {
           color: #fff;
           font-size: 13px;
           font-weight: 600;
+          transition: opacity 0.2s ease;
+        }
+
+        .punch-out-btn:hover {
+          opacity: 0.92;
+        }
+
+        .punch-out-btn:disabled {
+          opacity: 0.65;
+          cursor: not-allowed;
         }
 
         /* SUMMARY CARDS */
+
         .summary-column {
           display: flex;
         }
@@ -727,6 +1180,7 @@ const AttendancePage: React.FC = () => {
         }
 
         /* TIMELINE CARD */
+
         .timeline-card .card-body {
           padding: 21px 20px;
         }
@@ -857,6 +1311,7 @@ const AttendancePage: React.FC = () => {
         }
 
         /* TABLE CARD */
+
         .employee-attendance-card {
           overflow: hidden;
           margin-top: 0;
@@ -909,6 +1364,7 @@ const AttendancePage: React.FC = () => {
         }
 
         /* TABLE TOP */
+
         .table-top-controls {
           min-height: 55px;
           display: flex;
@@ -952,6 +1408,7 @@ const AttendancePage: React.FC = () => {
         }
 
         /* TABLE */
+
         .attendance-table {
           width: 100%;
           border-collapse: collapse;
@@ -1048,7 +1505,35 @@ const AttendancePage: React.FC = () => {
           font-size: 10px;
         }
 
+        /* LOADING / EMPTY */
+
+        .attendance-loading,
+        .attendance-empty {
+          height: 180px !important;
+          text-align: center !important;
+          color: #69758a !important;
+        }
+
+        .attendance-loader,
+        .attendance-empty {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 9px;
+        }
+
+        .attendance-empty {
+          flex-direction: column;
+          font-size: 13px;
+        }
+
+        .attendance-empty i {
+          font-size: 30px;
+          color: #b3bbc7;
+        }
+
         /* TABLE FOOTER */
+
         .attendance-table-footer {
           min-height: 55px;
           display: flex;
@@ -1084,6 +1569,7 @@ const AttendancePage: React.FC = () => {
         }
 
         /* RESPONSIVE */
+
         @media (max-width: 1199px) {
           .summary-title,
           .summary-bottom {
@@ -1121,15 +1607,24 @@ const AttendancePage: React.FC = () => {
           .attendance-search {
             width: 100%;
           }
+
+          .attendance-error {
+            align-items: flex-start;
+            flex-wrap: wrap;
+          }
+
+          .attendance-error button {
+            margin-left: 27px;
+          }
         }
       `}</style>
     </div>
   );
 };
 
-/* =========================
+/* =====================================================
    SUMMARY CARD
-========================= */
+===================================================== */
 
 interface SummaryCardProps {
   icon: string;
@@ -1155,20 +1650,29 @@ const SummaryCard: React.FC<SummaryCardProps> = ({
       <div className="card summary-card">
         <div className="card-body">
           <div className="summary-top">
-            <span className={`summary-icon ${iconClass}`}>
+            <span
+              className={`summary-icon ${iconClass}`}
+            >
               <i className={icon}></i>
             </span>
 
             <h2 className="summary-number">
-              {value} / <span>{total}</span>
+              {value} /{" "}
+              <span>{total}</span>
             </h2>
 
-            <p className="summary-title">{title}</p>
+            <p className="summary-title">
+              {title}
+            </p>
           </div>
 
           <div className="summary-bottom">
-            <span className={`summary-arrow ${direction}`}>
-              {direction === "up" ? "↑" : "↓"}
+            <span
+              className={`summary-arrow ${direction}`}
+            >
+              {direction === "up"
+                ? "↑"
+                : "↓"}
             </span>
 
             <span>{percentage}</span>
@@ -1179,9 +1683,9 @@ const SummaryCard: React.FC<SummaryCardProps> = ({
   );
 };
 
-/* =========================
+/* =====================================================
    TIMELINE INFO
-========================= */
+===================================================== */
 
 interface TimelineInfoProps {
   dotClass: string;
@@ -1198,29 +1702,41 @@ const TimelineInfo: React.FC<TimelineInfoProps> = ({
     <div className="col-xl-3 col-md-6">
       <div>
         <div className="timeline-info-label">
-          <span className={`timeline-dot ${dotClass}`}></span>
+          <span
+            className={`timeline-dot ${dotClass}`}
+          ></span>
+
           <span>{title}</span>
         </div>
 
-        <h3 className="timeline-info-value">{value}</h3>
+        <h3 className="timeline-info-value">
+          {value}
+        </h3>
       </div>
     </div>
   );
 };
 
-/* =========================
+/* =====================================================
    SORTABLE TABLE HEADER
-========================= */
+===================================================== */
 
-const SortableHeader = ({ title }: { title: string }) => {
+const SortableHeader = ({
+  title,
+}: {
+  title: string;
+}) => {
   return (
     <th>
       <div className="sortable-title">
         <span>{title}</span>
-        <span className="sort-arrows">↕</span>
+        <span className="sort-arrows">
+          ↕
+        </span>
       </div>
     </th>
   );
 };
 
 export default AttendancePage;
+

@@ -1,5 +1,13 @@
-import React, { FormEvent, useMemo, useState } from "react";
+import React, {
+  FormEvent,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
+
 import { Link } from "react-router-dom";
+
 import {
   Pencil,
   Trash2,
@@ -8,51 +16,53 @@ import {
   ChevronRight,
 } from "lucide-react";
 
-type LeaveStatus = "Active" | "Inactive";
+import {
+  getAllLeaveTypes,
+  addLeaveType,
+  updateLeaveType,
+  deleteLeaveType,
+} from "../../services/adminservices";
+
+/* =====================================================
+   TYPES
+===================================================== */
+
+type LeaveStatus =
+  | "Active"
+  | "Inactive";
 
 interface LeaveTypeItem {
-  id: number;
+  id: string;
   type: string;
   days: number;
   status: LeaveStatus;
 }
 
-const initialLeaveTypes: LeaveTypeItem[] = [
-  {
-    id: 1,
-    type: "Annual Leave",
-    days: 12,
-    status: "Active",
-  },
-  {
-    id: 2,
-    type: "Medical Leave",
-    days: 12,
-    status: "Active",
-  },
-  {
-    id: 3,
-    type: "Casual Leave",
-    days: 12,
-    status: "Active",
-  },
-  {
-    id: 4,
-    type: "Other Leave",
-    days: 12,
-    status: "Active",
-  },
-];
+/* =====================================================
+   COMPONENT
+===================================================== */
 
 const LeaveType = () => {
+  /* ===================================================
+     DATA
+  =================================================== */
+
   const [leaveTypes, setLeaveTypes] =
-    useState<LeaveTypeItem[]>(initialLeaveTypes);
+    useState<LeaveTypeItem[]>([]);
 
   const [selected, setSelected] =
-    useState<number[]>([]);
+    useState<string[]>([]);
+
+  /* ===================================================
+     SEARCH
+  =================================================== */
 
   const [search, setSearch] =
     useState("");
+
+  /* ===================================================
+     PAGINATION
+  =================================================== */
 
   const [rowsPerPage, setRowsPerPage] =
     useState(10);
@@ -60,7 +70,22 @@ const LeaveType = () => {
   const [currentPage, setCurrentPage] =
     useState(1);
 
-  /* MODALS */
+  const [totalEntries, setTotalEntries] =
+    useState(0);
+
+  /* ===================================================
+     LOADING
+  =================================================== */
+
+  const [loading, setLoading] =
+    useState(false);
+
+  const [saving, setSaving] =
+    useState(false);
+
+  /* ===================================================
+     MODALS
+  =================================================== */
 
   const [addOpen, setAddOpen] =
     useState(false);
@@ -75,9 +100,11 @@ const LeaveType = () => {
     useState<LeaveTypeItem | null>(null);
 
   const [deleteId, setDeleteId] =
-    useState<number | null>(null);
+    useState<string | null>(null);
 
-  /* FORM */
+  /* ===================================================
+     FORM
+  =================================================== */
 
   const [leaveTypeName, setLeaveTypeName] =
     useState("");
@@ -85,245 +112,716 @@ const LeaveType = () => {
   const [numberOfDays, setNumberOfDays] =
     useState("");
 
-  /* FILTER */
+  /* ===================================================
+     GET VALUE FROM API RESPONSE
+  =================================================== */
 
-  const filteredData = useMemo(() => {
-    if (!search.trim()) {
-      return leaveTypes;
+  const extractItems = (
+    response: any
+  ): any[] => {
+    if (Array.isArray(response)) {
+      return response;
     }
 
-    const query =
-      search.trim().toLowerCase();
+    if (
+      Array.isArray(response?.data)
+    ) {
+      return response.data;
+    }
 
-    return leaveTypes.filter(
-      (item) =>
-        item.type
-          .toLowerCase()
-          .includes(query) ||
-        item.status
-          .toLowerCase()
-          .includes(query) ||
-        item.days
-          .toString()
-          .includes(query)
+    if (
+      Array.isArray(response?.items)
+    ) {
+      return response.items;
+    }
+
+    if (
+      Array.isArray(response?.records)
+    ) {
+      return response.records;
+    }
+
+    if (
+      Array.isArray(response?.leaveTypes)
+    ) {
+      return response.leaveTypes;
+    }
+
+    if (
+      Array.isArray(response?.leaveType)
+    ) {
+      return response.leaveType;
+    }
+
+    if (
+      Array.isArray(response?.result)
+    ) {
+      return response.result;
+    }
+
+    if (
+      Array.isArray(response?.result?.items)
+    ) {
+      return response.result.items;
+    }
+
+    if (
+      Array.isArray(response?.result?.records)
+    ) {
+      return response.result.records;
+    }
+
+    if (
+      Array.isArray(response?.result?.data)
+    ) {
+      return response.result.data;
+    }
+
+    if (
+      Array.isArray(response?.data?.items)
+    ) {
+      return response.data.items;
+    }
+
+    if (
+      Array.isArray(response?.data?.records)
+    ) {
+      return response.data.records;
+    }
+
+    if (
+      Array.isArray(response?.data?.leaveTypes)
+    ) {
+      return response.data.leaveTypes;
+    }
+
+    return [];
+  };
+
+  /* ===================================================
+     TOTAL COUNT FROM API
+  =================================================== */
+
+  const extractTotal = (
+    response: any,
+    itemsLength: number
+  ): number => {
+    const possibleTotals = [
+      response?.totalCount,
+      response?.totalRecords,
+      response?.count,
+      response?.total,
+
+      response?.data?.totalCount,
+      response?.data?.totalRecords,
+      response?.data?.count,
+      response?.data?.total,
+
+      response?.result?.totalCount,
+      response?.result?.totalRecords,
+      response?.result?.count,
+      response?.result?.total,
+    ];
+
+    const foundTotal =
+      possibleTotals.find(
+        (value) =>
+          typeof value === "number"
+      );
+
+    if (
+      typeof foundTotal === "number"
+    ) {
+      return foundTotal;
+    }
+
+    return itemsLength;
+  };
+
+  /* ===================================================
+     MAP API ITEM TO UI ITEM
+  =================================================== */
+
+  const mapLeaveType = (
+    item: any
+  ): LeaveTypeItem => {
+    return {
+      id: String(
+        item?.id ??
+          item?.Id ??
+          ""
+      ),
+
+      type:
+        item?.leaveName ??
+        item?.LeaveName ??
+        item?.type ??
+        "",
+
+      days: Number(
+        item?.leaveDays ??
+          item?.LeaveDays ??
+          item?.days ??
+          0
+      ),
+
+      status:
+        item?.isActive === false ||
+        item?.IsActive === false
+          ? "Inactive"
+          : "Active",
+    };
+  };
+
+  /* ===================================================
+     FETCH LEAVE TYPES
+  =================================================== */
+
+  const fetchLeaveTypes =
+    useCallback(
+      async () => {
+        try {
+          setLoading(true);
+
+          const response =
+            await getAllLeaveTypes({
+              Search:
+                search.trim() ||
+                undefined,
+
+              PageNumber:
+                currentPage,
+
+              PageSize:
+                rowsPerPage,
+
+              SortBy:
+                undefined,
+            });
+
+          console.log(
+            "LEAVE TYPE API RESPONSE:",
+            response
+          );
+
+          const items =
+            extractItems(response);
+
+          const mappedItems =
+            items.map(
+              mapLeaveType
+            );
+
+          setLeaveTypes(
+            mappedItems
+          );
+
+          setTotalEntries(
+            extractTotal(
+              response,
+              mappedItems.length
+            )
+          );
+
+          /*
+           * Agar API total count nahi bhejti
+           * to current page ke items ko total
+           * maan lenge.
+           */
+        } catch (error: any) {
+          console.error(
+            "GET LEAVE TYPE ERROR:",
+            error
+          );
+
+          setLeaveTypes([]);
+          setTotalEntries(0);
+
+          window.alert(
+            error?.response?.data
+              ?.message ||
+              error?.message ||
+              "Failed to load leave types."
+          );
+        } finally {
+          setLoading(false);
+        }
+      },
+      [
+        search,
+        currentPage,
+        rowsPerPage,
+      ]
     );
-  }, [leaveTypes, search]);
 
-  /* PAGINATION */
+  /* ===================================================
+     INITIAL / SEARCH / PAGINATION API CALL
+  =================================================== */
 
-  const totalPages = Math.max(
-    1,
-    Math.ceil(
-      filteredData.length /
-        rowsPerPage
-    )
-  );
+  useEffect(() => {
+    const timer =
+      window.setTimeout(() => {
+        fetchLeaveTypes();
+      }, 350);
 
-  const safeCurrentPage = Math.min(
-    currentPage,
-    totalPages
-  );
+    return () => {
+      window.clearTimeout(
+        timer
+      );
+    };
+  }, [fetchLeaveTypes]);
 
-  const visibleData = filteredData.slice(
-    (safeCurrentPage - 1) *
-      rowsPerPage,
-    safeCurrentPage * rowsPerPage
-  );
+  /* ===================================================
+     TOTAL PAGES
+  =================================================== */
 
-  /* SELECT */
+  const totalPages =
+    Math.max(
+      1,
+      Math.ceil(
+        totalEntries /
+          rowsPerPage
+      )
+    );
+
+  const safeCurrentPage =
+    Math.min(
+      currentPage,
+      totalPages
+    );
+
+  /* ===================================================
+     VISIBLE DATA
+     
+     API already returns current page data.
+     Isliye yahan slice nahi karna.
+  =================================================== */
+
+  const visibleData =
+    useMemo(() => {
+      return leaveTypes;
+    }, [leaveTypes]);
+
+  /* ===================================================
+     SELECT ALL
+  =================================================== */
 
   const allVisibleSelected =
     visibleData.length > 0 &&
-    visibleData.every((item) =>
-      selected.includes(item.id)
-    );
-
-  const handleSelectAll = () => {
-    const visibleIds =
-      visibleData.map(
-        (item) => item.id
-      );
-
-    if (allVisibleSelected) {
-      setSelected((previous) =>
-        previous.filter(
-          (id) =>
-            !visibleIds.includes(id)
+    visibleData.every(
+      (item) =>
+        selected.includes(
+          item.id
         )
-      );
-    } else {
-      setSelected((previous) => [
-        ...new Set([
-          ...previous,
-          ...visibleIds,
-        ]),
-      ]);
-    }
-  };
-
-  const handleSelect = (
-    id: number
-  ) => {
-    setSelected((previous) =>
-      previous.includes(id)
-        ? previous.filter(
-            (item) => item !== id
-          )
-        : [...previous, id]
     );
-  };
 
-  /* =============================
-     ADD
-  ============================= */
+  const handleSelectAll =
+    () => {
+      const visibleIds =
+        visibleData.map(
+          (item) =>
+            item.id
+        );
 
-  const openAddModal = () => {
-    setLeaveTypeName("");
-    setNumberOfDays("");
-    setAddOpen(true);
-  };
-
-  const closeAddModal = () => {
-    setAddOpen(false);
-
-    setLeaveTypeName("");
-    setNumberOfDays("");
-  };
-
-  const handleAddLeaveType = (
-    e: FormEvent
-  ) => {
-    e.preventDefault();
-
-    if (
-      !leaveTypeName.trim() ||
-      !numberOfDays.trim()
-    ) {
-      return;
-    }
-
-    const newLeaveType: LeaveTypeItem = {
-      id:
-        leaveTypes.length > 0
-          ? Math.max(
-              ...leaveTypes.map(
-                (item) => item.id
-              )
-            ) + 1
-          : 1,
-
-      type:
-        leaveTypeName.trim(),
-
-      days:
-        Number(numberOfDays),
-
-      status: "Active",
+      if (
+        allVisibleSelected
+      ) {
+        setSelected(
+          (previous) =>
+            previous.filter(
+              (id) =>
+                !visibleIds.includes(
+                  id
+                )
+            )
+        );
+      } else {
+        setSelected(
+          (previous) => [
+            ...new Set([
+              ...previous,
+              ...visibleIds,
+            ]),
+          ]
+        );
+      }
     };
 
-    setLeaveTypes((previous) => [
-      ...previous,
-      newLeaveType,
-    ]);
+  /* ===================================================
+     SELECT SINGLE
+  =================================================== */
 
-    closeAddModal();
-  };
-
-  /* =============================
-     EDIT
-  ============================= */
-
-  const openEditModal = (
-    item: LeaveTypeItem
+  const handleSelect = (
+    id: string
   ) => {
-    setEditingItem(item);
-
-    setLeaveTypeName(
-      item.type
+    setSelected(
+      (previous) =>
+        previous.includes(id)
+          ? previous.filter(
+              (item) =>
+                item !== id
+            )
+          : [
+              ...previous,
+              id,
+            ]
     );
-
-    setNumberOfDays(
-      item.days.toString()
-    );
-
-    setEditOpen(true);
   };
 
-  const closeEditModal = () => {
-    setEditOpen(false);
+  /* ===================================================
+     ADD MODAL
+  =================================================== */
 
-    setEditingItem(null);
+  const openAddModal =
+    () => {
+      setLeaveTypeName("");
+      setNumberOfDays("");
+      setAddOpen(true);
+    };
 
-    setLeaveTypeName("");
-    setNumberOfDays("");
-  };
+  const closeAddModal =
+    () => {
+      if (saving) {
+        return;
+      }
 
-  const handleEditLeaveType = (
-    e: FormEvent
-  ) => {
-    e.preventDefault();
+      setAddOpen(false);
+      setLeaveTypeName("");
+      setNumberOfDays("");
+    };
 
-    if (
-      !editingItem ||
-      !leaveTypeName.trim() ||
-      !numberOfDays.trim()
-    ) {
-      return;
-    }
+  /* ===================================================
+     ADD LEAVE TYPE
+  =================================================== */
 
-    setLeaveTypes((previous) =>
-      previous.map((item) =>
-        item.id === editingItem.id
-          ? {
-              ...item,
-              type:
-                leaveTypeName.trim(),
-              days:
-                Number(numberOfDays),
-            }
-          : item
-      )
-    );
+  const handleAddLeaveType =
+    async (
+      e: FormEvent
+    ) => {
+      e.preventDefault();
 
-    closeEditModal();
-  };
+      const name =
+        leaveTypeName.trim();
 
-  /* =============================
+      const days =
+        Number(
+          numberOfDays
+        );
+
+      if (!name) {
+        window.alert(
+          "Please enter leave type."
+        );
+        return;
+      }
+
+      if (
+        !numberOfDays.trim() ||
+        !Number.isFinite(days) ||
+        days <= 0
+      ) {
+        window.alert(
+          "Please enter valid number of days."
+        );
+        return;
+      }
+
+      try {
+        setSaving(true);
+
+        const payload = {
+          leaveName: name,
+          leaveDays: days,
+        };
+
+        console.log(
+          "ADDING LEAVE TYPE:",
+          payload
+        );
+
+        await addLeaveType(
+          payload
+        );
+
+        window.alert(
+          "Leave type added successfully."
+        );
+
+        closeAddModal();
+
+        /*
+         * First page par wapas jaakar
+         * fresh data load.
+         */
+        setCurrentPage(1);
+
+        /*
+         * fetch current state directly
+         * nahi kar rahe because currentPage
+         * state update async hai.
+         *
+         * useEffect automatically fetch karega.
+         */
+      } catch (error: any) {
+        console.error(
+          "ADD LEAVE TYPE ERROR:",
+          error
+        );
+
+        window.alert(
+          error?.response?.data
+            ?.message ||
+            error?.message ||
+            "Failed to add leave type."
+        );
+      } finally {
+        setSaving(false);
+      }
+    };
+
+  /* ===================================================
+     EDIT MODAL
+  =================================================== */
+
+  const openEditModal =
+    (
+      item: LeaveTypeItem
+    ) => {
+      setEditingItem(item);
+
+      setLeaveTypeName(
+        item.type
+      );
+
+      setNumberOfDays(
+        item.days.toString()
+      );
+
+      setEditOpen(true);
+    };
+
+  const closeEditModal =
+    () => {
+      if (saving) {
+        return;
+      }
+
+      setEditOpen(false);
+
+      setEditingItem(null);
+
+      setLeaveTypeName("");
+      setNumberOfDays("");
+    };
+
+  /* ===================================================
+     EDIT LEAVE TYPE
+  =================================================== */
+
+  const handleEditLeaveType =
+    async (
+      e: FormEvent
+    ) => {
+      e.preventDefault();
+
+      if (!editingItem) {
+        return;
+      }
+
+      const name =
+        leaveTypeName.trim();
+
+      const days =
+        Number(
+          numberOfDays
+        );
+
+      if (!name) {
+        window.alert(
+          "Please enter leave type."
+        );
+        return;
+      }
+
+      if (
+        !numberOfDays.trim() ||
+        !Number.isFinite(days) ||
+        days <= 0
+      ) {
+        window.alert(
+          "Please enter valid number of days."
+        );
+        return;
+      }
+
+      try {
+        setSaving(true);
+
+        const payload = {
+          id: editingItem.id,
+          leaveName: name,
+          leaveDays: days,
+
+          /*
+           * Existing status ko preserve
+           * kar rahe hain.
+           */
+          isActive:
+            editingItem.status ===
+            "Active",
+        };
+
+        console.log(
+          "UPDATING LEAVE TYPE:",
+          payload
+        );
+
+        await updateLeaveType(
+          payload
+        );
+
+        window.alert(
+          "Leave type updated successfully."
+        );
+
+        closeEditModal();
+
+        await fetchLeaveTypes();
+      } catch (error: any) {
+        console.error(
+          "UPDATE LEAVE TYPE ERROR:",
+          error
+        );
+
+        window.alert(
+          error?.response?.data
+            ?.message ||
+            error?.message ||
+            "Failed to update leave type."
+        );
+      } finally {
+        setSaving(false);
+      }
+    };
+
+  /* ===================================================
+     DELETE MODAL
+  =================================================== */
+
+  const openDeleteModal =
+    (
+      id: string
+    ) => {
+      setDeleteId(id);
+      setDeleteOpen(true);
+    };
+
+  const closeDeleteModal =
+    () => {
+      if (saving) {
+        return;
+      }
+
+      setDeleteOpen(false);
+      setDeleteId(null);
+    };
+
+  /* ===================================================
      DELETE
-  ============================= */
+  =================================================== */
 
-  const openDeleteModal = (
-    id: number
-  ) => {
-    setDeleteId(id);
-    setDeleteOpen(true);
-  };
+  const handleDelete =
+    async () => {
+      if (
+        deleteId === null
+      ) {
+        return;
+      }
 
-  const closeDeleteModal = () => {
-    setDeleteOpen(false);
-    setDeleteId(null);
-  };
+      try {
+        setSaving(true);
 
-  const handleDelete = () => {
-    if (deleteId === null) {
-      return;
-    }
+        console.log(
+          "DELETING LEAVE TYPE:",
+          deleteId
+        );
 
-    setLeaveTypes((previous) =>
-      previous.filter(
-        (item) =>
-          item.id !== deleteId
-      )
-    );
+        await deleteLeaveType(
+          deleteId
+        );
 
-    setSelected((previous) =>
-      previous.filter(
-        (id) => id !== deleteId
-      )
-    );
+        setSelected(
+          (previous) =>
+            previous.filter(
+              (id) =>
+                id !== deleteId
+            )
+        );
 
-    closeDeleteModal();
-  };
+        window.alert(
+          "Leave type deleted successfully."
+        );
+
+        closeDeleteModal();
+
+        /*
+         * Current page empty ho gayi ho
+         * to previous page par chale jayenge.
+         */
+        if (
+          leaveTypes.length === 1 &&
+          currentPage > 1
+        ) {
+          setCurrentPage(
+            (page) =>
+              Math.max(
+                1,
+                page - 1
+              )
+          );
+        } else {
+          await fetchLeaveTypes();
+        }
+      } catch (error: any) {
+        console.error(
+          "DELETE LEAVE TYPE ERROR:",
+          error
+        );
+
+        window.alert(
+          error?.response?.data
+            ?.message ||
+            error?.message ||
+            "Failed to delete leave type."
+        );
+      } finally {
+        setSaving(false);
+      }
+    };
+
+  /* ===================================================
+     SHOWING RANGE
+  =================================================== */
+
+  const showingFrom =
+    totalEntries === 0
+      ? 0
+      : (safeCurrentPage - 1) *
+          rowsPerPage +
+        1;
+
+  const showingTo =
+    totalEntries === 0
+      ? 0
+      : Math.min(
+          safeCurrentPage *
+            rowsPerPage,
+          totalEntries
+        );
+
+  /* ===================================================
+     JSX
+  =================================================== */
 
   return (
     <>
@@ -418,6 +916,11 @@ const LeaveType = () => {
         .leave-type-add-btn:hover {
           background:
             #b5822e;
+        }
+
+        .leave-type-add-btn:disabled {
+          opacity: .65;
+          cursor: default;
         }
 
         /* =========================
@@ -676,6 +1179,7 @@ const LeaveType = () => {
           margin: 0 !important;
 
           border: 0 !important;
+
           border-radius:
             50% !important;
 
@@ -720,6 +1224,25 @@ const LeaveType = () => {
 
         .leave-type-action-btn:hover {
           color: #17233f;
+        }
+
+        .leave-type-action-btn:disabled {
+          opacity: .5;
+          cursor: default;
+        }
+
+        /* =========================
+           LOADING
+        ========================= */
+
+        .leave-type-loading {
+          text-align: center;
+
+          height: 80px;
+
+          color: #667386;
+
+          font-size: 13px;
         }
 
         /* =========================
@@ -776,6 +1299,7 @@ const LeaveType = () => {
 
         .leave-type-page-arrow:disabled {
           opacity: .4;
+
           cursor: default;
         }
 
@@ -786,6 +1310,7 @@ const LeaveType = () => {
           border-radius: 50%;
 
           background: #c39137;
+
           color: #fff;
 
           display:
@@ -811,6 +1336,7 @@ const LeaveType = () => {
           padding: 16px;
 
           display: flex;
+
           align-items: center;
           justify-content: center;
 
@@ -849,6 +1375,7 @@ const LeaveType = () => {
             1px solid #e2e6eb;
 
           display: flex;
+
           align-items: center;
           justify-content:
             space-between;
@@ -873,9 +1400,11 @@ const LeaveType = () => {
           border-radius: 50%;
 
           background: #747d8a;
+
           color: #fff;
 
           display: flex;
+
           align-items: center;
           justify-content: center;
 
@@ -951,7 +1480,9 @@ const LeaveType = () => {
             1px solid #e4e7eb;
 
           display: flex;
+
           align-items: center;
+
           justify-content:
             flex-end;
 
@@ -966,6 +1497,7 @@ const LeaveType = () => {
             0 15px;
 
           border: 0;
+
           border-radius: 5px;
 
           font-size: 13px;
@@ -989,6 +1521,13 @@ const LeaveType = () => {
 
         .leave-type-modal-save:hover {
           background: #b5822e;
+        }
+
+        .leave-type-modal-save:disabled,
+        .leave-type-modal-cancel:disabled {
+          opacity: .65;
+
+          cursor: default;
         }
 
         /* =================================
@@ -1029,16 +1568,19 @@ const LeaveType = () => {
           color: #f10f18;
 
           display: flex;
+
           align-items: center;
           justify-content: center;
         }
 
         .leave-type-delete-modal h3 {
-          margin: 0 0 6px;
+          margin:
+            0 0 6px;
 
           color: #1d2b48;
 
           font-size: 19px;
+
           font-weight: 600;
         }
 
@@ -1059,6 +1601,7 @@ const LeaveType = () => {
           display: flex;
 
           align-items: center;
+
           justify-content: center;
 
           gap: 16px;
@@ -1072,6 +1615,7 @@ const LeaveType = () => {
             0 16px;
 
           border: 0;
+
           border-radius: 5px;
 
           font-size: 13px;
@@ -1091,6 +1635,13 @@ const LeaveType = () => {
           color: #fff;
 
           font-weight: 600;
+        }
+
+        .leave-type-delete-confirm:disabled,
+        .leave-type-delete-cancel:disabled {
+          opacity: .65;
+
+          cursor: default;
         }
 
         @media(max-width:768px) {
@@ -1117,17 +1668,21 @@ const LeaveType = () => {
       </style>
 
       <div className="leave-type-page">
-        {/* =============================
+
+        {/* =====================================
             HEADER
-        ============================= */}
+        ===================================== */}
 
         <div className="leave-type-header">
+
           <div>
+
             <h1>
               Leave Type
             </h1>
 
             <div className="leave-type-breadcrumb">
+
               <Link to="/Admin/Dashboard">
                 <i className="ti ti-home" />
               </Link>
@@ -1137,7 +1692,9 @@ const LeaveType = () => {
               <span>
                 Leave Type
               </span>
+
             </div>
+
           </div>
 
           <button
@@ -1146,6 +1703,7 @@ const LeaveType = () => {
             onClick={
               openAddModal
             }
+            disabled={saving}
           >
             <CirclePlus
               size={15}
@@ -1153,27 +1711,33 @@ const LeaveType = () => {
 
             Add Leave Type
           </button>
+
         </div>
 
-        {/* =============================
+        {/* =====================================
             CARD
-        ============================= */}
+        ===================================== */}
 
         <div className="leave-type-card">
+
           {/* TITLE */}
 
           <div className="leave-type-card-title">
+
             <h5>
               Leave Type
             </h5>
+
           </div>
 
-          {/* =============================
+          {/* =================================
               TOOLBAR
-          ============================= */}
+          ================================= */}
 
           <div className="leave-type-toolbar">
+
             <div className="leave-type-row-control">
+
               <span>
                 Row Per Page
               </span>
@@ -1184,15 +1748,21 @@ const LeaveType = () => {
                   rowsPerPage
                 }
                 onChange={(e) => {
+
                   setRowsPerPage(
                     Number(
                       e.target.value
                     )
                   );
 
-                  setCurrentPage(1);
+                  setCurrentPage(
+                    1
+                  );
+
+                  setSelected([]);
                 }}
               >
+
                 <option value={10}>
                   10
                 </option>
@@ -1208,37 +1778,52 @@ const LeaveType = () => {
                 <option value={40}>
                   40
                 </option>
+
               </select>
 
               <span>
                 Entries
               </span>
+
             </div>
 
             <input
               type="text"
               className="leave-type-search"
               placeholder="Search"
-              value={search}
+              value={
+                search
+              }
               onChange={(e) => {
+
                 setSearch(
                   e.target.value
                 );
 
-                setCurrentPage(1);
+                setCurrentPage(
+                  1
+                );
+
+                setSelected([]);
               }}
             />
+
           </div>
 
-          {/* =============================
+          {/* =================================
               TABLE
-          ============================= */}
+          ================================= */}
 
           <div className="leave-type-table-wrapper">
+
             <table className="leave-type-table">
+
               <thead>
+
                 <tr>
+
                   <th className="leave-type-check-column">
+
                     <input
                       type="checkbox"
                       className="leave-type-checkbox"
@@ -1248,7 +1833,12 @@ const LeaveType = () => {
                       onChange={
                         handleSelectAll
                       }
+                      disabled={
+                        loading ||
+                        visibleData.length === 0
+                      }
                     />
+
                   </th>
 
                   <th>
@@ -1280,163 +1870,216 @@ const LeaveType = () => {
                       ↑↓
                     </span>
                   </th>
+
                 </tr>
+
               </thead>
 
               <tbody>
-                {visibleData.map(
-                  (item) => (
-                    <tr
-                      key={
-                        item.id
-                      }
+
+                {/* LOADING */}
+
+                {loading && (
+                  <tr>
+
+                    <td
+                      colSpan={5}
+                      className="leave-type-loading"
                     >
-                      <td className="leave-type-check-column">
-                        <input
-                          type="checkbox"
-                          className="leave-type-checkbox"
-                          checked={selected.includes(
-                            item.id
-                          )}
-                          onChange={() =>
-                            handleSelect(
+                      Loading leave types...
+                    </td>
+
+                  </tr>
+                )}
+
+                {/* DATA */}
+
+                {!loading &&
+                  visibleData.map(
+                    (item) => (
+
+                      <tr
+                        key={
+                          item.id
+                        }
+                      >
+
+                        {/* CHECKBOX */}
+
+                        <td className="leave-type-check-column">
+
+                          <input
+                            type="checkbox"
+                            className="leave-type-checkbox"
+                            checked={selected.includes(
                               item.id
-                            )
-                          }
-                        />
-                      </td>
-
-                      {/* LEAVE TYPE */}
-
-                      <td className="leave-type-name">
-                        {item.type}
-                      </td>
-
-                      {/* DAYS */}
-
-                      <td>
-                        {item.days}
-                      </td>
-
-                      {/* STATUS */}
-
-                      <td>
-                        <span
-                          className={`leave-type-status ${
-                            item.status ===
-                            "Active"
-                              ? "leave-type-status-active"
-                              : "leave-type-status-inactive"
-                          }`}
-                        >
-                          <span className="leave-type-status-dot" />
-
-                          {
-                            item.status
-                          }
-                        </span>
-                      </td>
-
-                      {/* ACTION */}
-
-                      <td>
-                        <div className="leave-type-actions">
-                          {/* EDIT */}
-
-                          <button
-                            type="button"
-                            className="leave-type-action-btn"
-                            title="Edit"
-                            onClick={() =>
-                              openEditModal(
-                                item
-                              )
-                            }
-                          >
-                            <Pencil
-                              size={15}
-                            />
-                          </button>
-
-                          {/* DELETE */}
-
-                          <button
-                            type="button"
-                            className="leave-type-action-btn"
-                            title="Delete"
-                            onClick={() =>
-                              openDeleteModal(
+                            )}
+                            onChange={() =>
+                              handleSelect(
                                 item.id
                               )
                             }
+                          />
+
+                        </td>
+
+                        {/* LEAVE TYPE */}
+
+                        <td className="leave-type-name">
+                          {item.type}
+                        </td>
+
+                        {/* DAYS */}
+
+                        <td>
+                          {item.days}
+                        </td>
+
+                        {/* STATUS */}
+
+                        <td>
+
+                          <span
+                            className={`leave-type-status ${
+                              item.status ===
+                              "Active"
+                                ? "leave-type-status-active"
+                                : "leave-type-status-inactive"
+                            }`}
                           >
-                            <Trash2
-                              size={15}
-                            />
-                          </button>
-                        </div>
+
+                            <span className="leave-type-status-dot" />
+
+                            {
+                              item.status
+                            }
+
+                          </span>
+
+                        </td>
+
+                        {/* ACTION */}
+
+                        <td>
+
+                          <div className="leave-type-actions">
+
+                            {/* EDIT */}
+
+                            <button
+                              type="button"
+                              className="leave-type-action-btn"
+                              title="Edit"
+                              onClick={() =>
+                                openEditModal(
+                                  item
+                                )
+                              }
+                              disabled={
+                                saving
+                              }
+                            >
+                              <Pencil
+                                size={15}
+                              />
+                            </button>
+
+                            {/* DELETE */}
+
+                            <button
+                              type="button"
+                              className="leave-type-action-btn"
+                              title="Delete"
+                              onClick={() =>
+                                openDeleteModal(
+                                  item.id
+                                )
+                              }
+                              disabled={
+                                saving
+                              }
+                            >
+                              <Trash2
+                                size={15}
+                              />
+                            </button>
+
+                          </div>
+
+                        </td>
+
+                      </tr>
+
+                    )
+                  )}
+
+                {/* EMPTY */}
+
+                {!loading &&
+                  visibleData.length ===
+                    0 && (
+
+                    <tr>
+
+                      <td
+                        colSpan={5}
+                        style={{
+                          textAlign:
+                            "center",
+
+                          height:
+                            "80px",
+                        }}
+                      >
+                        No leave types
+                        found
                       </td>
+
                     </tr>
-                  )
-                )}
 
-                {visibleData.length ===
-                  0 && (
-                  <tr>
-                    <td
-                      colSpan={5}
-                      style={{
-                        textAlign:
-                          "center",
+                  )}
 
-                        height:
-                          "80px",
-                      }}
-                    >
-                      No leave types
-                      found
-                    </td>
-                  </tr>
-                )}
               </tbody>
+
             </table>
+
           </div>
 
-          {/* =============================
+          {/* =================================
               FOOTER
-          ============================= */}
+          ================================= */}
 
           <div className="leave-type-footer">
-            <div>
-              Showing{" "}
-              {filteredData.length ===
-              0
-                ? 0
-                : (safeCurrentPage -
-                    1) *
-                    rowsPerPage +
-                  1}
-              {" - "}
-              {Math.min(
-                safeCurrentPage *
-                  rowsPerPage,
 
-                filteredData.length
-              )}{" "}
-              of{" "}
-              {
-                filteredData.length
-              }{" "}
-              entries
+            <div>
+
+              Showing{" "}
+
+              {showingFrom}
+
+              {" - "}
+
+              {showingTo}
+
+              {" of "}
+
+              {totalEntries}
+
+              {" entries"}
+
             </div>
 
             <div className="leave-type-pagination">
+
+              {/* PREVIOUS */}
+
               <button
                 type="button"
                 className="leave-type-page-arrow"
                 disabled={
                   safeCurrentPage ===
-                  1
+                    1 ||
+                  loading
                 }
                 onClick={() =>
                   setCurrentPage(
@@ -1448,10 +2091,14 @@ const LeaveType = () => {
                   )
                 }
               >
+
                 <ChevronLeft
                   size={16}
                 />
+
               </button>
+
+              {/* CURRENT PAGE */}
 
               <span className="leave-type-current-page">
                 {
@@ -1459,12 +2106,15 @@ const LeaveType = () => {
                 }
               </span>
 
+              {/* NEXT */}
+
               <button
                 type="button"
                 className="leave-type-page-arrow"
                 disabled={
                   safeCurrentPage ===
-                  totalPages
+                    totalPages ||
+                  loading
                 }
                 onClick={() =>
                   setCurrentPage(
@@ -1476,24 +2126,33 @@ const LeaveType = () => {
                   )
                 }
               >
+
                 <ChevronRight
                   size={16}
                 />
+
               </button>
+
             </div>
+
           </div>
+
         </div>
+
       </div>
 
       {/* ==================================================
           ADD LEAVE TYPE MODAL
-          SCREENSHOT 2
       ================================================== */}
 
       {addOpen && (
+
         <div className="leave-type-modal-overlay">
+
           <div className="leave-type-form-modal">
+
             <div className="leave-type-modal-header">
+
               <h3>
                 Add Leave Type
               </h3>
@@ -1504,9 +2163,13 @@ const LeaveType = () => {
                 onClick={
                   closeAddModal
                 }
+                disabled={
+                  saving
+                }
               >
                 ×
               </button>
+
             </div>
 
             <form
@@ -1514,10 +2177,13 @@ const LeaveType = () => {
                 handleAddLeaveType
               }
             >
+
               <div className="leave-type-modal-body">
+
                 {/* LEAVE TYPE */}
 
                 <div className="leave-type-form-group">
+
                   <label>
                     Leave Type
 
@@ -1537,12 +2203,17 @@ const LeaveType = () => {
                       )
                     }
                     required
+                    disabled={
+                      saving
+                    }
                   />
+
                 </div>
 
                 {/* DAYS */}
 
                 <div className="leave-type-form-group">
+
                   <label>
                     Number of days
 
@@ -1563,16 +2234,25 @@ const LeaveType = () => {
                       )
                     }
                     required
+                    disabled={
+                      saving
+                    }
                   />
+
                 </div>
+
               </div>
 
               <div className="leave-type-modal-footer">
+
                 <button
                   type="button"
                   className="leave-type-modal-cancel"
                   onClick={
                     closeAddModal
+                  }
+                  disabled={
+                    saving
                   }
                 >
                   Cancel
@@ -1581,25 +2261,40 @@ const LeaveType = () => {
                 <button
                   type="submit"
                   className="leave-type-modal-save"
+                  disabled={
+                    saving
+                  }
                 >
-                  Add Leave
+                  {
+                    saving
+                      ? "Adding..."
+                      : "Add Leave"
+                  }
                 </button>
+
               </div>
+
             </form>
+
           </div>
+
         </div>
+
       )}
 
       {/* ==================================================
           EDIT LEAVE TYPE MODAL
-          SCREENSHOT 3
       ================================================== */}
 
       {editOpen &&
         editingItem && (
+
           <div className="leave-type-modal-overlay">
+
             <div className="leave-type-form-modal">
+
               <div className="leave-type-modal-header">
+
                 <h3>
                   Edit Leave Type
                 </h3>
@@ -1610,9 +2305,13 @@ const LeaveType = () => {
                   onClick={
                     closeEditModal
                   }
+                  disabled={
+                    saving
+                  }
                 >
                   ×
                 </button>
+
               </div>
 
               <form
@@ -1620,10 +2319,13 @@ const LeaveType = () => {
                   handleEditLeaveType
                 }
               >
+
                 <div className="leave-type-modal-body">
+
                   {/* LEAVE TYPE */}
 
                   <div className="leave-type-form-group">
+
                     <label>
                       Leave Type
 
@@ -1639,17 +2341,21 @@ const LeaveType = () => {
                       }
                       onChange={(e) =>
                         setLeaveTypeName(
-                          e.target
-                            .value
+                          e.target.value
                         )
                       }
                       required
+                      disabled={
+                        saving
+                      }
                     />
+
                   </div>
 
                   {/* DAYS */}
 
                   <div className="leave-type-form-group">
+
                     <label>
                       Number of days
 
@@ -1666,21 +2372,29 @@ const LeaveType = () => {
                       }
                       onChange={(e) =>
                         setNumberOfDays(
-                          e.target
-                            .value
+                          e.target.value
                         )
                       }
                       required
+                      disabled={
+                        saving
+                      }
                     />
+
                   </div>
+
                 </div>
 
                 <div className="leave-type-modal-footer">
+
                   <button
                     type="button"
                     className="leave-type-modal-cancel"
                     onClick={
                       closeEditModal
+                    }
+                    disabled={
+                      saving
                     }
                   >
                     Cancel
@@ -1689,28 +2403,44 @@ const LeaveType = () => {
                   <button
                     type="submit"
                     className="leave-type-modal-save"
+                    disabled={
+                      saving
+                    }
                   >
-                    Save Changes
+                    {
+                      saving
+                        ? "Saving..."
+                        : "Save Changes"
+                    }
                   </button>
+
                 </div>
+
               </form>
+
             </div>
+
           </div>
+
         )}
 
       {/* ==================================================
           DELETE MODAL
-          SCREENSHOT 4
       ================================================== */}
 
       {deleteOpen && (
+
         <div className="leave-type-modal-overlay">
+
           <div className="leave-type-delete-modal">
+
             <div className="leave-type-delete-icon">
+
               <Trash2
                 size={31}
                 strokeWidth={2.2}
               />
+
             </div>
 
             <h3>
@@ -1724,11 +2454,15 @@ const LeaveType = () => {
             </p>
 
             <div className="leave-type-delete-actions">
+
               <button
                 type="button"
                 className="leave-type-delete-cancel"
                 onClick={
                   closeDeleteModal
+                }
+                disabled={
+                  saving
                 }
               >
                 Cancel
@@ -1740,13 +2474,25 @@ const LeaveType = () => {
                 onClick={
                   handleDelete
                 }
+                disabled={
+                  saving
+                }
               >
-                Yes, Delete
+                {
+                  saving
+                    ? "Deleting..."
+                    : "Yes, Delete"
+                }
               </button>
+
             </div>
+
           </div>
+
         </div>
+
       )}
+
     </>
   );
 };

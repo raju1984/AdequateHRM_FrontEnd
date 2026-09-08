@@ -1,10 +1,16 @@
 // Departments.tsx
 
-import React, { FormEvent, useMemo, useState } from "react";
+import React, { FormEvent, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+import {
+  addDepartment,
+  deleteDepartment,
+  getDepartments,
+  updateDepartment,
+} from "../../services/adminservices";
 
 interface Department {
-  id: number;
+  id: string;
   name: string;
   employees: number;
   status: "Active" | "Inactive";
@@ -13,68 +19,54 @@ interface Department {
 type SortKey = "name" | "employees" | "status";
 type SortDir = "asc" | "desc";
 
-const initialData: Department[] = [
-  { id: 1, name: "Finance", employees: 20, status: "Active" },
-  {
-    id: 2,
-    name: "Application Development",
-    employees: 30,
-    status: "Active",
-  },
-  {
-    id: 3,
-    name: "IT Management",
-    employees: 15,
-    status: "Inactive",
-  },
-  {
-    id: 4,
-    name: "Web Development",
-    employees: 20,
-    status: "Active",
-  },
-  {
-    id: 5,
-    name: "Sales",
-    employees: 20,
-    status: "Inactive",
-  },
-  {
-    id: 6,
-    name: "UI / UX",
-    employees: 30,
-    status: "Active",
-  },
-  {
-    id: 7,
-    name: "Account Management",
-    employees: 15,
-    status: "Active",
-  },
-  {
-    id: 8,
-    name: "Marketing",
-    employees: 10,
-    status: "Inactive",
-  },
-  {
-    id: 9,
-    name: "Administration",
-    employees: 5,
-    status: "Active",
-  },
-  {
-    id: 10,
-    name: "Business Development",
-    employees: 7,
-    status: "Inactive",
-  },
-];
+const formatDepartment = (item: any, index: number): Department => ({
+  id: String(
+    item?.id ??
+      item?.Id ??
+      item?.departmentId ??
+      item?.DepartmentId ??
+      ""
+  ),
+  name:
+    item?.departmentName ??
+    item?.DepartmentName ??
+    item?.name ??
+    item?.Name ??
+    "",
+  employees: Number(
+    item?.employees ??
+      item?.Employees ??
+      item?.employeeCount ??
+      item?.EmployeeCount ??
+      0
+  ),
+  status:
+    item?.isActive === false ||
+    item?.IsActive === false ||
+    item?.status === "Inactive" ||
+    item?.Status === "Inactive"
+      ? "Inactive"
+      : "Active",
+});
+
+const extractDepartmentList = (response: any): any[] => {
+  const candidates = [
+    response?.data?.items,
+    response?.data?.records,
+    response?.data?.departments,
+    response?.data?.result,
+    response?.items,
+    response?.records,
+    response?.departments,
+    response?.result,
+    response?.data,
+  ];
+
+  return candidates.find((value) => Array.isArray(value)) ?? [];
+};
 
 const Departments = () => {
-  const [departments, setDepartments] =
-    useState<Department[]>(initialData);
-
+  const [departments, setDepartments] = useState<Department[]>([]);
   const [search, setSearch] = useState("");
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
@@ -85,30 +77,75 @@ const Departments = () => {
   const [sortDir, setSortDir] =
     useState<SortDir>("asc");
 
-  const [selected, setSelected] =
-    useState<number[]>([]);
+  const [selected, setSelected] = useState<string[]>([]);
+  const [statusFilter, setStatusFilter] = useState("");
 
-  const [statusFilter, setStatusFilter] =
-    useState("");
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
 
   // MODALS
   const [addOpen, setAddOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
-  const [deleteOpen, setDeleteOpen] =
-    useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
 
   // FORM
-  const [departmentName, setDepartmentName] =
-    useState("");
-
+  const [departmentName, setDepartmentName] = useState("");
   const [departmentStatus, setDepartmentStatus] =
     useState<"Active" | "Inactive" | "">("");
 
   const [editingDepartment, setEditingDepartment] =
     useState<Department | null>(null);
 
-  const [deleteId, setDeleteId] =
-    useState<number | null>(null);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+
+  const loadDepartments = async () => {
+    try {
+      setLoading(true);
+      setError("");
+
+      const response = await getDepartments({
+        Search: search.trim() || undefined,
+        UserStatus:
+          statusFilter === "Active"
+            ? 1
+            : statusFilter === "Inactive"
+            ? 0
+            : undefined,
+        PerpageEntry: rowsPerPage,
+        PageNumber: currentPage,
+        PageSize: rowsPerPage,
+        SortBy:
+          sortKey === "name"
+            ? sortDir === "asc"
+              ? "DepartmentName"
+              : "DepartmentName_desc"
+            : undefined,
+      });
+
+      const list = extractDepartmentList(response);
+      setDepartments(list.map(formatDepartment));
+      setSelected([]);
+    } catch (err: any) {
+      console.error("Get departments API error:", err);
+      setDepartments([]);
+      setError(
+        err?.response?.data?.message ||
+          err?.response?.data?.title ||
+          "Failed to load departments."
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      loadDepartments();
+    }, 350);
+
+    return () => window.clearTimeout(timer);
+  }, [search, statusFilter, currentPage, rowsPerPage, sortKey, sortDir]);
 
   // ==========================
   // SORT
@@ -146,79 +183,39 @@ const Departments = () => {
   // ==========================
 
   const filtered = useMemo(() => {
-    let data = [...departments];
-
-    if (search.trim()) {
-      data = data.filter((department) =>
-        department.name
-          .toLowerCase()
-          .includes(search.trim().toLowerCase())
-      );
-    }
-
-    if (statusFilter) {
-      data = data.filter(
-        (department) =>
-          department.status === statusFilter
-      );
-    }
+    const data = [...departments];
 
     data.sort((a, b) => {
-      let valA: string | number = a[sortKey];
-      let valB: string | number = b[sortKey];
+      const valA = a[sortKey];
+      const valB = b[sortKey];
 
-      if (typeof valA === "string") {
-        valA = valA.toLowerCase();
+      if (typeof valA === "string" && typeof valB === "string") {
+        const result = valA
+          .toLowerCase()
+          .localeCompare(valB.toLowerCase());
+        return sortDir === "asc" ? result : -result;
       }
 
-      if (typeof valB === "string") {
-        valB = valB.toLowerCase();
-      }
-
-      if (valA < valB) {
-        return sortDir === "asc" ? -1 : 1;
-      }
-
-      if (valA > valB) {
-        return sortDir === "asc" ? 1 : -1;
-      }
-
+      if (valA < valB) return sortDir === "asc" ? -1 : 1;
+      if (valA > valB) return sortDir === "asc" ? 1 : -1;
       return 0;
     });
 
     return data;
-  }, [
-    departments,
-    search,
-    statusFilter,
-    sortKey,
-    sortDir,
-  ]);
+  }, [departments, sortKey, sortDir]);
 
-  // ==========================
-  // PAGINATION
-  // ==========================
+  // API already receives page information.
+  const paginated = filtered;
 
-  const totalPages = Math.max(
-    1,
-    Math.ceil(filtered.length / rowsPerPage)
-  );
+  const totalPages = Math.max(1, currentPage);
 
-  const safeCurrentPage = Math.min(
-    currentPage,
-    totalPages
-  );
-
-  const paginated = filtered.slice(
-    (safeCurrentPage - 1) * rowsPerPage,
-    safeCurrentPage * rowsPerPage
-  );
+  const safeCurrentPage = currentPage;
 
   // ==========================
   // CHECKBOX
   // ==========================
 
-  const toggleSelect = (id: number) => {
+  const toggleSelect = (id: string) => {
     setSelected((previous) =>
       previous.includes(id)
         ? previous.filter(
@@ -263,6 +260,7 @@ const Departments = () => {
   const openAddModal = () => {
     setDepartmentName("");
     setDepartmentStatus("");
+    setError("");
     setAddOpen(true);
   };
 
@@ -272,70 +270,58 @@ const Departments = () => {
     setDepartmentStatus("");
   };
 
-  const handleAddDepartment = (
-    e: FormEvent
-  ) => {
+  const handleAddDepartment = async (e: FormEvent) => {
     e.preventDefault();
 
-    if (
-      !departmentName.trim() ||
-      !departmentStatus
-    ) {
+    if (!departmentName.trim() || !departmentStatus) {
+      setError("Please enter department name and status.");
       return;
     }
 
-    const newDepartment: Department = {
-      id:
-        departments.length > 0
-          ? Math.max(
-              ...departments.map(
-                (department) =>
-                  department.id
-              )
-            ) + 1
-          : 1,
+    try {
+      setSaving(true);
+      setError("");
 
-      name: departmentName.trim(),
-      employees: 0,
-      status: departmentStatus,
-    };
+      await addDepartment({
+        departmentName: departmentName.trim(),
+        isActive: departmentStatus === "Active",
+      });
 
-    setDepartments((previous) => [
-      ...previous,
-      newDepartment,
-    ]);
-
-    closeAddModal();
+      closeAddModal();
+      setCurrentPage(1);
+      await loadDepartments();
+    } catch (err: any) {
+      console.error("Add department API error:", err);
+      setError(
+        err?.response?.data?.message ||
+          err?.response?.data?.title ||
+          "Failed to add department."
+      );
+    } finally {
+      setSaving(false);
+    }
   };
 
   // ==========================
   // EDIT MODAL
   // ==========================
 
-  const openEditModal = (
-    department: Department
-  ) => {
+  const openEditModal = (department: Department) => {
     setEditingDepartment(department);
-
     setDepartmentName(department.name);
-    setDepartmentStatus(
-      department.status
-    );
-
+    setDepartmentStatus(department.status);
+    setError("");
     setEditOpen(true);
   };
 
   const closeEditModal = () => {
     setEditOpen(false);
     setEditingDepartment(null);
-
     setDepartmentName("");
     setDepartmentStatus("");
   };
 
-  const handleEditDepartment = (
-    e: FormEvent
-  ) => {
+  const handleEditDepartment = async (e: FormEvent) => {
     e.preventDefault();
 
     if (
@@ -343,31 +329,41 @@ const Departments = () => {
       !departmentName.trim() ||
       !departmentStatus
     ) {
+      setError("Please enter department name and status.");
       return;
     }
 
-    setDepartments((previous) =>
-      previous.map((department) =>
-        department.id ===
-        editingDepartment.id
-          ? {
-              ...department,
-              name: departmentName.trim(),
-              status: departmentStatus,
-            }
-          : department
-      )
-    );
+    try {
+      setSaving(true);
+      setError("");
 
-    closeEditModal();
+      await updateDepartment({
+        id: editingDepartment.id,
+        departmentName: departmentName.trim(),
+        isActive: departmentStatus === "Active",
+      });
+
+      closeEditModal();
+      await loadDepartments();
+    } catch (err: any) {
+      console.error("Update department API error:", err);
+      setError(
+        err?.response?.data?.message ||
+          err?.response?.data?.title ||
+          "Failed to update department."
+      );
+    } finally {
+      setSaving(false);
+    }
   };
 
   // ==========================
   // DELETE MODAL
   // ==========================
 
-  const openDeleteModal = (id: number) => {
+  const openDeleteModal = (id: string) => {
     setDeleteId(id);
+    setError("");
     setDeleteOpen(true);
   };
 
@@ -376,23 +372,31 @@ const Departments = () => {
     setDeleteId(null);
   };
 
-  const handleDeleteDepartment = () => {
-    if (deleteId === null) return;
+  const handleDeleteDepartment = async () => {
+    if (!deleteId) return;
 
-    setDepartments((previous) =>
-      previous.filter(
-        (department) =>
-          department.id !== deleteId
-      )
-    );
+    try {
+      setSaving(true);
+      setError("");
 
-    setSelected((previous) =>
-      previous.filter(
-        (id) => id !== deleteId
-      )
-    );
+      await deleteDepartment(deleteId);
 
-    closeDeleteModal();
+      setSelected((previous) =>
+        previous.filter((id) => id !== deleteId)
+      );
+
+      closeDeleteModal();
+      await loadDepartments();
+    } catch (err: any) {
+      console.error("Delete department API error:", err);
+      setError(
+        err?.response?.data?.message ||
+          err?.response?.data?.title ||
+          "Failed to delete department."
+      );
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -1063,6 +1067,22 @@ const Departments = () => {
           </button>
         </div>
 
+        {error && (
+          <div
+            style={{
+              marginBottom: "12px",
+              padding: "10px 12px",
+              border: "1px solid #f1b7b7",
+              borderRadius: "5px",
+              background: "#fff5f5",
+              color: "#b42318",
+              fontSize: "12px",
+            }}
+          >
+            {error}
+          </div>
+        )}
+
         {/* ==========================
             CARD
         ========================== */}
@@ -1259,101 +1279,83 @@ const Departments = () => {
                 </tr>
               </thead>
 
-              <tbody>
-                {paginated.map((dept) => (
-                  <tr key={dept.id}>
-                    <td>
-                      <input
-                        type="checkbox"
-                        className="department-checkbox"
-                        checked={selected.includes(
-                          dept.id
-                        )}
-                        onChange={() =>
-                          toggleSelect(
-                            dept.id
-                          )
-                        }
-                      />
-                    </td>
+             <tbody>
+  {loading ? (
+    <tr>
+      <td
+        colSpan={5}
+        className="text-center"
+        style={{ height: "80px" }}
+      >
+        Loading departments...
+      </td>
+    </tr>
+  ) : (
+    paginated.map((dept) => (
+      <tr key={dept.id}>
+        <td>
+          <input
+            type="checkbox"
+            className="department-checkbox"
+            checked={selected.includes(dept.id)}
+            onChange={() => toggleSelect(dept.id)}
+          />
+        </td>
 
-                    <td>
-                      {dept.name}
-                    </td>
+        <td>{dept.name}</td>
 
-                    <td>
-                      {dept.employees}
-                    </td>
+        <td>{dept.employees}</td>
 
-                    {/* STATUS */}
+        <td>
+          <span
+            className={`department-status-badge ${
+              dept.status === "Active"
+                ? "department-status-active"
+                : "department-status-inactive"
+            }`}
+          >
+            <span className="department-status-dot" />
+            {dept.status}
+          </span>
+        </td>
 
-                    <td>
-                      <span
-                        className={`department-status-badge ${
-                          dept.status ===
-                          "Active"
-                            ? "department-status-active"
-                            : "department-status-inactive"
-                        }`}
-                      >
-                        <span className="department-status-dot" />
+        <td>
+          <div className="department-actions">
+            <button
+              type="button"
+              className="department-action-btn"
+              title="Edit"
+              onClick={() => openEditModal(dept)}
+            >
+              <i className="ti ti-edit" />
+            </button>
 
-                        {dept.status}
-                      </span>
-                    </td>
+            <button
+              type="button"
+              className="department-action-btn department-delete-btn"
+              title="Delete"
+              onClick={() => openDeleteModal(dept.id)}
+            >
+              <i className="ti ti-trash" />
+            </button>
+          </div>
+        </td>
+      </tr>
+    ))
+  )}
 
-                    {/* ACTION */}
-
-                    <td>
-                      <div className="department-actions">
-                        {/* EDIT */}
-
-                        <button
-                          type="button"
-                          className="department-action-btn"
-                          title="Edit"
-                          onClick={() =>
-                            openEditModal(
-                              dept
-                            )
-                          }
-                        >
-                          <i className="ti ti-edit" />
-                        </button>
-
-                        {/* DELETE */}
-
-                        <button
-                          type="button"
-                          className="department-action-btn department-delete-btn"
-                          title="Delete"
-                          onClick={() =>
-                            openDeleteModal(
-                              dept.id
-                            )
-                          }
-                        >
-                          <i className="ti ti-trash" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-
-                {paginated.length === 0 && (
-                  <tr>
-                    <td
-                      colSpan={5}
-                      className="text-center"
-                      style={{
-                        height: "80px",
-                      }}
-                    >
-                      No departments found
-                    </td>
-                  </tr>
-                )}
-              </tbody>
+  {!loading && paginated.length === 0 && (
+    <tr>
+      <td
+        colSpan={5}
+        className="text-center"
+        style={{ height: "80px" }}
+      >
+        No departments found
+      </td>
+    </tr>
+  )}
+</tbody>
             </table>
           </div>
 
@@ -1409,10 +1411,7 @@ const Departments = () => {
               <button
                 type="button"
                 className="page-btn"
-                disabled={
-                  safeCurrentPage ===
-                  totalPages
-                }
+                disabled={loading || paginated.length < rowsPerPage}
                 onClick={() =>
                   setCurrentPage(
                     (page) =>
@@ -1526,8 +1525,10 @@ const Departments = () => {
                 <button
                   type="submit"
                   className="department-modal-save"
+                  disabled={saving}
+                  style={{ opacity: saving ? 0.7 : 1 }}
                 >
-                  Add Department
+                  {saving ? "Saving..." : "Add Department"}
                 </button>
               </div>
             </form>
@@ -1628,8 +1629,10 @@ const Departments = () => {
                   <button
                     type="submit"
                     className="department-modal-save"
+                    disabled={saving}
+                    style={{ opacity: saving ? 0.7 : 1 }}
                   >
-                    Save Department
+                    {saving ? "Saving..." : "Save Department"}
                   </button>
                 </div>
               </form>
@@ -1673,11 +1676,11 @@ const Departments = () => {
               <button
                 type="button"
                 className="delete-confirm-btn"
-                onClick={
-                  handleDeleteDepartment
-                }
+                onClick={handleDeleteDepartment}
+                disabled={saving}
+                style={{ opacity: saving ? 0.7 : 1 }}
               >
-                Yes, Delete
+                {saving ? "Deleting..." : "Yes, Delete"}
               </button>
             </div>
           </div>

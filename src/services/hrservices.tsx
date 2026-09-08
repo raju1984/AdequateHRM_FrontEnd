@@ -19,33 +19,246 @@ const getAuthHeaders = (token?: string | null) => {
 };
 
 /* =====================================================
-   EMPLOYEE PROFILE
+   ROLE - GET
+   GET /Role/get-roles
 ===================================================== */
 
-export const getEmployeeProfile = async (
-  id: string,
-  token: string
+export interface GetRolesParams {
+  Search?: string;
+  IsActive?: boolean;
+  SortBy?: string;
+  FromDate?: string;
+  ToDate?: string;
+  PageNumber?: number;
+  PageSize?: number;
+}
+
+export interface AddRolePayload {
+  roleName: string;
+  isActive: boolean;
+}
+
+export const getRoles = async (
+  params?: GetRolesParams
 ) => {
+  const token = getToken();
+
   const response = await axios.get(
-    `${BASE_URL}/Profile/Get-Employee`,
+    `${BASE_URL}/Role/get-roles`,
     {
       params: {
-        Id: id,
+        Search: params?.Search || undefined,
+        IsActive:
+          typeof params?.IsActive === "boolean"
+            ? params.IsActive
+            : undefined,
+        SortBy: params?.SortBy || undefined,
+        FromDate: params?.FromDate || undefined,
+        ToDate: params?.ToDate || undefined,
+        PageNumber: params?.PageNumber ?? 1,
+        PageSize: params?.PageSize ?? 10,
       },
       headers: getAuthHeaders(token),
     }
   );
 
-  return response.data.data;
+  return response.data;
 };
 
+/* =====================================================
+   ROLE - ADD
+===================================================== */
+
+export const addRole = async (
+  data: AddRolePayload
+) => {
+  const token = getToken();
+
+  const response = await axios.post(
+    `${BASE_URL}/Role/add-role`,
+    data,
+    {
+      headers: {
+        ...getAuthHeaders(token),
+        "Content-Type": "application/json",
+        Accept: "*/*",
+      },
+    }
+  );
+
+  return response.data;
+};
+
+/* =====================================================
+   ROLE - UPDATE
+   PUT /Role/update-role
+===================================================== */
+
+export interface UpdateRolePayload {
+  id: string | number;
+  roleName: string;
+  isActive: boolean;
+}
+
+export const updateRole = async (
+  data: UpdateRolePayload
+) => {
+  const token = getToken();
+
+  const response = await axios.put(
+    `${BASE_URL}/Role/update-role`,
+    data,
+    {
+      headers: {
+        ...getAuthHeaders(token),
+        "Content-Type": "application/json",
+        Accept: "*/*",
+      },
+    }
+  );
+
+  return response.data;
+};
+
+/* =====================================================
+   ROLE - DELETE
+   DELETE /Role/delete-role
+===================================================== */
+
+export const deleteRole = async (
+  id: string | number
+) => {
+  const token = getToken();
+
+  const response = await axios.delete(
+    `${BASE_URL}/Role/delete-role`,
+    {
+      headers: {
+        ...getAuthHeaders(token),
+        "Content-Type": "application/json",
+        Accept: "*/*",
+      },
+      data: {
+        id,
+      },
+    }
+  );
+
+  return response.data;
+};
+
+/* =====================================================
+   EMPLOYEE - GET
+   GET /Employee/page-data
+===================================================== */
+
+export interface GetEmployeesParams {
+  Search?: string;
+  DesignationId?: string;
+  UserStatus?: number;
+  FromDate?: string;
+  ToDate?: string;
+  PageNumber?: number;
+  PageSize?: number;
+  SortBy?: string;
+}
+
+export const getAllEmployees = async (
+  params?: GetEmployeesParams
+) => {
+  const token = getToken();
+
+  const response = await axios.get(
+    `${BASE_URL}/Employee/page-data`,
+    {
+      params: {
+        Search: params?.Search || undefined,
+        DesignationId:
+          params?.DesignationId || undefined,
+        UserStatus: params?.UserStatus,
+        FromDate: params?.FromDate || undefined,
+        ToDate: params?.ToDate || undefined,
+        PageNumber: params?.PageNumber ?? 1,
+        PageSize: params?.PageSize ?? 100,
+        SortBy: params?.SortBy || undefined,
+      },
+      headers: getAuthHeaders(token),
+    }
+  );
+
+  return response.data;
+};
+
+/* =====================================================
+   EMPLOYEE PROFILE - UPDATE
+   PUT /Profile/Update-Profile
+===================================================== */
+
+export interface UpdateProfilePayload {
+  Id: string;
+  FirstName: string;
+  LastName: string;
+  Email: string;
+  Phone: string;
+  Address: string;
+  Country: string;
+  State: string;
+  City: string;
+  PostalCode: string;
+  CurrentPassword: string;
+  NewPassword: string;
+  ConfirmPassword: string;
+  ProfilePicture?: File | null;
+}
+
 export const updateEmployeeProfile = async (
-  data: any,
+  data: UpdateProfilePayload,
   token: string
 ) => {
+  const formData = new FormData();
+
+  formData.append("Id", data.Id);
+  formData.append("FirstName", data.FirstName);
+  formData.append("LastName", data.LastName);
+  formData.append("Email", data.Email);
+  formData.append("Phone", data.Phone);
+  formData.append("Address", data.Address);
+  formData.append("Country", data.Country);
+  formData.append("State", data.State);
+  formData.append("City", data.City);
+  formData.append("PostalCode", data.PostalCode);
+
+  formData.append(
+    "CurrentPassword",
+    data.CurrentPassword || ""
+  );
+
+  formData.append(
+    "NewPassword",
+    data.NewPassword || ""
+  );
+
+  formData.append(
+    "ConfirmPassword",
+    data.ConfirmPassword || ""
+  );
+
+  if (data.ProfilePicture) {
+    formData.append(
+      "ProfilePicture",
+      data.ProfilePicture
+    );
+  } else {
+    /*
+      Swagger says ProfilePicture can be empty.
+      Sending an empty string keeps the multipart field present.
+    */
+    formData.append("ProfilePicture", "");
+  }
+
   const response = await axios.put(
-    `${BASE_URL}/Profile/Profile-Update`,
-    data,
+    `${BASE_URL}/Profile/Update-Profile`,
+    formData,
     {
       headers: {
         ...getAuthHeaders(token),
@@ -116,7 +329,9 @@ export const getHolidayById = async (
   const response = await axios.get(
     `${BASE_URL}/Holiday/get-holiday-by-id`,
     {
-      params: { id },
+      params: {
+        id,
+      },
       headers: getAuthHeaders(token),
     }
   );
@@ -174,20 +389,21 @@ export const deleteHoliday = async (
         ...getAuthHeaders(token),
         "Content-Type": "application/json",
       },
-      data: { id },
+      data: {
+        id,
+      },
     }
   );
 
   return response.data;
 };
 
-
 /* =====================================================
    LEAVE TYPE
-   Base URL does NOT use /api according to Swagger
 ===================================================== */
 
-const LEAVE_TYPE_BASE_URL = "http://jupiterapi.adequateshop.com";
+const LEAVE_TYPE_BASE_URL =
+  "http://jupiterapi.adequateshop.com";
 
 export interface GetAllLeaveTypePayload {
   search?: string;
@@ -276,10 +492,6 @@ export const getAllLeaveTypes = async (
     sortBy: data?.sortBy ?? "",
   };
 
-  // This backend endpoint is GET, but Swagger/backend validation
-  // also expects JSON content. Send the same values as both query
-  // params and JSON body so ASP.NET model binding can satisfy either
-  // binding style used by the endpoint.
   const response = await axios.request({
     method: "GET",
     url: `${LEAVE_TYPE_BASE_URL}/get-all-leave-type`,
@@ -317,50 +529,7 @@ export const deleteLeaveType = async (
 };
 
 /* =====================================================
-   EMPLOYEE - GET
-   GET /Employee/page-data
-===================================================== */
-
-export interface GetEmployeesParams {
-  Search?: string;
-  DesignationId?: string;
-  UserStatus?: number;
-  FromDate?: string;
-  ToDate?: string;
-  PageNumber?: number;
-  PageSize?: number;
-  SortBy?: string;
-}
-
-export const getAllEmployees = async (
-  params?: GetEmployeesParams
-) => {
-  const token = getToken();
-
-  const response = await axios.get(
-    `${BASE_URL}/Employee/page-data`,
-    {
-      params: {
-        Search: params?.Search || undefined,
-        DesignationId:
-          params?.DesignationId || undefined,
-        UserStatus: params?.UserStatus,
-        FromDate: params?.FromDate || undefined,
-        ToDate: params?.ToDate || undefined,
-        PageNumber: params?.PageNumber ?? 1,
-        PageSize: params?.PageSize ?? 100,
-        SortBy: params?.SortBy || undefined,
-      },
-      headers: getAuthHeaders(token),
-    }
-  );
-
-  return response.data;
-};
-
-/* =====================================================
    DEPARTMENT - GET
-   GET /Department/Get-Department
 ===================================================== */
 
 export interface GetDepartmentsParams {
@@ -479,7 +648,6 @@ export const deleteDepartment = async (
 
 /* =====================================================
    DESIGNATION - GET
-   GET /Designation/Get-Designation
 ===================================================== */
 
 export interface GetDesignationsParams {
@@ -574,9 +742,9 @@ export const updateDesignation = async (
   return response.data;
 };
 
-/* ==================================================
+/* =====================================================
    DESIGNATION - DELETE
-=====================================================*/
+===================================================== */
 
 export const deleteDesignation = async (
   id: string
@@ -648,10 +816,6 @@ export const updateEmployee = async (
 
 /* =====================================================
    EMPLOYEE - DELETE
-
-   DELETE /Employee/{employeeId}
-
-   employeeId = UUID path parameter
 ===================================================== */
 
 export const deleteEmployee = async (
@@ -670,4 +834,44 @@ export const deleteEmployee = async (
   );
 
   return response.data;
+};
+
+/* =====================================================
+   DEFAULT EXPORT
+===================================================== */
+
+export default {
+  getRoles,
+  addRole,
+  updateRole,
+  deleteRole,
+
+  getAllEmployees,
+  updateEmployeeProfile,
+
+  getHolidays,
+  getHolidayById,
+  addHoliday,
+  updateHoliday,
+  deleteHoliday,
+
+  addLeaveType,
+  getLeaveTypeById,
+  updateLeaveType,
+  getAllLeaveTypes,
+  deleteLeaveType,
+
+  getDepartments,
+  addDepartment,
+  updateDepartment,
+  deleteDepartment,
+
+  getDesignations,
+  addDesignation,
+  updateDesignation,
+  deleteDesignation,
+
+  addEmployee,
+  updateEmployee,
+  deleteEmployee,
 };

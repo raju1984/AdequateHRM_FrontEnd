@@ -1,11 +1,32 @@
-import React, { FormEvent, useMemo, useState } from "react";
+import React, {
+  FormEvent,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import { Link } from "react-router-dom";
 
-type HolidayStatus = "ACTIVE" | "INACTIVE";
-type HolidayType = "HR" | "COMPLIANCE";
+import {
+  addHoliday,
+  deleteHoliday,
+  getHolidays,
+  updateHoliday,
+} from "../../services/adminservices";
+
+/* =====================================================
+   TYPES
+===================================================== */
+
+type HolidayStatus =
+  | "ACTIVE"
+  | "INACTIVE";
+
+type HolidayType =
+  | "HR"
+  | "COMPLIANCE";
 
 interface Holiday {
-  id: number;
+  id: string;
   title: string;
   date: string;
   description: string;
@@ -21,105 +42,9 @@ interface HolidayForm {
   type: HolidayType;
 }
 
-const initialHolidays: Holiday[] = [
-  {
-    id: 1,
-    title: "New Year",
-    date: "01 Jan 2024",
-    description: "First day of the new year",
-    status: "ACTIVE",
-    type: "HR",
-  },
-  {
-    id: 2,
-    title: "Martin Luther King Jr. Day",
-    date: "15 Jan 2024",
-    description: "Celebrating the civil rights leader",
-    status: "ACTIVE",
-    type: "HR",
-  },
-  {
-    id: 3,
-    title: "President's Day",
-    date: "19 Feb 2024",
-    description: "Honoring past US Presidents",
-    status: "ACTIVE",
-    type: "HR",
-  },
-  {
-    id: 4,
-    title: "Good Friday",
-    date: "29 Mar 2024",
-    description: "Holiday before Easter",
-    status: "ACTIVE",
-    type: "HR",
-  },
-  {
-    id: 5,
-    title: "Easter Monday",
-    date: "01 Apr 2024",
-    description: "Holiday after Easter",
-    status: "ACTIVE",
-    type: "HR",
-  },
-  {
-    id: 6,
-    title: "Memorial Day",
-    date: "27 Apr 2024",
-    description: "Honors military personnel",
-    status: "ACTIVE",
-    type: "HR",
-  },
-  {
-    id: 7,
-    title: "Independence Day",
-    date: "04 Jul 2024",
-    description: "Celebrates Independence",
-    status: "ACTIVE",
-    type: "HR",
-  },
-  {
-    id: 8,
-    title: "Labour Day",
-    date: "02 Sep 2024",
-    description: "Honors working people",
-    status: "INACTIVE",
-    type: "HR",
-  },
-  {
-    id: 9,
-    title: "Veterans Day",
-    date: "11 Nov 2024",
-    description: "Honors military veterans",
-    status: "ACTIVE",
-    type: "HR",
-  },
-  {
-    id: 10,
-    title: "Christmas Day",
-    date: "25 Dec 2024",
-    description: "Celebration of Christmas",
-    status: "ACTIVE",
-    type: "HR",
-  },
-
-  {
-    id: 11,
-    title: "Compliance Review Day",
-    date: "10 Jan 2024",
-    description: "Annual compliance review",
-    status: "ACTIVE",
-    type: "COMPLIANCE",
-  },
-  {
-    id: 12,
-    title: "Policy Awareness Day",
-    date: "15 Mar 2024",
-    description: "Company policy awareness",
-    status: "ACTIVE",
-    type: "COMPLIANCE",
-  },
-];
+/* =====================================================
+   EMPTY FORM
+===================================================== */
 
 const emptyForm: HolidayForm = {
   title: "",
@@ -129,23 +54,304 @@ const emptyForm: HolidayForm = {
   type: "HR",
 };
 
+/* =====================================================
+   HOLIDAY TYPE HELPERS
+
+   API:
+   0 = HR
+   1 = Compliance
+===================================================== */
+
+const holidayTypeToNumber = (
+  type: HolidayType
+) => {
+  return type === "HR" ? 0 : 1;
+};
+
+const numberToHolidayType = (
+  type: any
+): HolidayType => {
+  if (
+    type === 1 ||
+    type === "1" ||
+    type === "COMPLIANCE" ||
+    type === "Compliance"
+  ) {
+    return "COMPLIANCE";
+  }
+
+  return "HR";
+};
+
+/* =====================================================
+   DATE HELPERS
+===================================================== */
+
+/*
+  API Date:
+  2026-09-07T06:56:24.477Z
+
+  Input:
+  2026-09-07
+
+  Display:
+  07 Sep 2026
+*/
+
+const formatApiDate = (
+  date: any
+): string => {
+  if (!date) {
+    return "";
+  }
+
+  const parsedDate =
+    new Date(date);
+
+  if (
+    Number.isNaN(
+      parsedDate.getTime()
+    )
+  ) {
+    return String(date);
+  }
+
+  const day =
+    String(
+      parsedDate.getDate()
+    ).padStart(2, "0");
+
+  const month =
+    parsedDate.toLocaleString(
+      "en-US",
+      {
+        month: "short",
+      }
+    );
+
+  const year =
+    parsedDate.getFullYear();
+
+  return `${day} ${month} ${year}`;
+};
+
+const formatDateForInput = (
+  date: string
+): string => {
+  if (!date) {
+    return "";
+  }
+
+  /*
+    Already yyyy-mm-dd
+  */
+  if (
+    /^\d{4}-\d{2}-\d{2}$/.test(
+      date
+    )
+  ) {
+    return date;
+  }
+
+  const parsedDate =
+    new Date(date);
+
+  if (
+    Number.isNaN(
+      parsedDate.getTime()
+    )
+  ) {
+    return "";
+  }
+
+  const year =
+    parsedDate.getFullYear();
+
+  const month =
+    String(
+      parsedDate.getMonth() + 1
+    ).padStart(2, "0");
+
+  const day =
+    String(
+      parsedDate.getDate()
+    ).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+};
+
+/*
+  API wants ISO date.
+*/
+const inputDateToApiDate = (
+  date: string
+) => {
+  if (!date) {
+    return "";
+  }
+
+  return `${date}T00:00:00.000Z`;
+};
+
+/* =====================================================
+   RESPONSE HELPERS
+===================================================== */
+
+const extractHolidayList = (
+  response: any
+): any[] => {
+  const candidates = [
+    response?.data?.items,
+    response?.data?.records,
+    response?.data?.holidays,
+    response?.data?.result,
+
+    response?.items,
+    response?.records,
+    response?.holidays,
+    response?.result,
+
+    response?.data,
+
+    response,
+  ];
+
+  for (
+    const candidate of candidates
+  ) {
+    if (
+      Array.isArray(candidate)
+    ) {
+      return candidate;
+    }
+  }
+
+  return [];
+};
+
+/* =====================================================
+   FORMAT API HOLIDAY
+===================================================== */
+
+const formatHoliday = (
+  item: any
+): Holiday => {
+  const id =
+    item?.id ??
+    item?.Id ??
+    item?.holidayId ??
+    item?.HolidayId ??
+    "";
+
+  const title =
+    item?.title ??
+    item?.Title ??
+    "";
+
+  const description =
+    item?.description ??
+    item?.Description ??
+    "";
+
+  const holidayDate =
+    item?.holidayDate ??
+    item?.HolidayDate ??
+    item?.date ??
+    item?.Date ??
+    "";
+
+  const holidayType =
+    item?.holidayType ??
+    item?.HolidayType ??
+    0;
+
+  const isActive =
+    item?.isActive ??
+    item?.IsActive ??
+    item?.status ??
+    item?.Status ??
+    true;
+
+  return {
+    id: String(id),
+
+    title: String(title),
+
+    date:
+      formatApiDate(
+        holidayDate
+      ),
+
+    description:
+      String(description),
+
+    status:
+      isActive === true ||
+      isActive === 1 ||
+      isActive === "1" ||
+      isActive === "true" ||
+      isActive === "ACTIVE" ||
+      isActive === "Active"
+        ? "ACTIVE"
+        : "INACTIVE",
+
+    type:
+      numberToHolidayType(
+        holidayType
+      ),
+  };
+};
+
+/* =====================================================
+   COMPONENT
+===================================================== */
+
 const Holidays: React.FC = () => {
+  /* ===================================================
+     DATA
+  =================================================== */
+
   const [holidays, setHolidays] =
-    useState<Holiday[]>(initialHolidays);
+    useState<Holiday[]>([]);
+
+  const [
+    loading,
+    setLoading,
+  ] = useState(false);
+
+  /* ===================================================
+     TAB
+  =================================================== */
 
   const [activeTab, setActiveTab] =
     useState<HolidayType>("HR");
 
-  const [entries, setEntries] = useState(10);
-  const [search, setSearch] = useState("");
-  const [currentPage, setCurrentPage] = useState(1);
+  /* ===================================================
+     TABLE
+  =================================================== */
+
+  const [entries, setEntries] =
+    useState(10);
+
+  const [search, setSearch] =
+    useState("");
+
+  const [currentPage, setCurrentPage] =
+    useState(1);
+
+  const [totalEntries, setTotalEntries] =
+    useState(0);
+
+  /* ===================================================
+     CHECKBOX
+  =================================================== */
 
   const [selected, setSelected] =
-    useState<number[]>([]);
+    useState<string[]>([]);
 
-  /* ===========================
+  /* ===================================================
      MODALS
-  =========================== */
+  =================================================== */
 
   const [addOpen, setAddOpen] =
     useState(false);
@@ -157,199 +363,297 @@ const Holidays: React.FC = () => {
     useState(false);
 
   const [editingId, setEditingId] =
-    useState<number | null>(null);
+    useState<string | null>(null);
 
   const [deleteId, setDeleteId] =
-    useState<number | null>(null);
+    useState<string | null>(null);
+
+  /* ===================================================
+     FORM
+  =================================================== */
 
   const [form, setForm] =
-    useState<HolidayForm>(emptyForm);
-
-  /* ===========================
-     FILTER
-  =========================== */
-
-  const filteredData = useMemo(() => {
-    let result = holidays.filter(
-      (holiday) =>
-        holiday.type === activeTab
+    useState<HolidayForm>(
+      emptyForm
     );
 
-    if (search.trim()) {
-      const query =
-        search.trim().toLowerCase();
+  /* ===================================================
+     SORT
+  =================================================== */
 
-      result = result.filter(
-        (holiday) =>
-          holiday.title
-            .toLowerCase()
-            .includes(query) ||
-          holiday.date
-            .toLowerCase()
-            .includes(query) ||
-          holiday.description
-            .toLowerCase()
-            .includes(query)
-      );
-    }
+  const [sortBy, setSortBy] =
+    useState("");
 
-    return result;
-  }, [
-    holidays,
-    activeTab,
-    search,
-  ]);
+  /* ===================================================
+     ERROR
+  =================================================== */
 
-  /* ===========================
-     PAGINATION
-  =========================== */
+  const [error, setError] =
+    useState("");
 
-  const totalPages = Math.max(
-    1,
-    Math.ceil(
-      filteredData.length / entries
-    )
-  );
+  /* ===================================================
+     LOAD HOLIDAYS
+  =================================================== */
 
-  const safeCurrentPage = Math.min(
-    currentPage,
-    totalPages
-  );
+  const loadHolidays =
+    async (
+      page = currentPage
+    ) => {
+      try {
+        setLoading(true);
+        setError("");
 
-  const visibleData = filteredData.slice(
-    (safeCurrentPage - 1) * entries,
-    safeCurrentPage * entries
-  );
+        const response =
+          await getHolidays({
+            Search:
+              search.trim() ||
+              undefined,
 
-  /* ===========================
-     CHECKBOX
-  =========================== */
+            HolidayType:
+              holidayTypeToNumber(
+                activeTab
+              ),
 
-  const allVisibleSelected =
-    visibleData.length > 0 &&
-    visibleData.every((holiday) =>
-      selected.includes(holiday.id)
-    );
+            PageNumber: page,
 
-  const handleSelectAll = () => {
-    const visibleIds = visibleData.map(
-      (holiday) => holiday.id
-    );
+            PageSize: entries,
 
-    if (allVisibleSelected) {
-      setSelected((previous) =>
-        previous.filter(
-          (id) =>
-            !visibleIds.includes(id)
-        )
-      );
-    } else {
-      setSelected((previous) => [
-        ...new Set([
-          ...previous,
-          ...visibleIds,
-        ]),
-      ]);
-    }
-  };
+            SortBy:
+              sortBy || undefined,
+          });
 
-  const toggleSelect = (
-    id: number
-  ) => {
-    setSelected((previous) =>
-      previous.includes(id)
-        ? previous.filter(
-            (item) => item !== id
-          )
-        : [...previous, id]
-    );
-  };
+        console.log(
+          "HOLIDAY API RESPONSE:",
+          response
+        );
 
-  /* ===========================
-     DATE HELPERS
-  =========================== */
+        const list =
+          extractHolidayList(
+            response
+          );
 
-  const displayDateToInput = (
-    date: string
-  ) => {
-    const months: {
-      [key: string]: string;
-    } = {
-      Jan: "01",
-      Feb: "02",
-      Mar: "03",
-      Apr: "04",
-      May: "05",
-      Jun: "06",
-      Jul: "07",
-      Aug: "08",
-      Sep: "09",
-      Oct: "10",
-      Nov: "11",
-      Dec: "12",
+        const formatted =
+          list.map(
+            formatHoliday
+          );
+
+        setHolidays(
+          formatted
+        );
+
+        /*
+          Try to get total records
+          from common API response structures.
+        */
+
+        const total =
+          response?.data?.totalCount ??
+          response?.data?.totalRecords ??
+          response?.data?.total ??
+          response?.totalCount ??
+          response?.totalRecords ??
+          response?.total ??
+          formatted.length;
+
+        setTotalEntries(
+          Number(total) ||
+            formatted.length
+        );
+      } catch (err: any) {
+        console.error(
+          "GET HOLIDAY ERROR:",
+          err
+        );
+
+        setHolidays([]);
+
+        setTotalEntries(0);
+
+        setError(
+          err?.response?.data?.message ||
+            err?.message ||
+            "Failed to load holidays."
+        );
+      } finally {
+        setLoading(false);
+      }
     };
 
-    const parts = date.split(" ");
+  /* ===================================================
+     INITIAL / FILTER LOAD
+  =================================================== */
 
-    if (parts.length !== 3) {
-      return "";
-    }
+  useEffect(() => {
+    const timer =
+      setTimeout(() => {
+        loadHolidays(
+          currentPage
+        );
+      }, 350);
 
-    const [day, month, year] =
-      parts;
+    return () =>
+      clearTimeout(timer);
 
-    return `${year}-${
-      months[month]
-    }-${day.padStart(2, "0")}`;
-  };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    activeTab,
+    search,
+    entries,
+    currentPage,
+    sortBy,
+  ]);
 
-  const inputDateToDisplay = (
-    date: string
+  /* ===================================================
+     FILTERED DATA
+
+     API already filters by type/search.
+     This additional filter keeps UI safe.
+  =================================================== */
+
+  const filteredData =
+    useMemo(() => {
+      return holidays.filter(
+        (holiday) =>
+          holiday.type ===
+          activeTab
+      );
+    }, [
+      holidays,
+      activeTab,
+    ]);
+
+  /* ===================================================
+     PAGINATION
+
+     Backend pagination is being used.
+  =================================================== */
+
+  const totalPages =
+    Math.max(
+      1,
+      Math.ceil(
+        totalEntries /
+          entries
+      )
+    );
+
+  const safeCurrentPage =
+    Math.min(
+      currentPage,
+      totalPages
+    );
+
+  /* ===================================================
+     CHECKBOX
+  =================================================== */
+
+  const allVisibleSelected =
+    filteredData.length > 0 &&
+    filteredData.every(
+      (holiday) =>
+        selected.includes(
+          holiday.id
+        )
+    );
+
+  const handleSelectAll =
+    () => {
+      const visibleIds =
+        filteredData.map(
+          (holiday) =>
+            holiday.id
+        );
+
+      if (
+        allVisibleSelected
+      ) {
+        setSelected(
+          (previous) =>
+            previous.filter(
+              (id) =>
+                !visibleIds.includes(
+                  id
+                )
+            )
+        );
+      } else {
+        setSelected(
+          (previous) => [
+            ...new Set([
+              ...previous,
+              ...visibleIds,
+            ]),
+          ]
+        );
+      }
+    };
+
+  const toggleSelect = (
+    id: string
   ) => {
-    if (!date) return "";
-
-    const months = [
-      "Jan",
-      "Feb",
-      "Mar",
-      "Apr",
-      "May",
-      "Jun",
-      "Jul",
-      "Aug",
-      "Sep",
-      "Oct",
-      "Nov",
-      "Dec",
-    ];
-
-    const [year, month, day] =
-      date.split("-");
-
-    return `${day} ${
-      months[Number(month) - 1]
-    } ${year}`;
+    setSelected(
+      (previous) =>
+        previous.includes(id)
+          ? previous.filter(
+              (item) =>
+                item !== id
+            )
+          : [
+              ...previous,
+              id,
+            ]
+    );
   };
 
-  /* ===========================
-     ADD
-  =========================== */
+  /* ===================================================
+     SORT
+  =================================================== */
 
-  const openAddModal = () => {
-    setForm({
-      ...emptyForm,
-      type: activeTab,
-    });
+  const handleSort = (
+    field: string
+  ) => {
+    setSortBy(
+      sortBy === field
+        ? ""
+        : field
+    );
 
-    setAddOpen(true);
+    setCurrentPage(1);
   };
 
-  const closeAddModal = () => {
-    setAddOpen(false);
-    setForm(emptyForm);
-  };
+  /* ===================================================
+     ADD MODAL
+  =================================================== */
 
-  const handleAdd = (
+  const openAddModal =
+    () => {
+      setForm({
+        ...emptyForm,
+
+        type: activeTab,
+      });
+
+      setError("");
+
+      setAddOpen(true);
+    };
+
+  const closeAddModal =
+    () => {
+      setAddOpen(false);
+
+      setForm(
+        emptyForm
+      );
+
+      setError("");
+    };
+
+  /* ===================================================
+     ADD HOLIDAY
+  =================================================== */
+
+  const handleAdd = async (
     e: FormEvent
   ) => {
     e.preventDefault();
@@ -359,163 +663,299 @@ const Holidays: React.FC = () => {
       !form.date ||
       !form.description.trim()
     ) {
+      setError(
+        "Please fill all required fields."
+      );
+
       return;
     }
 
-    const newHoliday: Holiday = {
-      id:
-        holidays.length > 0
-          ? Math.max(
-              ...holidays.map(
-                (holiday) =>
-                  holiday.id
-              )
-            ) + 1
-          : 1,
+    try {
+      setLoading(true);
+      setError("");
 
-      title: form.title.trim(),
+      const payload = {
+        title:
+          form.title.trim(),
 
-      date:
-        inputDateToDisplay(
-          form.date
-        ),
+        holidayDate:
+          inputDateToApiDate(
+            form.date
+          ),
 
-      description:
-        form.description.trim(),
+        holidayType:
+          holidayTypeToNumber(
+            form.type
+          ),
 
-      status: form.status,
+        description:
+          form.description.trim(),
 
-      type: form.type,
-    };
+        status:
+          form.status ===
+          "ACTIVE",
+      };
 
-    setHolidays((previous) => [
-      ...previous,
-      newHoliday,
-    ]);
+      console.log(
+        "ADD HOLIDAY PAYLOAD:",
+        payload
+      );
 
-    setActiveTab(form.type);
+      await addHoliday(
+        payload
+      );
 
-    closeAddModal();
+      closeAddModal();
+
+      setActiveTab(
+        form.type
+      );
+
+      setCurrentPage(1);
+
+      await loadHolidays(
+        1
+      );
+    } catch (err: any) {
+      console.error(
+        "ADD HOLIDAY ERROR:",
+        err
+      );
+
+      setError(
+        err?.response?.data?.message ||
+          err?.message ||
+          "Failed to add holiday."
+      );
+    } finally {
+      setLoading(false);
+    }
   };
 
-  /* ===========================
-     EDIT
-  =========================== */
+  /* ===================================================
+     EDIT MODAL
+  =================================================== */
 
   const openEditModal = (
     holiday: Holiday
   ) => {
-    setEditingId(holiday.id);
+    setEditingId(
+      holiday.id
+    );
 
     setForm({
-      title: holiday.title,
+      title:
+        holiday.title,
 
       date:
-        displayDateToInput(
+        formatDateForInput(
           holiday.date
         ),
 
       description:
         holiday.description,
 
-      status: holiday.status,
+      status:
+        holiday.status,
 
-      type: holiday.type,
+      type:
+        holiday.type,
     });
+
+    setError("");
 
     setEditOpen(true);
   };
 
-  const closeEditModal = () => {
-    setEditOpen(false);
+  const closeEditModal =
+    () => {
+      setEditOpen(false);
 
-    setEditingId(null);
+      setEditingId(null);
 
-    setForm(emptyForm);
-  };
+      setForm(
+        emptyForm
+      );
 
-  const handleEdit = (
+      setError("");
+    };
+
+  /* ===================================================
+     UPDATE HOLIDAY
+  =================================================== */
+
+  const handleEdit = async (
     e: FormEvent
   ) => {
     e.preventDefault();
 
     if (
-      editingId === null ||
+      !editingId ||
       !form.title.trim() ||
       !form.date ||
       !form.description.trim()
     ) {
+      setError(
+        "Please fill all required fields."
+      );
+
       return;
     }
 
-    setHolidays((previous) =>
-      previous.map((holiday) =>
-        holiday.id === editingId
-          ? {
-              ...holiday,
+    try {
+      setLoading(true);
+      setError("");
 
-              title:
-                form.title.trim(),
+      const payload = {
+        id:
+          editingId,
 
-              date:
-                inputDateToDisplay(
-                  form.date
-                ),
+        title:
+          form.title.trim(),
 
-              description:
-                form.description.trim(),
+        holidayDate:
+          inputDateToApiDate(
+            form.date
+          ),
 
-              status:
-                form.status,
+        holidayType:
+          holidayTypeToNumber(
+            form.type
+          ),
 
-              type:
-                form.type,
-            }
-          : holiday
-      )
-    );
+        description:
+          form.description.trim(),
 
-    setActiveTab(form.type);
+        status:
+          form.status ===
+          "ACTIVE",
+      };
 
-    closeEditModal();
+      console.log(
+        "UPDATE HOLIDAY PAYLOAD:",
+        payload
+      );
+
+      await updateHoliday(
+        payload
+      );
+
+      closeEditModal();
+
+      setActiveTab(
+        form.type
+      );
+
+      await loadHolidays(
+        currentPage
+      );
+    } catch (err: any) {
+      console.error(
+        "UPDATE HOLIDAY ERROR:",
+        err
+      );
+
+      setError(
+        err?.response?.data?.message ||
+          err?.message ||
+          "Failed to update holiday."
+      );
+    } finally {
+      setLoading(false);
+    }
   };
 
-  /* ===========================
-     DELETE
-  =========================== */
+  /* ===================================================
+     DELETE MODAL
+  =================================================== */
 
   const openDeleteModal = (
-    id: number
+    id: string
   ) => {
     setDeleteId(id);
+
+    setError("");
+
     setDeleteOpen(true);
   };
 
-  const closeDeleteModal = () => {
-    setDeleteOpen(false);
-    setDeleteId(null);
-  };
+  const closeDeleteModal =
+    () => {
+      setDeleteOpen(false);
 
-  const handleDelete = () => {
-    if (deleteId === null) {
-      return;
-    }
+      setDeleteId(null);
 
-    setHolidays((previous) =>
-      previous.filter(
-        (holiday) =>
-          holiday.id !== deleteId
-      )
-    );
+      setError("");
+    };
 
-    setSelected((previous) =>
-      previous.filter(
-        (id) => id !== deleteId
-      )
-    );
+  /* ===================================================
+     DELETE HOLIDAY
+  =================================================== */
 
-    closeDeleteModal();
-  };
+  const handleDelete =
+    async () => {
+      if (!deleteId) {
+        return;
+      }
+
+      try {
+        setLoading(true);
+        setError("");
+
+        console.log(
+          "DELETE HOLIDAY ID:",
+          deleteId
+        );
+
+        await deleteHoliday(
+          deleteId
+        );
+
+        setSelected(
+          (previous) =>
+            previous.filter(
+              (id) =>
+                id !== deleteId
+            )
+        );
+
+        closeDeleteModal();
+
+        /*
+          If last item of current
+          page is deleted, go back
+          one page.
+        */
+
+        const nextPage =
+          filteredData.length ===
+            1 &&
+          currentPage > 1
+            ? currentPage - 1
+            : currentPage;
+
+        setCurrentPage(
+          nextPage
+        );
+
+        await loadHolidays(
+          nextPage
+        );
+      } catch (err: any) {
+        console.error(
+          "DELETE HOLIDAY ERROR:",
+          err
+        );
+
+        setError(
+          err?.response?.data?.message ||
+            err?.message ||
+            "Failed to delete holiday."
+        );
+      } finally {
+        setLoading(false);
+      }
+    };
 
   return (
     <>
@@ -528,10 +968,6 @@ const Holidays: React.FC = () => {
           min-height: calc(100vh - 50px);
           color: #111c38;
         }
-
-        /* =================================
-           HEADER
-        ================================= */
 
         .holiday-page-header {
           display: flex;
@@ -578,9 +1014,12 @@ const Holidays: React.FC = () => {
           cursor: pointer;
         }
 
-        /* =================================
-           TABS
-        ================================= */
+        .holiday-add-btn:disabled,
+        .holiday-modal-save:disabled,
+        .holiday-delete-confirm:disabled {
+          opacity: .6;
+          cursor: not-allowed;
+        }
 
         .holiday-tabs {
           display: flex;
@@ -605,10 +1044,6 @@ const Holidays: React.FC = () => {
           color: #fff;
         }
 
-        /* =================================
-           CARD
-        ================================= */
-
         .holiday-card {
           width: 100%;
           overflow: hidden;
@@ -631,10 +1066,6 @@ const Holidays: React.FC = () => {
           font-size: 16px;
           font-weight: 600;
         }
-
-        /* =================================
-           CONTROLS
-        ================================= */
 
         .holiday-table-controls {
           min-height: 61px;
@@ -673,10 +1104,6 @@ const Holidays: React.FC = () => {
           outline: none;
           font-size: 12px;
         }
-
-        /* =================================
-           TABLE
-        ================================= */
 
         .holiday-table-wrapper {
           width: 100%;
@@ -738,14 +1165,14 @@ const Holidays: React.FC = () => {
           gap: 10px;
         }
 
+        .holiday-heading.sortable {
+          cursor: pointer;
+        }
+
         .holiday-sort {
           color: #cdd2da;
           font-size: 12px;
         }
-
-        /* =================================
-           STATUS
-        ================================= */
 
         .holiday-status {
           height: 21px;
@@ -780,25 +1207,15 @@ const Holidays: React.FC = () => {
         .holiday-status-dot {
           width: 4px !important;
           height: 4px !important;
-
           min-width: 4px !important;
           min-height: 4px !important;
-
           flex: 0 0 4px !important;
-
           display: block !important;
-
           padding: 0 !important;
           margin: 0 !important;
-
           border-radius: 50% !important;
-
           background: #fff !important;
         }
-
-        /* =================================
-           ACTION
-        ================================= */
 
         .holiday-actions {
           display: inline-flex;
@@ -809,40 +1226,30 @@ const Holidays: React.FC = () => {
         .holiday-action-btn {
           width: 20px;
           height: 25px;
-
           padding: 0;
-
           border: 0;
-
           background: transparent;
           color: #687587;
-
           display: inline-flex;
           align-items: center;
           justify-content: center;
-
           font-size: 15px;
-
           cursor: pointer;
         }
 
-        /* =================================
-           TABLE FOOTER
-        ================================= */
+        .holiday-action-btn:disabled {
+          opacity: .5;
+          cursor: not-allowed;
+        }
 
         .holiday-table-footer {
           height: 57px;
-
           padding: 0 16px;
-
           border-top: 1px solid #dfe3e8;
-
           display: flex;
           align-items: center;
           justify-content: space-between;
-
           color: #596679;
-
           font-size: 13px;
         }
 
@@ -859,68 +1266,63 @@ const Holidays: React.FC = () => {
           cursor: pointer;
         }
 
+        .holiday-page-arrow:disabled {
+          opacity: .4;
+          cursor: not-allowed;
+        }
+
         .holiday-current-page {
           width: 27px;
           height: 27px;
-
           border-radius: 50%;
-
           background: #c29238;
           color: #fff;
-
           display: inline-flex;
           align-items: center;
           justify-content: center;
-
           font-size: 12px;
         }
 
-        /* =================================
-           MODAL OVERLAY
-        ================================= */
+        .holiday-loading {
+          text-align: center;
+          height: 80px;
+          color: #687587;
+        }
+
+        .holiday-error {
+          margin: 12px 16px;
+          padding: 10px 12px;
+          border-radius: 5px;
+          background: #fff0f0;
+          border: 1px solid #ffd2d2;
+          color: #d00b14;
+          font-size: 13px;
+        }
 
         .holiday-modal-overlay {
           position: fixed;
-
           inset: 0;
-
           z-index: 99999;
-
           padding: 10px;
-
           display: flex;
           align-items: center;
           justify-content: center;
-
           background: rgba(0,0,0,.42);
         }
-
-        /* =================================
-           ADD / EDIT MODAL
-        ================================= */
 
         .holiday-form-modal {
           width: 500px;
           max-width: calc(100vw - 30px);
-
           overflow: hidden;
-
           border-radius: 5px;
-
           background: #fff;
-
-          box-shadow:
-            0 15px 45px rgba(0,0,0,.2);
+          box-shadow: 0 15px 45px rgba(0,0,0,.2);
         }
 
         .holiday-modal-header {
           height: 63px;
-
           padding: 0 16px;
-
-          border-bottom:
-            1px solid #e1e5ea;
-
+          border-bottom: 1px solid #e1e5ea;
           display: flex;
           align-items: center;
           justify-content: space-between;
@@ -928,9 +1330,7 @@ const Holidays: React.FC = () => {
 
         .holiday-modal-header h3 {
           margin: 0;
-
           color: #1e2b49;
-
           font-size: 20px;
           font-weight: 600;
         }
@@ -938,23 +1338,16 @@ const Holidays: React.FC = () => {
         .holiday-modal-close {
           width: 20px;
           height: 20px;
-
           padding: 0;
-
           border: 0;
           border-radius: 50%;
-
           background: #747d8a;
           color: #fff;
-
           display: flex;
           align-items: center;
           justify-content: center;
-
           line-height: 1;
-
           font-size: 14px;
-
           cursor: pointer;
         }
 
@@ -968,11 +1361,8 @@ const Holidays: React.FC = () => {
 
         .holiday-form-group label {
           display: block;
-
           margin-bottom: 8px;
-
           color: #263452;
-
           font-size: 13px;
           font-weight: 500;
         }
@@ -981,33 +1371,23 @@ const Holidays: React.FC = () => {
         .holiday-form-group select,
         .holiday-form-group textarea {
           width: 100%;
-
-          border:
-            1px solid #dce1e7;
-
+          border: 1px solid #dce1e7;
           border-radius: 5px;
-
           outline: none;
-
           background: #fff;
-
           color: #26344d;
-
           font-size: 13px;
         }
 
         .holiday-form-group input,
         .holiday-form-group select {
           height: 39px;
-
           padding: 0 10px;
         }
 
         .holiday-form-group textarea {
           height: 86px;
-
           padding: 10px;
-
           resize: none;
         }
 
@@ -1027,181 +1407,127 @@ const Holidays: React.FC = () => {
 
         .holiday-date-wrapper i {
           position: absolute;
-
           right: 12px;
           top: 50%;
-
-          transform:
-            translateY(-50%);
-
+          transform: translateY(-50%);
           pointer-events: none;
-
           color: #2f3b50;
-
           font-size: 16px;
         }
 
         .holiday-modal-footer {
           min-height: 64px;
-
           padding: 10px 12px;
-
-          border-top:
-            1px solid #e4e7eb;
-
+          border-top: 1px solid #e4e7eb;
           display: flex;
           align-items: center;
           justify-content: flex-end;
-
           gap: 8px;
         }
 
         .holiday-modal-cancel {
           height: 39px;
-
           padding: 0 15px;
-
           border: 0;
           border-radius: 5px;
-
           background: #f7f8f9;
           color: #172033;
-
           font-size: 13px;
-
           cursor: pointer;
         }
 
         .holiday-modal-save {
           height: 39px;
-
           padding: 0 15px;
-
           border: 0;
           border-radius: 5px;
-
           background: #c29238;
           color: #fff;
-
           font-size: 13px;
           font-weight: 600;
-
           cursor: pointer;
         }
 
-        /* =================================
-           DELETE MODAL
-        ================================= */
-
         .holiday-delete-modal {
           width: 400px;
-          max-width:
-            calc(100vw - 30px);
-
+          max-width: calc(100vw - 30px);
           padding: 16px 30px 17px;
-
           border-radius: 5px;
-
           background: #fff;
-
           text-align: center;
-
-          box-shadow:
-            0 15px 45px
-            rgba(0,0,0,.2);
+          box-shadow: 0 15px 45px rgba(0,0,0,.2);
         }
 
         .holiday-delete-icon {
           width: 58px;
           height: 58px;
-
           margin: 0 auto 14px;
-
           border-radius: 4px;
-
           background: #f6cccc;
-
           color: #f10f18;
-
           display: flex;
           align-items: center;
           justify-content: center;
-
           font-size: 30px;
         }
 
         .holiday-delete-icon i {
           color: #f10f18;
-
           font-size: 30px;
         }
 
         .holiday-delete-modal h3 {
           margin: 0 0 6px;
-
           color: #1d2b48;
-
           font-size: 19px;
           font-weight: 600;
         }
 
         .holiday-delete-modal p {
           max-width: 330px;
-
           margin: 0 auto 17px;
-
           color: #3e4654;
-
           font-size: 13px;
-
           line-height: 1.5;
         }
 
         .holiday-delete-actions {
           display: flex;
           justify-content: center;
-
           gap: 16px;
         }
 
         .holiday-delete-cancel {
           height: 39px;
-
           padding: 0 16px;
-
           border: 0;
           border-radius: 5px;
-
           background: #f6f7f8;
-
           color: #172033;
-
           font-size: 13px;
-
           cursor: pointer;
         }
 
         .holiday-delete-confirm {
           height: 39px;
-
           padding: 0 16px;
-
           border: 0;
           border-radius: 5px;
-
           background: #f10d16;
-
           color: #fff;
-
           font-size: 13px;
           font-weight: 600;
-
           cursor: pointer;
         }
 
         @media(max-width:768px) {
           .holiday-page {
             padding: 20px 15px;
+          }
+
+          .holiday-page-header {
+            flex-direction: column;
+            gap: 15px;
           }
 
           .holiday-table-controls {
@@ -1213,22 +1539,33 @@ const Holidays: React.FC = () => {
           .holiday-search {
             width: 100%;
           }
+
+          .holiday-table-footer {
+            gap: 15px;
+            flex-direction: column;
+            justify-content: center;
+            height: auto;
+            padding: 12px 16px;
+          }
         }
       `}
       </style>
 
       <div className="holiday-page">
-        {/* ===========================
+
+        {/* =================================================
             HEADER
-        =========================== */}
+        ================================================= */}
 
         <div className="holiday-page-header">
+
           <div>
             <h1 className="holiday-page-title">
               Holidays
             </h1>
 
             <div className="holiday-breadcrumb">
+
               <Link to="/admin/dashboard">
                 <i className="ti ti-home" />
               </Link>
@@ -1238,25 +1575,31 @@ const Holidays: React.FC = () => {
               <span>
                 Holidays
               </span>
+
             </div>
           </div>
 
           <button
             type="button"
             className="holiday-add-btn"
-            onClick={openAddModal}
+            onClick={
+              openAddModal
+            }
+            disabled={loading}
           >
             <i className="ti ti-circle-plus" />
 
             Add Holiday
           </button>
+
         </div>
 
-        {/* ===========================
+        {/* =================================================
             TABS
-        =========================== */}
+        ================================================= */}
 
         <div className="holiday-tabs">
+
           <button
             type="button"
             className={`holiday-tab ${
@@ -1265,8 +1608,12 @@ const Holidays: React.FC = () => {
                 : ""
             }`}
             onClick={() => {
-              setActiveTab("HR");
+              setActiveTab(
+                "HR"
+              );
+
               setCurrentPage(1);
+
               setSelected([]);
             }}
           >
@@ -1276,7 +1623,8 @@ const Holidays: React.FC = () => {
           <button
             type="button"
             className={`holiday-tab ${
-              activeTab === "COMPLIANCE"
+              activeTab ===
+              "COMPLIANCE"
                 ? "active"
                 : ""
             }`}
@@ -1286,28 +1634,35 @@ const Holidays: React.FC = () => {
               );
 
               setCurrentPage(1);
+
               setSelected([]);
             }}
           >
             Compliance Holiday
           </button>
+
         </div>
 
-        {/* ===========================
+        {/* =================================================
             CARD
-        =========================== */}
+        ================================================= */}
 
         <div className="holiday-card">
+
           <div className="holiday-card-header">
             <h5>
               Holidays List
             </h5>
           </div>
 
-          {/* CONTROLS */}
+          {/* =================================================
+              CONTROLS
+          ================================================= */}
 
           <div className="holiday-table-controls">
+
             <div className="holiday-entries">
+
               <span>
                 Row Per Page
               </span>
@@ -1325,6 +1680,7 @@ const Holidays: React.FC = () => {
                   setCurrentPage(1);
                 }}
               >
+
                 <option value={10}>
                   10
                 </option>
@@ -1344,11 +1700,13 @@ const Holidays: React.FC = () => {
                 <option value={50}>
                   50
                 </option>
+
               </select>
 
               <span>
                 Entries
               </span>
+
             </div>
 
             <input
@@ -1364,17 +1722,31 @@ const Holidays: React.FC = () => {
                 setCurrentPage(1);
               }}
             />
+
           </div>
 
-          {/* ===========================
+          {/* ERROR */}
+
+          {error && (
+            <div className="holiday-error">
+              {error}
+            </div>
+          )}
+
+          {/* =================================================
               TABLE
-          =========================== */}
+          ================================================= */}
 
           <div className="holiday-table-wrapper">
+
             <table className="holiday-table">
+
               <thead>
+
                 <tr>
+
                   <th className="holiday-checkbox-column">
+
                     <input
                       type="checkbox"
                       className="holiday-checkbox"
@@ -1385,166 +1757,277 @@ const Holidays: React.FC = () => {
                         handleSelectAll
                       }
                     />
+
                   </th>
 
+                  {/* TITLE */}
+
                   <th>
-                    <div className="holiday-heading">
+
+                    <div
+                      className="holiday-heading sortable"
+                      onClick={() =>
+                        handleSort(
+                          "Title"
+                        )
+                      }
+                    >
                       Title
+
                       <span className="holiday-sort">
                         ↑↓
                       </span>
                     </div>
+
                   </th>
 
+                  {/* DATE */}
+
                   <th>
-                    <div className="holiday-heading">
+
+                    <div
+                      className="holiday-heading sortable"
+                      onClick={() =>
+                        handleSort(
+                          "HolidayDate"
+                        )
+                      }
+                    >
                       Date
+
                       <span className="holiday-sort">
                         ↑↓
                       </span>
                     </div>
+
                   </th>
 
+                  {/* DESCRIPTION */}
+
                   <th>
-                    <div className="holiday-heading">
+
+                    <div
+                      className="holiday-heading sortable"
+                      onClick={() =>
+                        handleSort(
+                          "Description"
+                        )
+                      }
+                    >
                       Description
 
                       <span className="holiday-sort">
                         ↑↓
                       </span>
                     </div>
+
                   </th>
 
+                  {/* STATUS */}
+
                   <th>
-                    <div className="holiday-heading">
+
+                    <div
+                      className="holiday-heading sortable"
+                      onClick={() =>
+                        handleSort(
+                          "IsActive"
+                        )
+                      }
+                    >
                       Status
 
                       <span className="holiday-sort">
                         ↑↓
                       </span>
                     </div>
+
                   </th>
 
                   <th />
+
                 </tr>
+
               </thead>
 
               <tbody>
-                {visibleData.map(
-                  (holiday) => (
-                    <tr key={holiday.id}>
-                      <td className="holiday-checkbox-column">
-                        <input
-                          type="checkbox"
-                          className="holiday-checkbox"
-                          checked={selected.includes(
-                            holiday.id
-                          )}
-                          onChange={() =>
-                            toggleSelect(
+
+                {loading ? (
+
+                  <tr>
+                    <td
+                      colSpan={6}
+                      className="holiday-loading"
+                    >
+                      Loading holidays...
+                    </td>
+                  </tr>
+
+                ) : filteredData.length >
+                  0 ? (
+
+                  filteredData.map(
+                    (holiday) => (
+
+                      <tr
+                        key={
+                          holiday.id
+                        }
+                      >
+
+                        {/* CHECKBOX */}
+
+                        <td className="holiday-checkbox-column">
+
+                          <input
+                            type="checkbox"
+                            className="holiday-checkbox"
+                            checked={selected.includes(
                               holiday.id
-                            )
-                          }
-                        />
-                      </td>
-
-                      <td className="holiday-title-cell">
-                        {holiday.title}
-                      </td>
-
-                      <td>
-                        {holiday.date}
-                      </td>
-
-                      <td>
-                        {holiday.description}
-                      </td>
-
-                      <td>
-                        <span
-                          className={`holiday-status ${
-                            holiday.status ===
-                            "ACTIVE"
-                              ? "holiday-status-active"
-                              : "holiday-status-inactive"
-                          }`}
-                        >
-                          <span className="holiday-status-dot" />
-
-                          {holiday.status ===
-                          "ACTIVE"
-                            ? "Active"
-                            : "Inactive"}
-                        </span>
-                      </td>
-
-                      {/* =================
-                          ACTION
-                      ================= */}
-
-                      <td>
-                        <div className="holiday-actions">
-                          {/* EDIT */}
-
-                          <button
-                            type="button"
-                            className="holiday-action-btn"
-                            title="Edit"
-                            onClick={() =>
-                              openEditModal(
-                                holiday
-                              )
-                            }
-                          >
-                            <i className="ti ti-edit" />
-                          </button>
-
-                          {/* DELETE */}
-
-                          <button
-                            type="button"
-                            className="holiday-action-btn"
-                            title="Delete"
-                            onClick={() =>
-                              openDeleteModal(
+                            )}
+                            onChange={() =>
+                              toggleSelect(
                                 holiday.id
                               )
                             }
-                          >
-                            <i className="ti ti-trash" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  )
-                )}
+                          />
 
-                {visibleData.length ===
-                  0 && (
+                        </td>
+
+                        {/* TITLE */}
+
+                        <td className="holiday-title-cell">
+                          {
+                            holiday.title
+                          }
+                        </td>
+
+                        {/* DATE */}
+
+                        <td>
+                          {
+                            holiday.date
+                          }
+                        </td>
+
+                        {/* DESCRIPTION */}
+
+                        <td>
+                          {
+                            holiday.description
+                          }
+                        </td>
+
+                        {/* STATUS */}
+
+                        <td>
+
+                          <span
+                            className={`holiday-status ${
+                              holiday.status ===
+                              "ACTIVE"
+                                ? "holiday-status-active"
+                                : "holiday-status-inactive"
+                            }`}
+                          >
+
+                            <span className="holiday-status-dot" />
+
+                            {holiday.status ===
+                            "ACTIVE"
+                              ? "Active"
+                              : "Inactive"}
+
+                          </span>
+
+                        </td>
+
+                        {/* ACTION */}
+
+                        <td>
+
+                          <div className="holiday-actions">
+
+                            {/* EDIT */}
+
+                            <button
+                              type="button"
+                              className="holiday-action-btn"
+                              title="Edit"
+                              onClick={() =>
+                                openEditModal(
+                                  holiday
+                                )
+                              }
+                              disabled={
+                                loading
+                              }
+                            >
+                              <i className="ti ti-edit" />
+                            </button>
+
+                            {/* DELETE */}
+
+                            <button
+                              type="button"
+                              className="holiday-action-btn"
+                              title="Delete"
+                              onClick={() =>
+                                openDeleteModal(
+                                  holiday.id
+                                )
+                              }
+                              disabled={
+                                loading
+                              }
+                            >
+                              <i className="ti ti-trash" />
+                            </button>
+
+                          </div>
+
+                        </td>
+
+                      </tr>
+
+                    )
+                  )
+
+                ) : (
+
                   <tr>
+
                     <td
                       colSpan={6}
                       style={{
                         textAlign:
                           "center",
-                        height: "80px",
+                        height:
+                          "80px",
                       }}
                     >
                       No holidays found
                     </td>
+
                   </tr>
+
                 )}
+
               </tbody>
+
             </table>
+
           </div>
 
-          {/* ===========================
-              TABLE FOOTER
-          =========================== */}
+          {/* =================================================
+              FOOTER
+          ================================================= */}
 
           <div className="holiday-table-footer">
+
             <div>
               Showing{" "}
+
               {filteredData.length ===
               0
                 ? 0
@@ -1552,25 +2035,35 @@ const Holidays: React.FC = () => {
                     1) *
                     entries +
                   1}
+
               {" - "}
-              {Math.min(
-                safeCurrentPage *
-                  entries,
-                filteredData.length
-              )}{" "}
-              of{" "}
+
+              {filteredData.length ===
+              0
+                ? 0
+                : (safeCurrentPage -
+                    1) *
+                    entries +
+                  filteredData.length}
+
+              {" "}of{" "}
+
               {
-                filteredData.length
-              }{" "}
-              entries
+                totalEntries
+              }
+
+              {" "}entries
             </div>
 
             <div className="holiday-pagination">
+
               <button
                 type="button"
                 className="holiday-page-arrow"
                 disabled={
-                  safeCurrentPage === 1
+                  safeCurrentPage ===
+                    1 ||
+                  loading
                 }
                 onClick={() =>
                   setCurrentPage(
@@ -1586,7 +2079,9 @@ const Holidays: React.FC = () => {
               </button>
 
               <span className="holiday-current-page">
-                {safeCurrentPage}
+                {
+                  safeCurrentPage
+                }
               </span>
 
               <button
@@ -1594,7 +2089,8 @@ const Holidays: React.FC = () => {
                 className="holiday-page-arrow"
                 disabled={
                   safeCurrentPage ===
-                  totalPages
+                    totalPages ||
+                  loading
                 }
                 onClick={() =>
                   setCurrentPage(
@@ -1608,20 +2104,27 @@ const Holidays: React.FC = () => {
               >
                 <i className="ti ti-chevron-right" />
               </button>
+
             </div>
+
           </div>
+
         </div>
+
       </div>
 
       {/* =================================================
           ADD HOLIDAY MODAL
-          SCREENSHOT 1
       ================================================= */}
 
       {addOpen && (
+
         <div className="holiday-modal-overlay">
+
           <div className="holiday-form-modal">
+
             <div className="holiday-modal-header">
+
               <h3>
                 Add Holiday
               </h3>
@@ -1635,6 +2138,7 @@ const Holidays: React.FC = () => {
               >
                 ×
               </button>
+
             </div>
 
             <form
@@ -1642,10 +2146,13 @@ const Holidays: React.FC = () => {
                 handleAdd
               }
             >
+
               <div className="holiday-modal-body">
+
                 {/* TITLE */}
 
                 <div className="holiday-form-group">
+
                   <label>
                     Title
                   </label>
@@ -1657,9 +2164,10 @@ const Holidays: React.FC = () => {
                     }
                     onChange={(e) =>
                       setForm(
-                        (previous) => ({
+                        (
+                          previous
+                        ) => ({
                           ...previous,
-
                           title:
                             e.target
                               .value,
@@ -1667,16 +2175,19 @@ const Holidays: React.FC = () => {
                       )
                     }
                   />
+
                 </div>
 
                 {/* DATE */}
 
                 <div className="holiday-form-group">
+
                   <label>
                     Date
                   </label>
 
                   <div className="holiday-date-wrapper">
+
                     <input
                       type="date"
                       value={
@@ -1688,10 +2199,8 @@ const Holidays: React.FC = () => {
                             previous
                           ) => ({
                             ...previous,
-
                             date:
-                              e
-                                .target
+                              e.target
                                 .value,
                           })
                         )
@@ -1699,12 +2208,15 @@ const Holidays: React.FC = () => {
                     />
 
                     <i className="ti ti-calendar-event" />
+
                   </div>
+
                 </div>
 
                 {/* HOLIDAY TYPE */}
 
                 <div className="holiday-form-group">
+
                   <label>
                     Holiday Type
                   </label>
@@ -1715,9 +2227,10 @@ const Holidays: React.FC = () => {
                     }
                     onChange={(e) =>
                       setForm(
-                        (previous) => ({
+                        (
+                          previous
+                        ) => ({
                           ...previous,
-
                           type:
                             e.target
                               .value as HolidayType,
@@ -1725,6 +2238,7 @@ const Holidays: React.FC = () => {
                       )
                     }
                   >
+
                     <option value="HR">
                       HR Holiday
                     </option>
@@ -1732,12 +2246,15 @@ const Holidays: React.FC = () => {
                     <option value="COMPLIANCE">
                       Compliance Holiday
                     </option>
+
                   </select>
+
                 </div>
 
                 {/* DESCRIPTION */}
 
                 <div className="holiday-form-group">
+
                   <label>
                     Description
                   </label>
@@ -1748,9 +2265,10 @@ const Holidays: React.FC = () => {
                     }
                     onChange={(e) =>
                       setForm(
-                        (previous) => ({
+                        (
+                          previous
+                        ) => ({
                           ...previous,
-
                           description:
                             e.target
                               .value,
@@ -1758,11 +2276,13 @@ const Holidays: React.FC = () => {
                       )
                     }
                   />
+
                 </div>
 
                 {/* STATUS */}
 
                 <div className="holiday-form-group">
+
                   <label>
                     Status
                   </label>
@@ -1773,9 +2293,10 @@ const Holidays: React.FC = () => {
                     }
                     onChange={(e) =>
                       setForm(
-                        (previous) => ({
+                        (
+                          previous
+                        ) => ({
                           ...previous,
-
                           status:
                             e.target
                               .value as HolidayStatus,
@@ -1783,6 +2304,7 @@ const Holidays: React.FC = () => {
                       )
                     }
                   >
+
                     <option value="ACTIVE">
                       Active
                     </option>
@@ -1790,16 +2312,23 @@ const Holidays: React.FC = () => {
                     <option value="INACTIVE">
                       Inactive
                     </option>
+
                   </select>
+
                 </div>
+
               </div>
 
               <div className="holiday-modal-footer">
+
                 <button
                   type="button"
                   className="holiday-modal-cancel"
                   onClick={
                     closeAddModal
+                  }
+                  disabled={
+                    loading
                   }
                 >
                   Cancel
@@ -1808,25 +2337,38 @@ const Holidays: React.FC = () => {
                 <button
                   type="submit"
                   className="holiday-modal-save"
+                  disabled={
+                    loading
+                  }
                 >
-                  Add Holiday
+                  {loading
+                    ? "Adding..."
+                    : "Add Holiday"}
                 </button>
+
               </div>
+
             </form>
+
           </div>
+
         </div>
+
       )}
 
       {/* =================================================
           EDIT HOLIDAY MODAL
-          SCREENSHOT 2
       ================================================= */}
 
       {editOpen &&
         editingId !== null && (
+
           <div className="holiday-modal-overlay">
+
             <div className="holiday-form-modal">
+
               <div className="holiday-modal-header">
+
                 <h3>
                   Edit Holiday
                 </h3>
@@ -1840,6 +2382,7 @@ const Holidays: React.FC = () => {
                 >
                   ×
                 </button>
+
               </div>
 
               <form
@@ -1847,10 +2390,13 @@ const Holidays: React.FC = () => {
                   handleEdit
                 }
               >
+
                 <div className="holiday-modal-body">
+
                   {/* TITLE */}
 
                   <div className="holiday-form-group">
+
                     <label>
                       Title
                     </label>
@@ -1866,25 +2412,26 @@ const Holidays: React.FC = () => {
                             previous
                           ) => ({
                             ...previous,
-
                             title:
-                              e
-                                .target
+                              e.target
                                 .value,
                           })
                         )
                       }
                     />
+
                   </div>
 
                   {/* DATE */}
 
                   <div className="holiday-form-group">
+
                     <label>
                       Date
                     </label>
 
                     <div className="holiday-date-wrapper">
+
                       <input
                         type="date"
                         value={
@@ -1896,10 +2443,8 @@ const Holidays: React.FC = () => {
                               previous
                             ) => ({
                               ...previous,
-
                               date:
-                                e
-                                  .target
+                                e.target
                                   .value,
                             })
                           )
@@ -1907,12 +2452,15 @@ const Holidays: React.FC = () => {
                       />
 
                       <i className="ti ti-calendar-event" />
+
                     </div>
+
                   </div>
 
-                  {/* TYPE */}
+                  {/* HOLIDAY TYPE */}
 
                   <div className="holiday-form-group">
+
                     <label>
                       Holiday Type
                     </label>
@@ -1927,15 +2475,14 @@ const Holidays: React.FC = () => {
                             previous
                           ) => ({
                             ...previous,
-
                             type:
-                              e
-                                .target
+                              e.target
                                 .value as HolidayType,
                           })
                         )
                       }
                     >
+
                       <option value="HR">
                         HR Holiday
                       </option>
@@ -1943,12 +2490,15 @@ const Holidays: React.FC = () => {
                       <option value="COMPLIANCE">
                         Compliance Holiday
                       </option>
+
                     </select>
+
                   </div>
 
                   {/* DESCRIPTION */}
 
                   <div className="holiday-form-group">
+
                     <label>
                       Description
                     </label>
@@ -1963,20 +2513,20 @@ const Holidays: React.FC = () => {
                             previous
                           ) => ({
                             ...previous,
-
                             description:
-                              e
-                                .target
+                              e.target
                                 .value,
                           })
                         )
                       }
                     />
+
                   </div>
 
                   {/* STATUS */}
 
                   <div className="holiday-form-group">
+
                     <label>
                       Status
                     </label>
@@ -1991,15 +2541,14 @@ const Holidays: React.FC = () => {
                             previous
                           ) => ({
                             ...previous,
-
                             status:
-                              e
-                                .target
+                              e.target
                                 .value as HolidayStatus,
                           })
                         )
                       }
                     >
+
                       <option value="ACTIVE">
                         Active
                       </option>
@@ -2007,16 +2556,23 @@ const Holidays: React.FC = () => {
                       <option value="INACTIVE">
                         Inactive
                       </option>
+
                     </select>
+
                   </div>
+
                 </div>
 
                 <div className="holiday-modal-footer">
+
                   <button
                     type="button"
                     className="holiday-modal-cancel"
                     onClick={
                       closeEditModal
+                    }
+                    disabled={
+                      loading
                     }
                   >
                     Cancel
@@ -2025,25 +2581,39 @@ const Holidays: React.FC = () => {
                   <button
                     type="submit"
                     className="holiday-modal-save"
+                    disabled={
+                      loading
+                    }
                   >
-                    Save Changes
+                    {loading
+                      ? "Saving..."
+                      : "Save Changes"}
                   </button>
+
                 </div>
+
               </form>
+
             </div>
+
           </div>
+
         )}
 
       {/* =================================================
           DELETE MODAL
-          SCREENSHOT 3
       ================================================= */}
 
       {deleteOpen && (
+
         <div className="holiday-modal-overlay">
+
           <div className="holiday-delete-modal">
+
             <div className="holiday-delete-icon">
+
               <i className="ti ti-trash-x" />
+
             </div>
 
             <h3>
@@ -2056,12 +2626,30 @@ const Holidays: React.FC = () => {
               undone once you delete.
             </p>
 
+            {error && (
+              <div
+                className="holiday-error"
+                style={{
+                  margin:
+                    "0 0 15px",
+                  textAlign:
+                    "left",
+                }}
+              >
+                {error}
+              </div>
+            )}
+
             <div className="holiday-delete-actions">
+
               <button
                 type="button"
                 className="holiday-delete-cancel"
                 onClick={
                   closeDeleteModal
+                }
+                disabled={
+                  loading
                 }
               >
                 Cancel
@@ -2073,13 +2661,23 @@ const Holidays: React.FC = () => {
                 onClick={
                   handleDelete
                 }
+                disabled={
+                  loading
+                }
               >
-                Yes, Delete
+                {loading
+                  ? "Deleting..."
+                  : "Yes, Delete"}
               </button>
+
             </div>
+
           </div>
+
         </div>
+
       )}
+
     </>
   );
 };

@@ -1,3 +1,4 @@
+
 import React, {
   useEffect,
   useMemo,
@@ -45,10 +46,86 @@ interface RoleForm {
 }
 
 /* =====================================================
+   PERMISSION TYPES
+===================================================== */
+
+type PermissionKey =
+  | "read"
+  | "write"
+  | "create"
+  | "delete"
+  | "import"
+  | "export";
+
+interface ModulePermission {
+  read: boolean;
+  write: boolean;
+  create: boolean;
+  delete: boolean;
+  import: boolean;
+  export: boolean;
+}
+
+type PermissionsState = Record<
+  string,
+  ModulePermission
+>;
+
+/* =====================================================
    CONSTANTS
 ===================================================== */
 
 const GOLD = "#c39237";
+
+const PERMISSION_MODULES = [
+  "Employee",
+  "Holidays",
+  "Leaves",
+  "Events",
+];
+
+/* =====================================================
+   DEFAULT PERMISSIONS
+===================================================== */
+
+const createDefaultPermissions =
+  (): PermissionsState => ({
+    Employee: {
+      read: false,
+      write: false,
+      create: false,
+      delete: false,
+      import: false,
+      export: false,
+    },
+
+    Holidays: {
+      read: false,
+      write: false,
+      create: false,
+      delete: false,
+      import: false,
+      export: false,
+    },
+
+    Leaves: {
+      read: false,
+      write: false,
+      create: false,
+      delete: false,
+      import: false,
+      export: false,
+    },
+
+    Events: {
+      read: false,
+      write: false,
+      create: false,
+      delete: false,
+      import: false,
+      export: false,
+    },
+  });
 
 /* =====================================================
    RESPONSE HELPERS
@@ -60,32 +137,6 @@ const extractRoles = (
   if (!response) {
     return [];
   }
-
-  /*
-    Possible API responses:
-
-    {
-      data: [...]
-    }
-
-    {
-      data: {
-        items: [...]
-      }
-    }
-
-    {
-      data: {
-        records: [...]
-      }
-    }
-
-    {
-      data: {
-        roles: [...]
-      }
-    }
-  */
 
   const candidates = [
     response?.data,
@@ -266,6 +317,28 @@ const Roles: React.FC = () => {
     status: "",
   });
 
+  /* ===================================================
+     ADD ROLE PERMISSIONS
+  =================================================== */
+
+  const [
+    addPermissions,
+    setAddPermissions,
+  ] = useState<PermissionsState>(
+    createDefaultPermissions
+  );
+
+  /* ===================================================
+     EDIT ROLE PERMISSIONS
+  =================================================== */
+
+  const [
+    editPermissions,
+    setEditPermissions,
+  ] = useState<PermissionsState>(
+    createDefaultPermissions
+  );
+
   const [
     loading,
     setLoading,
@@ -337,10 +410,6 @@ const Roles: React.FC = () => {
         normalizedRoles
       );
 
-      /*
-        Remove selected IDs which
-        no longer exist.
-      */
       setSelectedIds(
         (previous) =>
           previous.filter(
@@ -550,6 +619,54 @@ const Roles: React.FC = () => {
   };
 
   /* ===================================================
+     ADD PERMISSION CHECKBOX
+  =================================================== */
+
+  const handleAddPermissionChange = (
+    moduleName: string,
+    permission: PermissionKey
+  ) => {
+    setAddPermissions(
+      (previous) => ({
+        ...previous,
+
+        [moduleName]: {
+          ...previous[moduleName],
+
+          [permission]:
+            !previous[moduleName][
+              permission
+            ],
+        },
+      })
+    );
+  };
+
+  /* ===================================================
+     EDIT PERMISSION CHECKBOX
+  =================================================== */
+
+  const handleEditPermissionChange = (
+    moduleName: string,
+    permission: PermissionKey
+  ) => {
+    setEditPermissions(
+      (previous) => ({
+        ...previous,
+
+        [moduleName]: {
+          ...previous[moduleName],
+
+          [permission]:
+            !previous[moduleName][
+              permission
+            ],
+        },
+      })
+    );
+  };
+
+  /* ===================================================
      ADD MODAL
   =================================================== */
 
@@ -558,6 +675,10 @@ const Roles: React.FC = () => {
       name: "",
       status: "",
     });
+
+    setAddPermissions(
+      createDefaultPermissions()
+    );
 
     setError("");
     setSuccess("");
@@ -576,6 +697,10 @@ const Roles: React.FC = () => {
       name: "",
       status: "",
     });
+
+    setAddPermissions(
+      createDefaultPermissions()
+    );
   };
 
   /* ===================================================
@@ -612,6 +737,20 @@ const Roles: React.FC = () => {
           payload
         );
 
+        console.log(
+          "ADD ROLE PERMISSIONS =>",
+          addPermissions
+        );
+
+        /*
+          Current role API accepts
+          roleName + isActive.
+
+          Permissions are maintained
+          separately until backend
+          permission API is available.
+        */
+
         const response =
           await addRole(
             payload
@@ -630,6 +769,10 @@ const Roles: React.FC = () => {
           name: "",
           status: "",
         });
+
+        setAddPermissions(
+          createDefaultPermissions()
+        );
 
         setSuccess(
           "Role added successfully."
@@ -669,6 +812,16 @@ const Roles: React.FC = () => {
       status: role.status,
     });
 
+    /*
+      Reset permissions for edit modal.
+
+      If backend later returns saved permissions,
+      they can be mapped here.
+    */
+    setEditPermissions(
+      createDefaultPermissions()
+    );
+
     setError("");
     setSuccess("");
 
@@ -687,6 +840,10 @@ const Roles: React.FC = () => {
       name: "",
       status: "",
     });
+
+    setEditPermissions(
+      createDefaultPermissions()
+    );
   };
 
   /* ===================================================
@@ -731,6 +888,11 @@ const Roles: React.FC = () => {
           payload
         );
 
+        console.log(
+          "UPDATE ROLE PERMISSIONS =>",
+          editPermissions
+        );
+
         const response =
           await updateRole(
             payload
@@ -746,6 +908,15 @@ const Roles: React.FC = () => {
         );
 
         setSelectedRole(null);
+
+        setEditForm({
+          name: "",
+          status: "",
+        });
+
+        setEditPermissions(
+          createDefaultPermissions()
+        );
 
         setSuccess(
           "Role updated successfully."
@@ -864,6 +1035,190 @@ const Roles: React.FC = () => {
         setDeleting(false);
       }
     };
+
+  /* =====================================================
+     PERMISSION TABLE
+  ===================================================== */
+
+  const renderPermissionTable = (
+    permissions: PermissionsState,
+    onChange: (
+      moduleName: string,
+      permission: PermissionKey
+    ) => void
+  ) => {
+    return (
+      <div className="roles-permissions-wrapper">
+        <div className="roles-permissions-table-wrapper">
+
+          <table className="roles-permissions-table">
+
+            <thead>
+              <tr>
+                <th>
+                  Module Permissions
+                </th>
+
+                <th>
+                  Read
+                </th>
+
+                <th>
+                  Write
+                </th>
+
+                <th>
+                  Create
+                </th>
+
+                <th>
+                  Delete
+                </th>
+
+                <th>
+                  Import
+                </th>
+
+                <th>
+                  Export
+                </th>
+              </tr>
+            </thead>
+
+            <tbody>
+              {PERMISSION_MODULES.map(
+                (moduleName) => (
+                  <tr
+                    key={
+                      moduleName
+                    }
+                  >
+
+                    <td>
+                      {
+                        moduleName
+                      }
+                    </td>
+
+                    <td>
+                      <input
+                        type="checkbox"
+                        className="roles-permission-checkbox"
+                        checked={
+                          permissions[
+                            moduleName
+                          ].read
+                        }
+                        onChange={() =>
+                          onChange(
+                            moduleName,
+                            "read"
+                          )
+                        }
+                      />
+                    </td>
+
+                    <td>
+                      <input
+                        type="checkbox"
+                        className="roles-permission-checkbox"
+                        checked={
+                          permissions[
+                            moduleName
+                          ].write
+                        }
+                        onChange={() =>
+                          onChange(
+                            moduleName,
+                            "write"
+                          )
+                        }
+                      />
+                    </td>
+
+                    <td>
+                      <input
+                        type="checkbox"
+                        className="roles-permission-checkbox"
+                        checked={
+                          permissions[
+                            moduleName
+                          ].create
+                        }
+                        onChange={() =>
+                          onChange(
+                            moduleName,
+                            "create"
+                          )
+                        }
+                      />
+                    </td>
+
+                    <td>
+                      <input
+                        type="checkbox"
+                        className="roles-permission-checkbox"
+                        checked={
+                          permissions[
+                            moduleName
+                          ].delete
+                        }
+                        onChange={() =>
+                          onChange(
+                            moduleName,
+                            "delete"
+                          )
+                        }
+                      />
+                    </td>
+
+                    <td>
+                      <input
+                        type="checkbox"
+                        className="roles-permission-checkbox"
+                        checked={
+                          permissions[
+                            moduleName
+                          ].import
+                        }
+                        onChange={() =>
+                          onChange(
+                            moduleName,
+                            "import"
+                          )
+                        }
+                      />
+                    </td>
+
+                    <td>
+                      <input
+                        type="checkbox"
+                        className="roles-permission-checkbox"
+                        checked={
+                          permissions[
+                            moduleName
+                          ].export
+                        }
+                        onChange={() =>
+                          onChange(
+                            moduleName,
+                            "export"
+                          )
+                        }
+                      />
+                    </td>
+
+                  </tr>
+                )
+              )}
+            </tbody>
+
+          </table>
+
+        </div>
+      </div>
+    );
+  };
 
   /* ===================================================
      JSX
@@ -1234,9 +1589,7 @@ const Roles: React.FC = () => {
 
         .roles-loading {
           height: 120px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
+          text-align: center;
           color: #637083;
           font-size: 13px;
         }
@@ -1271,6 +1624,10 @@ const Roles: React.FC = () => {
           color: #b42318;
         }
 
+        /* =================================================
+           MODAL
+        ================================================= */
+
         .roles-modal-overlay {
           position: fixed;
           inset: 0;
@@ -1283,9 +1640,10 @@ const Roles: React.FC = () => {
         }
 
         .roles-form-modal {
-          width: 500px;
+          width: 700px;
           max-width: calc(100vw - 30px);
-          overflow: hidden;
+          max-height: calc(100vh - 30px);
+          overflow-y: auto;
           border-radius: 5px;
           background: #fff;
           box-shadow: 0 15px 45px rgba(0,0,0,.2);
@@ -1323,7 +1681,7 @@ const Roles: React.FC = () => {
         }
 
         .roles-modal-body {
-          padding: 18px 16px;
+          padding: 18px 16px 8px;
         }
 
         .roles-form-group {
@@ -1349,11 +1707,99 @@ const Roles: React.FC = () => {
           background: #fff;
           color: #26344d;
           font-size: 14px;
+          box-sizing: border-box;
         }
 
         .roles-form-group input:focus,
         .roles-form-group select:focus {
           border-color: ${GOLD};
+        }
+
+        /* =================================================
+           PERMISSIONS
+        ================================================= */
+
+        .roles-permissions-wrapper {
+          margin-top: 8px;
+          margin-bottom: 8px;
+          border: 1px solid #d9dee7;
+          border-radius: 5px;
+          overflow: hidden;
+        }
+
+        .roles-permissions-table-wrapper {
+          width: 100%;
+          overflow-x: auto;
+        }
+
+        .roles-permissions-table {
+          width: 100%;
+          min-width: 650px;
+          border-collapse: collapse;
+          table-layout: fixed;
+        }
+
+        .roles-permissions-table thead {
+          background: #e1e4e9;
+        }
+
+        .roles-permissions-table th {
+          height: 38px;
+          padding: 0 7px;
+          color: #06142e;
+          font-size: 11px;
+          font-weight: 600;
+          text-align: center;
+          white-space: nowrap;
+          border-bottom: 1px solid #d9dee7;
+        }
+
+        .roles-permissions-table th:first-child {
+          width: 175px;
+          text-align: left;
+          padding-left: 12px;
+        }
+
+        .roles-permissions-table td {
+          height: 39px;
+          padding: 0 7px;
+          color: #26344d;
+          font-size: 11px;
+          text-align: center;
+          border-bottom: 1px solid #dfe3e8;
+          background: #fff;
+        }
+
+        .roles-permissions-table tbody tr:last-child td {
+          border-bottom: none;
+        }
+
+        .roles-permissions-table td:first-child {
+          text-align: left;
+          padding-left: 12px;
+          color: #172b4d;
+          font-size: 12px;
+          font-weight: 400;
+        }
+
+        /*
+          SMALL PERMISSION CHECKBOXES
+        */
+
+        .roles-permission-checkbox {
+          width: 12px !important;
+          height: 12px !important;
+          min-width: 12px !important;
+          min-height: 12px !important;
+          max-width: 12px !important;
+          max-height: 12px !important;
+          margin: 0 !important;
+          padding: 0 !important;
+          accent-color: ${GOLD};
+          cursor: pointer;
+          vertical-align: middle;
+          appearance: auto;
+          box-sizing: border-box;
         }
 
         .roles-modal-footer {
@@ -1362,6 +1808,7 @@ const Roles: React.FC = () => {
           display: flex;
           justify-content: flex-end;
           gap: 8px;
+          background: #fff;
         }
 
         .roles-modal-cancel,
@@ -1377,6 +1824,7 @@ const Roles: React.FC = () => {
         .roles-modal-cancel {
           background: #f8f9fa;
           color: #172b4d;
+          border: 1px solid #d9dee7;
         }
 
         .roles-modal-save {
@@ -1390,6 +1838,10 @@ const Roles: React.FC = () => {
           opacity: .6;
           cursor: not-allowed;
         }
+
+        /* =================================================
+           DELETE MODAL
+        ================================================= */
 
         .roles-delete-modal {
           width: 400px;
@@ -1478,6 +1930,35 @@ const Roles: React.FC = () => {
             min-width: 130px;
           }
         }
+
+        @media (max-width: 600px) {
+          .roles-page {
+            padding: 15px;
+          }
+
+          .roles-page-header {
+            gap: 15px;
+            flex-direction: column;
+          }
+
+          .roles-add-btn {
+            align-self: flex-end;
+          }
+
+          .roles-toolbar {
+            align-items: flex-start;
+            gap: 10px;
+            flex-direction: column;
+          }
+
+          .roles-search {
+            width: 100%;
+          }
+
+          .roles-form-modal {
+            width: 100%;
+          }
+        }
         `}
       </style>
 
@@ -1490,6 +1971,7 @@ const Roles: React.FC = () => {
         <div className="roles-page-header">
 
           <div>
+
             <h1 className="roles-page-title">
               Roles
             </h1>
@@ -1517,6 +1999,7 @@ const Roles: React.FC = () => {
               </span>
 
             </div>
+
           </div>
 
           <button
@@ -1527,7 +2010,6 @@ const Roles: React.FC = () => {
             }
           >
             <CirclePlus size={15} />
-
             Add Roles
           </button>
 
@@ -1649,6 +2131,7 @@ const Roles: React.FC = () => {
               </select>
 
             </div>
+
           </div>
 
           {/* TOOLBAR */}
@@ -1745,7 +2228,6 @@ const Roles: React.FC = () => {
 
                   <th className="roles-role-column">
                     Role
-
                     <span className="roles-sort-icon">
                       ↑↓
                     </span>
@@ -1753,7 +2235,6 @@ const Roles: React.FC = () => {
 
                   <th className="roles-created-column">
                     Created Date
-
                     <span className="roles-sort-icon">
                       ↑↓
                     </span>
@@ -1761,7 +2242,6 @@ const Roles: React.FC = () => {
 
                   <th className="roles-status-column">
                     Status
-
                     <span className="roles-sort-icon">
                       ↑↓
                     </span>
@@ -1856,16 +2336,27 @@ const Roles: React.FC = () => {
 
                           <div className="roles-actions">
 
+                            {/* PERMISSIONS */}
                             <button
                               type="button"
                               className="roles-action-btn"
                               title="Permissions"
+                              onClick={() =>
+                                openEditModal(
+                                  role
+                                )
+                              }
+                              disabled={
+                                saving ||
+                                deleting
+                              }
                             >
                               <Shield
                                 size={15}
                               />
                             </button>
 
+                            {/* EDIT */}
                             <button
                               type="button"
                               className="roles-action-btn"
@@ -1885,6 +2376,7 @@ const Roles: React.FC = () => {
                               />
                             </button>
 
+                            {/* DELETE */}
                             <button
                               type="button"
                               className="roles-action-btn"
@@ -2044,6 +2536,8 @@ const Roles: React.FC = () => {
 
             <div className="roles-modal-body">
 
+              {/* ROLE NAME */}
+
               <div className="roles-form-group">
 
                 <label>
@@ -2069,6 +2563,8 @@ const Roles: React.FC = () => {
                 />
 
               </div>
+
+              {/* STATUS */}
 
               <div className="roles-form-group">
 
@@ -2108,7 +2604,24 @@ const Roles: React.FC = () => {
 
               </div>
 
+              {/* MODULE PERMISSIONS */}
+
+              <div className="roles-form-group">
+
+                <label>
+                  Module Permissions
+                </label>
+
+                {renderPermissionTable(
+                  addPermissions,
+                  handleAddPermissionChange
+                )}
+
+              </div>
+
             </div>
+
+            {/* MODAL FOOTER */}
 
             <div className="roles-modal-footer">
 
@@ -2149,6 +2662,7 @@ const Roles: React.FC = () => {
 
       {/* =================================================
           EDIT ROLE MODAL
+          SAME STRUCTURE AS ADD ROLE
       ================================================= */}
 
       {showEditModal &&
@@ -2180,6 +2694,8 @@ const Roles: React.FC = () => {
 
               <div className="roles-modal-body">
 
+                {/* ROLE NAME */}
+
                 <div className="roles-form-group">
 
                   <label>
@@ -2207,6 +2723,8 @@ const Roles: React.FC = () => {
                   />
 
                 </div>
+
+                {/* STATUS */}
 
                 <div className="roles-form-group">
 
@@ -2248,7 +2766,24 @@ const Roles: React.FC = () => {
 
                 </div>
 
+                {/* MODULE PERMISSIONS */}
+
+                <div className="roles-form-group">
+
+                  <label>
+                    Module Permissions
+                  </label>
+
+                  {renderPermissionTable(
+                    editPermissions,
+                    handleEditPermissionChange
+                  )}
+
+                </div>
+
               </div>
+
+              {/* MODAL FOOTER */}
 
               <div className="roles-modal-footer">
 

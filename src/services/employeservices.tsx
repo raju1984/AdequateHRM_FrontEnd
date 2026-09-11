@@ -96,7 +96,7 @@ export type HolidayPageParams = {
 };
 
 // =====================================================
-// GET HOLIDAYS - PAGINATED
+// GET HOLIDAYS
 // =====================================================
 
 export const getHolidays = async (
@@ -113,10 +113,7 @@ export const getHolidays = async (
     `${BASE_URL}/EmployeeHoliday/page-data`,
     {
       params,
-      headers: {
-        Authorization: `Bearer ${token}`,
-        Accept: "*/*",
-      },
+      headers: getAuthHeaders(token),
     }
   );
 
@@ -144,10 +141,7 @@ export const getHolidayById = async (
   const response = await axios.get(
     `${BASE_URL}/EmployeeHoliday/${holidayId}`,
     {
-      headers: {
-        Authorization: `Bearer ${token}`,
-        Accept: "*/*",
-      },
+      headers: getAuthHeaders(token),
     }
   );
 
@@ -248,30 +242,29 @@ export const getDesignations = async () => {
 export type AttendancePageParams = {
   FromDate?: string;
   ToDate?: string;
-
-  /*
-   * Backend attendance status enum.
-   *
-   * Example:
-   * 1 = Present
-   * 2 = Absent
-   *
-   * If your backend uses different enum values,
-   * change them in AttendancePage.tsx.
-   */
   Status?: number;
-
   SortBy?: string;
-
   PageNumber?: number;
   PageSize?: number;
 };
 
 // =====================================================
-// GET EMPLOYEE ATTENDANCE - PAGINATED
+// GET EMPLOYEE ATTENDANCE
 //
-// GET:
-// /api/EmployeeAttendance/page-data
+// API RESPONSE:
+//
+// {
+//   statusCode: 200,
+//   message: "",
+//   data: {
+//     employee: {...},
+//     todayAttendance: {...},
+//     attendanceSummary: {...},
+//     attendanceList: [...],
+//     pagination: {...}
+//   },
+//   isSuccess: true
+// }
 // =====================================================
 
 export const getEmployeeAttendance = async (
@@ -287,14 +280,16 @@ export const getEmployeeAttendance = async (
     }
   );
 
+  console.log(
+    "ATTENDANCE API RESPONSE:",
+    response.data
+  );
+
   return response.data;
 };
 
 // =====================================================
 // GET EMPLOYEE ATTENDANCE BY ID
-//
-// GET:
-// /api/EmployeeAttendance/{attendanceId}
 // =====================================================
 
 export const getEmployeeAttendanceById = async (
@@ -319,10 +314,7 @@ export const getEmployeeAttendanceById = async (
 };
 
 // =====================================================
-// ATTENDANCE - LOGOUT / PUNCH OUT
-//
-// POST:
-// /api/Attendance/logout
+// ATTENDANCE LOGOUT / PUNCH OUT
 // =====================================================
 
 export const logoutAttendance = async () => {
@@ -336,6 +328,259 @@ export const logoutAttendance = async () => {
         ...getAuthHeaders(token),
         Accept: "*/*",
       },
+    }
+  );
+
+  return response.data;
+};
+
+// =====================================================
+// LEAVE MODULE
+// =====================================================
+
+// =====================================================
+// LEAVE TYPES
+// =====================================================
+
+export const getLeaveTypes = async (
+  token: string
+) => {
+  if (!token) {
+    throw new Error(
+      "Authentication token is missing. Please login again."
+    );
+  }
+
+  const response = await axios.get(
+    `${BASE_URL}/EmployeeLeave/leave-types`,
+    {
+      headers: getAuthHeaders(token),
+    }
+  );
+
+  return response.data;
+};
+
+// =====================================================
+// MY LEAVES
+// =====================================================
+
+export type MyLeavesParams = {
+  FromDate?: string;
+  ToDate?: string;
+  LeaveTypeId?: string;
+  ApprovedById?: string;
+  Status?: number;
+  SortBy?: string;
+  PageNumber?: number;
+  PageSize?: number;
+};
+
+export const getMyLeaves = async (
+  token: string,
+  params: MyLeavesParams = {}
+) => {
+  if (!token) {
+    throw new Error(
+      "Authentication token is missing. Please login again."
+    );
+  }
+
+  const response = await axios.get(
+    `${BASE_URL}/EmployeeLeave/my-leaves`,
+    {
+      params,
+      headers: getAuthHeaders(token),
+    }
+  );
+
+  return response.data;
+};
+
+// =====================================================
+// GET LEAVE BY ID
+// =====================================================
+
+export const getLeaveById = async (
+  leaveId: string,
+  token: string
+) => {
+  if (!token) {
+    throw new Error(
+      "Authentication token is missing. Please login again."
+    );
+  }
+
+  if (!leaveId) {
+    throw new Error("Leave ID is missing.");
+  }
+
+  const response = await axios.get(
+    `${BASE_URL}/EmployeeLeave/${leaveId}`,
+    {
+      headers: getAuthHeaders(token),
+    }
+  );
+
+  return response.data;
+};
+
+// =====================================================
+// LEAVE PAYLOAD
+// =====================================================
+
+export interface LeavePayload {
+  UserId?: string;
+  LeaveTypeMasterId: string;
+  FromDate: string;
+  ToDate: string;
+  AvailType: number;
+  Reason: string;
+  Attachment?: File | null;
+}
+
+// =====================================================
+// BUILD LEAVE FORM DATA
+// =====================================================
+
+const buildLeaveFormData = (
+  payload: LeavePayload
+): FormData => {
+  const formData = new FormData();
+
+  if (payload.UserId) {
+    formData.append(
+      "UserId",
+      payload.UserId
+    );
+  }
+
+  formData.append(
+    "LeaveTypeMasterId",
+    payload.LeaveTypeMasterId
+  );
+
+  formData.append(
+    "FromDate",
+    payload.FromDate
+  );
+
+  formData.append(
+    "ToDate",
+    payload.ToDate
+  );
+
+  formData.append(
+    "AvailType",
+    String(payload.AvailType)
+  );
+
+  formData.append(
+    "Reason",
+    payload.Reason
+  );
+
+  if (payload.Attachment) {
+    formData.append(
+      "Attachment",
+      payload.Attachment
+    );
+  }
+
+  return formData;
+};
+
+// =====================================================
+// ADD LEAVE
+// =====================================================
+
+export const addLeave = async (
+  payload: LeavePayload,
+  token: string
+) => {
+  if (!token) {
+    throw new Error(
+      "Authentication token is missing. Please login again."
+    );
+  }
+
+  const formData =
+    buildLeaveFormData(payload);
+
+  const response = await axios.post(
+    `${BASE_URL}/EmployeeLeave/add-leave`,
+    formData,
+    {
+      headers: {
+        ...getAuthHeaders(token),
+        "Content-Type":
+          "multipart/form-data",
+      },
+    }
+  );
+
+  return response.data;
+};
+
+// =====================================================
+// UPDATE LEAVE
+// =====================================================
+
+export const updateLeave = async (
+  leaveId: string,
+  payload: LeavePayload,
+  token: string
+) => {
+  if (!token) {
+    throw new Error(
+      "Authentication token is missing. Please login again."
+    );
+  }
+
+  if (!leaveId) {
+    throw new Error("Leave ID is missing.");
+  }
+
+  const formData =
+    buildLeaveFormData(payload);
+
+  const response = await axios.put(
+    `${BASE_URL}/EmployeeLeave/${leaveId}`,
+    formData,
+    {
+      headers: {
+        ...getAuthHeaders(token),
+        "Content-Type":
+          "multipart/form-data",
+      },
+    }
+  );
+
+  return response.data;
+};
+
+// =====================================================
+// DELETE LEAVE
+// =====================================================
+
+export const deleteLeave = async (
+  leaveId: string,
+  token: string
+) => {
+  if (!token) {
+    throw new Error(
+      "Authentication token is missing. Please login again."
+    );
+  }
+
+  if (!leaveId) {
+    throw new Error("Leave ID is missing.");
+  }
+
+  const response = await axios.delete(
+    `${BASE_URL}/EmployeeLeave/${leaveId}`,
+    {
+      headers: getAuthHeaders(token),
     }
   );
 

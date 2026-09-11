@@ -1,211 +1,545 @@
+
 import React, {
   FormEvent,
+  useCallback,
+  useEffect,
   useMemo,
   useState,
 } from "react";
 
 import { useNavigate } from "react-router-dom";
 
+import {
+  addLeave,
+  deleteLeave,
+  getLeaveById,
+  getLeaveTypes,
+  getMyLeaves,
+  updateLeave,
+  type LeavePayload,
+  type MyLeavesParams,
+} from "../../services/employeservices";
+
+// =====================================================
+// TYPES
+// =====================================================
+
 type LeaveStatus =
   | "Approved"
   | "Reject"
   | "New";
 
+/*
+ * NOTE: The backend's status enum wasn't visible in the Swagger
+ * screenshots (only request query params were shown), so this mapping
+ * is a best guess. Confirm the real values against your API and adjust
+ * here if needed.
+ */
+const STATUS_TO_CODE: Record<LeaveStatus, number> = {
+  New: 0,
+  Approved: 1,
+  Reject: 2,
+};
+
+const STATUS_FROM_CODE: Record<number, LeaveStatus> = {
+  0: "New",
+  1: "Approved",
+  2: "Reject",
+};
+
+/*
+ * AvailType enum, also a best guess pending confirmation from the
+ * backend team / a real response payload.
+ */
+const AVAIL_TYPE_OPTIONS: { label: string; value: number }[] = [
+  { label: "First Half", value: 1 },
+  { label: "Second Half", value: 2 },
+  { label: "Full Day", value: 3 },
+];
+
+const availTypeLabel = (value: number): string =>
+  AVAIL_TYPE_OPTIONS.find((option) => option.value === value)?.label ||
+  "Full Day";
+
+interface LeaveTypeOption {
+  id: string;
+  name: string;
+}
+
 interface LeaveItem {
-  id: number;
-  reason: string;
+  id: string;
+  leaveTypeId: string;
+  leaveTypeName: string;
   requestDate: string;
   from: string;
+  fromRaw: string;
   to: string;
+  toRaw: string;
   approvedBy: string;
-  role: string;
+  approvedByRole: string;
   days: string;
+  availType: number;
   status: LeaveStatus;
   employee?: string;
   department?: string;
-  leaveType?: string;
-  description?: string;
+  description: string;
+  raw: any;
 }
 
 interface LeaveForm {
-  reason: string;
+  leaveTypeId: string;
   from: string;
   to: string;
-  leaveType: string;
+  availType: number;
   days: string;
-  description: string;
+  reasonText: string;
+  attachment: File | null;
 }
 
-const initialLeaveData: LeaveItem[] = [
-  {
-    id: 1,
-    employee: "Anthony Lewis",
-    department: "Finance",
-    reason: "Medical Leave",
-    requestDate: "01 Jan 2024",
-    from: "14 Jan 2024",
-    to: "15 Jan 2024",
-    approvedBy: "Doglas Martini",
-    role: "Manager",
-    days: "2 Days",
-    status: "Approved",
-    leaveType: "First Half",
-    description: "Going to Hospital",
-  },
-  {
-    id: 2,
-    employee: "Anthony Lewis",
-    department: "Finance",
-    reason: "Annual Leave",
-    requestDate: "10 Jan 2024",
-    from: "21 Jan 2024",
-    to: "25 Jan 2024",
-    approvedBy: "Doglas Martini",
-    role: "Manager",
-    days: "5 Days",
-    status: "Approved",
-    leaveType: "Full Day",
-    description: "Personal work",
-  },
-  {
-    id: 3,
-    employee: "Anthony Lewis",
-    department: "Finance",
-    reason: "Medical Leave",
-    requestDate: "10 Jan 2024",
-    from: "20 Jan 2024",
-    to: "22 Feb 2024",
-    approvedBy: "Warren Morales",
-    role: "Admin",
-    days: "3 Days",
-    status: "Approved",
-    leaveType: "First Half",
-    description: "Medical appointment",
-  },
-  {
-    id: 4,
-    employee: "Anthony Lewis",
-    department: "Finance",
-    reason: "Annual Leave",
-    requestDate: "01 Mar 2024",
-    from: "15 Mar 2024",
-    to: "17 Mar 2024",
-    approvedBy: "Doglas Martini",
-    role: "Manager",
-    days: "3 Days",
-    status: "Approved",
-    leaveType: "Full Day",
-    description: "Family function",
-  },
-  {
-    id: 5,
-    employee: "Anthony Lewis",
-    department: "Finance",
-    reason: "Casual Leave",
-    requestDate: "15 Mar 2024",
-    from: "12 Apr 2024",
-    to: "16 Apr 2024",
-    approvedBy: "Doglas Martini",
-    role: "Manager",
-    days: "5 Days",
-    status: "Reject",
-    leaveType: "Full Day",
-    description: "Personal work",
-  },
-  {
-    id: 6,
-    employee: "Anthony Lewis",
-    department: "Finance",
-    reason: "Medical Leave",
-    requestDate: "01 May 2024",
-    from: "20 May 2024",
-    to: "21 Mar 2024",
-    approvedBy: "Warren Morales",
-    role: "Admin",
-    days: "2 Days",
-    status: "Reject",
-    leaveType: "First Half",
-    description: "Hospital visit",
-  },
-  {
-    id: 7,
-    employee: "Anthony Lewis",
-    department: "Finance",
-    reason: "Casual Leave",
-    requestDate: "29 May 2024",
-    from: "06 Jul 2024",
-    to: "06 Jul 2024",
-    approvedBy: "Doglas Martini",
-    role: "Manager",
-    days: "1 Days",
-    status: "Approved",
-    leaveType: "Second Half",
-    description: "Personal reason",
-  },
-  {
-    id: 8,
-    employee: "Anthony Lewis",
-    department: "Finance",
-    reason: "Medical Leave",
-    requestDate: "25 Aug 2024",
-    from: "02 Sep 2024",
-    to: "04 Sep 2024",
-    approvedBy: "Doglas Martini",
-    role: "Manager",
-    days: "3 Days",
-    status: "New",
-    leaveType: "First Half",
-    description: "Going to Hospital",
-  },
-  {
-    id: 9,
-    employee: "Anthony Lewis",
-    department: "Finance",
-    reason: "Annual Leave",
-    requestDate: "01 Nov 2024",
-    from: "15 Nov 2024",
-    to: "15 Nov 2024",
-    approvedBy: "Warren Morales",
-    role: "Admin",
-    days: "1 Days",
-    status: "New",
-    leaveType: "Full Day",
-    description: "Family work",
-  },
-  {
-    id: 10,
-    employee: "Anthony Lewis",
-    department: "Finance",
-    reason: "Casual Leave",
-    requestDate: "01 Nov 2024",
-    from: "10 Dec 2024",
-    to: "11 Dec 2024",
-    approvedBy: "Doglas Martini",
-    role: "Manager",
-    days: "2 Days",
-    status: "New",
-    leaveType: "Second Half",
-    description: "Personal work",
-  },
-];
-
 const emptyForm: LeaveForm = {
-  reason: "",
+  leaveTypeId: "",
   from: "",
   to: "",
-  leaveType: "",
+  availType: 3,
   days: "",
-  description: "",
+  reasonText: "",
+  attachment: null,
 };
+
+// =====================================================
+// HELPERS
+// =====================================================
+
+const pickField = (
+  obj: any,
+  keys: string[],
+  fallback: any = undefined
+) => {
+  for (const key of keys) {
+    if (
+      obj?.[key] !== undefined &&
+      obj?.[key] !== null &&
+      obj?.[key] !== ""
+    ) {
+      return obj[key];
+    }
+  }
+
+  return fallback;
+};
+
+const formatDisplayDate = (value?: string) => {
+  if (!value) return "-";
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  return date.toLocaleDateString("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+};
+
+// =====================================================
+// DATE HELPERS
+// =====================================================
+
+/*
+ * API date -> DD/MM/YYYY
+ *
+ * Example:
+ * 2026-09-12T00:00:00 -> 12/09/2026
+ */
+const formatDateForInput = (value?: string) => {
+  if (!value) return "";
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return "";
+  }
+
+  const day = String(date.getDate()).padStart(2, "0");
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const year = date.getFullYear();
+
+  return `${day}/${month}/${year}`;
+};
+
+/*
+ * Automatically format user typing.
+ *
+ * Example:
+ * 12       -> 12
+ * 1209     -> 12/09
+ * 12092026 -> 12/09/2026
+ */
+const formatDateTyping = (value: string) => {
+  const digits = value.replace(/\D/g, "").slice(0, 8);
+
+  if (digits.length <= 2) {
+    return digits;
+  }
+
+  if (digits.length <= 4) {
+    return `${digits.slice(0, 2)}/${digits.slice(2)}`;
+  }
+
+  return `${digits.slice(0, 2)}/${digits.slice(
+    2,
+    4
+  )}/${digits.slice(4, 8)}`;
+};
+
+/*
+ * DD/MM/YYYY -> YYYY-MM-DD
+ */
+const parseDDMMYYYY = (value: string): string | null => {
+  const match =
+    /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(
+      value.trim()
+    );
+
+  if (!match) {
+    return null;
+  }
+
+  const day = Number(match[1]);
+  const month = Number(match[2]);
+  const year = Number(match[3]);
+
+  const date = new Date(
+    year,
+    month - 1,
+    day
+  );
+
+  /*
+   * This also catches invalid dates like:
+   * 31/02/2026
+   * 32/01/2026
+   * 29/13/2026
+   */
+  if (
+    date.getFullYear() !== year ||
+    date.getMonth() !== month - 1 ||
+    date.getDate() !== day
+  ) {
+    return null;
+  }
+
+  return `${year}-${String(month).padStart(
+    2,
+    "0"
+  )}-${String(day).padStart(2, "0")}`;
+};
+
+/*
+ * DD/MM/YYYY -> ISO datetime for API
+ */
+const toIsoDateTime = (value: string) => {
+  const isoDate = parseDDMMYYYY(value);
+
+  if (!isoDate) {
+    throw new Error(
+      "Please enter a valid date in DD/MM/YYYY format."
+    );
+  }
+
+  const date = new Date(
+    `${isoDate}T00:00:00`
+  );
+
+  if (Number.isNaN(date.getTime())) {
+    throw new Error(
+      "Invalid date. Please use DD/MM/YYYY format."
+    );
+  }
+
+  return date.toISOString();
+};
+
+// =====================================================
+// LEAVE NORMALIZATION
+// =====================================================
+
+const normalizeLeave = (raw: any): LeaveItem => {
+  const id = pickField(
+    raw,
+    ["id", "leaveId", "Id", "LeaveId"],
+    ""
+  );
+
+  const leaveTypeId = pickField(
+    raw,
+    [
+      "leaveTypeMasterId",
+      "leaveTypeId",
+      "LeaveTypeMasterId",
+    ],
+    ""
+  );
+
+  const leaveTypeName = pickField(
+    raw,
+    [
+      "leaveTypeName",
+      "leaveType",
+      "LeaveTypeName",
+      "leaveTypeMasterName",
+    ],
+    "Leave"
+  );
+
+  const fromRaw = pickField(
+    raw,
+    ["fromDate", "FromDate"],
+    ""
+  );
+
+  const toRaw = pickField(
+    raw,
+    ["toDate", "ToDate"],
+    ""
+  );
+
+  const requestDateRaw = pickField(
+    raw,
+    [
+      "requestDate",
+      "createdOn",
+      "createdDate",
+      "RequestDate",
+    ],
+    ""
+  );
+
+  const approvedBy = pickField(
+    raw,
+    [
+      "approvedByName",
+      "approvedBy",
+      "ApprovedByName",
+    ],
+    "-"
+  );
+
+  const approvedByRole = pickField(
+    raw,
+    [
+      "approvedByRole",
+      "role",
+      "ApprovedByRole",
+    ],
+    ""
+  );
+
+  const availType = Number(
+    pickField(
+      raw,
+      ["availType", "AvailType"],
+      3
+    )
+  );
+
+  const statusRaw = pickField(
+    raw,
+    ["status", "Status"],
+    0
+  );
+
+  const description = pickField(
+    raw,
+    ["reason", "description", "Reason"],
+    ""
+  );
+
+  const employee = pickField(
+    raw,
+    [
+      "employeeName",
+      "userName",
+      "employee",
+      "EmployeeName",
+    ],
+    undefined
+  );
+
+  const department = pickField(
+    raw,
+    [
+      "department",
+      "departmentName",
+      "Department",
+    ],
+    undefined
+  );
+
+  let noOfDays = pickField(
+    raw,
+    ["noOfDays", "days", "NoOfDays"],
+    undefined
+  );
+
+  if (
+    noOfDays === undefined &&
+    fromRaw &&
+    toRaw
+  ) {
+    const from = new Date(fromRaw);
+    const to = new Date(toRaw);
+
+    const diffDays =
+      Math.round(
+        (to.getTime() - from.getTime()) /
+          (1000 * 60 * 60 * 24)
+      ) + 1;
+
+    noOfDays =
+      diffDays > 0 ? diffDays : 1;
+  }
+
+  return {
+    id: String(id),
+    leaveTypeId: String(leaveTypeId),
+    leaveTypeName,
+    requestDate:
+      formatDisplayDate(requestDateRaw),
+    from: formatDisplayDate(fromRaw),
+    fromRaw,
+    to: formatDisplayDate(toRaw),
+    toRaw,
+    approvedBy,
+    approvedByRole,
+    days: `${noOfDays ?? 1} Days`,
+    availType,
+    status:
+      STATUS_FROM_CODE[
+        Number(statusRaw)
+      ] ?? "New",
+    employee,
+    department,
+    description,
+    raw,
+  };
+};
+
+// =====================================================
+// LEAVE TYPE NORMALIZATION
+// =====================================================
+
+const normalizeLeaveType = (
+  raw: any
+): LeaveTypeOption => ({
+  id: String(
+    pickField(
+      raw,
+      [
+        "id",
+        "leaveTypeMasterId",
+        "Id",
+      ],
+      ""
+    )
+  ),
+
+  /*
+   * IMPORTANT:
+   * API response uses "leaveName".
+   */
+  name: pickField(
+    raw,
+    [
+      "name",
+      "leaveName",
+      "leaveTypeName",
+      "Name",
+    ],
+    "Leave"
+  ),
+});
+
+// =====================================================
+// RESPONSE HELPERS
+// =====================================================
+
+const extractListAndTotal = (
+  payload: any
+) => {
+  const container =
+    payload?.data ?? payload;
+
+  const items =
+    container?.items ??
+    container?.data ??
+    (Array.isArray(container)
+      ? container
+      : []);
+
+  const total =
+    container?.totalCount ??
+    container?.totalRecords ??
+    container?.total ??
+    (Array.isArray(items)
+      ? items.length
+      : 0);
+
+  return {
+    items: Array.isArray(items)
+      ? items
+      : [],
+    total: Number(total) || 0,
+  };
+};
+
+const extractList = (payload: any) => {
+  const container =
+    payload?.data ?? payload;
+
+  const items =
+    container?.items ??
+    (Array.isArray(container)
+      ? container
+      : []);
+
+  return Array.isArray(items)
+    ? items
+    : [];
+};
+
+// =====================================================
+// COMPONENT
+// =====================================================
 
 const Leave: React.FC = () => {
   const navigate = useNavigate();
 
   const [leaveData, setLeaveData] =
-    useState<LeaveItem[]>(initialLeaveData);
+    useState<LeaveItem[]>([]);
+
+  const [totalCount, setTotalCount] =
+    useState(0);
+
+  const [leaveTypes, setLeaveTypes] =
+    useState<LeaveTypeOption[]>([]);
+
+  const [loading, setLoading] =
+    useState(false);
+
+  const [saving, setSaving] =
+    useState(false);
+
+  const [error, setError] =
+    useState<string | null>(null);
 
   const [activeTab, setActiveTab] =
-    useState<"myLeaves" | "employeeLeaves">("myLeaves");
+    useState<
+      "myLeaves" | "employeeLeaves"
+    >("myLeaves");
 
   const [search, setSearch] =
     useState("");
@@ -220,7 +554,7 @@ const Leave: React.FC = () => {
     useState("");
 
   const [sortBy, setSortBy] =
-    useState("Last 7 Days");
+    useState("");
 
   const [rowsPerPage, setRowsPerPage] =
     useState(10);
@@ -229,7 +563,7 @@ const Leave: React.FC = () => {
     useState(1);
 
   const [selectedIds, setSelectedIds] =
-    useState<number[]>([]);
+    useState<string[]>([]);
 
   const [showAddModal, setShowAddModal] =
     useState(false);
@@ -255,6 +589,139 @@ const Leave: React.FC = () => {
   const [chatMessage, setChatMessage] =
     useState("");
 
+  // ===================================================
+  // LOAD LEAVE TYPES
+  // ===================================================
+
+  useEffect(() => {
+    const loadLeaveTypes = async () => {
+      try {
+        const token =
+          localStorage.getItem("token");
+
+        if (!token) return;
+
+        const response =
+          await getLeaveTypes(token);
+
+        const list =
+          extractList(response);
+
+        setLeaveTypes(
+          list.map(normalizeLeaveType)
+        );
+      } catch (err) {
+        console.error(
+          "Failed to load leave types",
+          err
+        );
+      }
+    };
+
+    loadLeaveTypes();
+  }, []);
+
+  const leaveTypeNameById =
+    useMemo(() => {
+      const map = new Map<
+        string,
+        string
+      >();
+
+      leaveTypes.forEach((item) =>
+        map.set(item.id, item.name)
+      );
+
+      return map;
+    }, [leaveTypes]);
+
+  // ===================================================
+  // LOAD LEAVES
+  // ===================================================
+
+  const fetchLeaves =
+    useCallback(async () => {
+      setLoading(true);
+      setError(null);
+
+      try {
+        const token =
+          localStorage.getItem("token");
+
+        if (!token) {
+          throw new Error(
+            "Authentication token is missing. Please login again."
+          );
+        }
+
+        const params: MyLeavesParams = {
+          PageNumber: currentPage,
+          PageSize: rowsPerPage,
+        };
+
+        if (leaveTypeFilter) {
+          params.LeaveTypeId =
+            leaveTypeFilter;
+        }
+
+        if (statusFilter) {
+          params.Status =
+            STATUS_TO_CODE[
+              statusFilter as LeaveStatus
+            ];
+        }
+
+        if (sortBy) {
+          params.SortBy = sortBy;
+        }
+
+        const response =
+          await getMyLeaves(
+            token,
+            params
+          );
+
+        const {
+          items,
+          total,
+        } =
+          extractListAndTotal(
+            response
+          );
+
+        setLeaveData(
+          items.map(normalizeLeave)
+        );
+
+        setTotalCount(total);
+      } catch (err: any) {
+        setError(
+          err?.response?.data?.message ||
+            err?.message ||
+            "Failed to load leaves."
+        );
+
+        setLeaveData([]);
+        setTotalCount(0);
+      } finally {
+        setLoading(false);
+      }
+    }, [
+      currentPage,
+      rowsPerPage,
+      leaveTypeFilter,
+      statusFilter,
+      sortBy,
+    ]);
+
+  useEffect(() => {
+    fetchLeaves();
+  }, [fetchLeaves]);
+
+  // ===================================================
+  // CLIENT-SIDE REFINEMENT
+  // ===================================================
+
   const filteredData = useMemo(() => {
     let data = [...leaveData];
 
@@ -264,43 +731,26 @@ const Leave: React.FC = () => {
     if (query) {
       data = data.filter(
         (item) =>
-          item.reason.toLowerCase().includes(query) ||
-          item.employee?.toLowerCase().includes(query) ||
-          item.approvedBy.toLowerCase().includes(query) ||
-          item.status.toLowerCase().includes(query)
-      );
-    }
-
-    if (leaveTypeFilter) {
-      data = data.filter(
-        (item) =>
-          item.reason === leaveTypeFilter
+          item.leaveTypeName
+            .toLowerCase()
+            .includes(query) ||
+          item.employee
+            ?.toLowerCase()
+            .includes(query) ||
+          item.approvedBy
+            .toLowerCase()
+            .includes(query) ||
+          item.status
+            .toLowerCase()
+            .includes(query)
       );
     }
 
     if (approvedFilter) {
       data = data.filter(
         (item) =>
-          item.approvedBy === approvedFilter
-      );
-    }
-
-    if (statusFilter) {
-      data = data.filter(
-        (item) =>
-          item.status === statusFilter
-      );
-    }
-
-    if (sortBy === "Ascending") {
-      data.sort((a, b) =>
-        a.reason.localeCompare(b.reason)
-      );
-    }
-
-    if (sortBy === "Descending") {
-      data.sort((a, b) =>
-        b.reason.localeCompare(a.reason)
+          item.approvedBy ===
+          approvedFilter
       );
     }
 
@@ -308,24 +758,37 @@ const Leave: React.FC = () => {
   }, [
     leaveData,
     search,
-    leaveTypeFilter,
     approvedFilter,
-    statusFilter,
-    sortBy,
   ]);
+
+  const approvedByOptions =
+    useMemo(() => {
+      const names = new Set(
+        leaveData
+          .map(
+            (item) =>
+              item.approvedBy
+          )
+          .filter(Boolean)
+      );
+
+      return Array.from(names);
+    }, [leaveData]);
 
   const totalPages = Math.max(
     1,
-    Math.ceil(filteredData.length / rowsPerPage)
+    Math.ceil(
+      totalCount / rowsPerPage
+    )
   );
 
-  const safePage =
-    Math.min(currentPage, totalPages);
-
-  const visibleData = filteredData.slice(
-    (safePage - 1) * rowsPerPage,
-    safePage * rowsPerPage
+  const safePage = Math.min(
+    currentPage,
+    totalPages
   );
+
+  const visibleData =
+    filteredData;
 
   const allSelected =
     visibleData.length > 0 &&
@@ -335,12 +798,15 @@ const Leave: React.FC = () => {
 
   const handleSelectAll = () => {
     const ids =
-      visibleData.map((item) => item.id);
+      visibleData.map(
+        (item) => item.id
+      );
 
     if (allSelected) {
       setSelectedIds((prev) =>
         prev.filter(
-          (id) => !ids.includes(id)
+          (id) =>
+            !ids.includes(id)
         )
       );
     } else {
@@ -353,15 +819,25 @@ const Leave: React.FC = () => {
     }
   };
 
-  const toggleSelect = (id: number) => {
+  const toggleSelect = (
+    id: string
+  ) => {
     setSelectedIds((prev) =>
       prev.includes(id)
-        ? prev.filter((item) => item !== id)
+        ? prev.filter(
+            (item) => item !== id
+          )
         : [...prev, id]
     );
   };
 
-  const openChatModal = (item: LeaveItem) => {
+  // ===================================================
+  // CHAT MODAL
+  // ===================================================
+
+  const openChatModal = (
+    item: LeaveItem
+  ) => {
     setSelectedLeave(item);
     setChatMessage("");
     setShowChatModal(true);
@@ -372,9 +848,41 @@ const Leave: React.FC = () => {
     setSelectedLeave(null);
   };
 
-  const openViewModal = (item: LeaveItem) => {
+  // ===================================================
+  // VIEW MODAL
+  // ===================================================
+
+  const openViewModal = async (
+    item: LeaveItem
+  ) => {
     setSelectedLeave(item);
     setShowViewModal(true);
+
+    try {
+      const token =
+        localStorage.getItem("token");
+
+      if (!token) return;
+
+      const response =
+        await getLeaveById(
+          item.id,
+          token
+        );
+
+      const raw =
+        response?.data ??
+        response;
+
+      setSelectedLeave(
+        normalizeLeave(raw)
+      );
+    } catch (err) {
+      console.error(
+        "Failed to load leave detail",
+        err
+      );
+    }
   };
 
   const closeViewModal = () => {
@@ -382,19 +890,39 @@ const Leave: React.FC = () => {
     setSelectedLeave(null);
   };
 
-  const openEditModal = (item: LeaveItem) => {
+  // ===================================================
+  // EDIT MODAL
+  // ===================================================
+
+  const openEditModal = (
+    item: LeaveItem
+  ) => {
     setSelectedLeave(item);
 
     setForm({
-      reason: item.reason,
-      from: "",
-      to: item.to,
-      leaveType:
-        item.leaveType || "First Half",
-      days:
-        item.days.replace(/[^0-9]/g, ""),
-      description:
-        item.description || "",
+      leaveTypeId:
+        item.leaveTypeId,
+
+      from: formatDateForInput(
+        item.fromRaw
+      ),
+
+      to: formatDateForInput(
+        item.toRaw
+      ),
+
+      availType:
+        item.availType,
+
+      days: item.days.replace(
+        /[^0-9]/g,
+        ""
+      ),
+
+      reasonText:
+        item.description,
+
+      attachment: null,
     });
 
     setShowEditModal(true);
@@ -406,32 +934,90 @@ const Leave: React.FC = () => {
     setForm(emptyForm);
   };
 
-  const handleEditLeave = (
+  const handleEditLeave = async (
     e: FormEvent
   ) => {
     e.preventDefault();
 
     if (!selectedLeave) return;
 
-    setLeaveData((prev) =>
-      prev.map((item) =>
-        item.id === selectedLeave.id
-          ? {
-              ...item,
-              reason: form.reason,
-              to: form.to || item.to,
-              leaveType: form.leaveType,
-              days: form.days
-                ? `${form.days} Days`
-                : item.days,
-              description: form.description,
-            }
-          : item
-      )
-    );
+    if (
+      !form.leaveTypeId ||
+      !form.from ||
+      !form.to ||
+      !form.reasonText
+    ) {
+      return;
+    }
 
-    closeEditModal();
+    setSaving(true);
+    setError(null);
+
+    try {
+      const token =
+        localStorage.getItem("token");
+
+      if (!token) {
+        throw new Error(
+          "Authentication token is missing. Please login again."
+        );
+      }
+
+      const userId =
+        localStorage.getItem(
+          "userId"
+        ) || undefined;
+
+      const payload: LeavePayload =
+        {
+          UserId: userId,
+
+          LeaveTypeMasterId:
+            form.leaveTypeId,
+
+          FromDate:
+            toIsoDateTime(
+              form.from
+            ),
+
+          ToDate:
+            toIsoDateTime(
+              form.to
+            ),
+
+          AvailType:
+            form.availType,
+
+          Reason:
+            form.reasonText,
+
+          Attachment:
+            form.attachment,
+        };
+
+      await updateLeave(
+        selectedLeave.id,
+        payload,
+        token
+      );
+
+      closeEditModal();
+
+      await fetchLeaves();
+    } catch (err: any) {
+      setError(
+        err?.response?.data?.message ||
+          err?.message ||
+          "Failed to update leave."
+      );
+    } finally {
+      setSaving(false);
+    }
   };
+
+  // ===================================================
+  // DELETE MODAL
+  // ===================================================
 
   const openDeleteModal = (
     item: LeaveItem
@@ -445,73 +1031,135 @@ const Leave: React.FC = () => {
     setSelectedLeave(null);
   };
 
-  const handleDeleteLeave = () => {
-    if (!selectedLeave) return;
+  const handleDeleteLeave =
+    async () => {
+      if (!selectedLeave) return;
 
-    setLeaveData((prev) =>
-      prev.filter(
-        (item) =>
-          item.id !== selectedLeave.id
-      )
-    );
+      setSaving(true);
+      setError(null);
 
-    setSelectedIds((prev) =>
-      prev.filter(
-        (id) =>
-          id !== selectedLeave.id
-      )
-    );
+      try {
+        const token =
+          localStorage.getItem(
+            "token"
+          );
 
-    setShowDeleteModal(false);
-    setSelectedLeave(null);
-  };
+        if (!token) {
+          throw new Error(
+            "Authentication token is missing. Please login again."
+          );
+        }
 
-  const handleAddLeave = (
+        await deleteLeave(
+          selectedLeave.id,
+          token
+        );
+
+        setSelectedIds((prev) =>
+          prev.filter(
+            (id) =>
+              id !==
+              selectedLeave.id
+          )
+        );
+
+        setShowDeleteModal(false);
+        setSelectedLeave(null);
+
+        await fetchLeaves();
+      } catch (err: any) {
+        setError(
+          err?.response?.data?.message ||
+            err?.message ||
+            "Failed to delete leave."
+        );
+      } finally {
+        setSaving(false);
+      }
+    };
+
+  // ===================================================
+  // ADD MODAL
+  // ===================================================
+
+  const handleAddLeave = async (
     e: FormEvent
   ) => {
     e.preventDefault();
 
     if (
-      !form.reason ||
+      !form.leaveTypeId ||
       !form.from ||
-      !form.to
+      !form.to ||
+      !form.reasonText
     ) {
       return;
     }
 
-    const nextId =
-      Math.max(
-        0,
-        ...leaveData.map(
-          (item) => item.id
-        )
-      ) + 1;
+    setSaving(true);
+    setError(null);
 
-    const newLeave: LeaveItem = {
-      id: nextId,
-      employee: "Anthony Lewis",
-      department: "Finance",
-      reason: form.reason,
-      requestDate: "03 Sep 2026",
-      from: form.from,
-      to: form.to,
-      approvedBy: "Doglas Martini",
-      role: "Manager",
-      days: form.days
-        ? `${form.days} Days`
-        : "1 Days",
-      status: "New",
-      leaveType: form.leaveType,
-      description: form.description,
-    };
+    try {
+      const token =
+        localStorage.getItem("token");
 
-    setLeaveData((prev) => [
-      ...prev,
-      newLeave,
-    ]);
+      if (!token) {
+        throw new Error(
+          "Authentication token is missing. Please login again."
+        );
+      }
 
-    setShowAddModal(false);
-    setForm(emptyForm);
+      const userId =
+        localStorage.getItem(
+          "userId"
+        ) || undefined;
+
+      const payload: LeavePayload =
+        {
+          UserId: userId,
+
+          LeaveTypeMasterId:
+            form.leaveTypeId,
+
+          FromDate:
+            toIsoDateTime(
+              form.from
+            ),
+
+          ToDate:
+            toIsoDateTime(
+              form.to
+            ),
+
+          AvailType:
+            form.availType,
+
+          Reason:
+            form.reasonText,
+
+          Attachment:
+            form.attachment,
+        };
+
+      await addLeave(
+        payload,
+        token
+      );
+
+      setShowAddModal(false);
+      setForm(emptyForm);
+      setCurrentPage(1);
+
+      await fetchLeaves();
+    } catch (err: any) {
+      setError(
+        err?.response?.data?.message ||
+          err?.message ||
+          "Failed to add leave."
+      );
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -701,6 +1349,22 @@ const Leave: React.FC = () => {
           font-weight: 500;
         }
 
+        .leave-tab-note {
+          margin: -8px 0 16px;
+          color: #8a94a3;
+          font-size: 12px;
+        }
+
+        .leave-error-banner {
+          margin: 0 0 16px;
+          padding: 10px 14px;
+          border: 1px solid #f3b6b6;
+          border-radius: 5px;
+          background: #fdeaea;
+          color: #a31414;
+          font-size: 13px;
+        }
+
         .leave-list-card {
           width: 100%;
           overflow: hidden;
@@ -748,11 +1412,11 @@ const Leave: React.FC = () => {
         }
 
         .leave-type-filter {
-          width: 110px;
+          width: 140px;
         }
 
         .leave-approved-filter {
-          width: 120px;
+          width: 140px;
         }
 
         .leave-status-filter {
@@ -1001,6 +1665,11 @@ const Leave: React.FC = () => {
           cursor: pointer;
         }
 
+        .action-icon:disabled {
+          opacity: .5;
+          cursor: not-allowed;
+        }
+
         .action-icon i {
           font-size: 15px;
         }
@@ -1049,6 +1718,11 @@ const Leave: React.FC = () => {
           color: #a2a9b4;
           font-size: 20px;
           cursor: pointer;
+        }
+
+        .pagination button:disabled {
+          opacity: .5;
+          cursor: not-allowed;
         }
 
         .page-number {
@@ -1414,6 +2088,12 @@ const Leave: React.FC = () => {
           font-weight: 600;
         }
 
+        .save-btn:disabled,
+        .delete-confirm-btn:disabled {
+          opacity: .6;
+          cursor: not-allowed;
+        }
+
         .delete-modal {
           width: 400px;
           max-width: calc(100vw - 30px);
@@ -1646,7 +2326,9 @@ const Leave: React.FC = () => {
                 : ""
             }`}
             onClick={() => {
-              setActiveTab("employeeLeaves");
+              setActiveTab(
+                "employeeLeaves"
+              );
               setCurrentPage(1);
               setSelectedIds([]);
             }}
@@ -1654,6 +2336,20 @@ const Leave: React.FC = () => {
             Employee Leaves
           </button>
         </div>
+
+        {activeTab ===
+          "employeeLeaves" && (
+          <div className="leave-tab-note">
+            Showing data from the "my-leaves" endpoint — wire in a
+            dedicated all-employees endpoint here once it's available.
+          </div>
+        )}
+
+        {error && (
+          <div className="leave-error-banner">
+            {error}
+          </div>
+        )}
 
         <div className="leave-list-card">
 
@@ -1678,7 +2374,9 @@ const Leave: React.FC = () => {
                 className="leave-filter leave-type-filter"
                 value={leaveTypeFilter}
                 onChange={(e) => {
-                  setLeaveTypeFilter(e.target.value);
+                  setLeaveTypeFilter(
+                    e.target.value
+                  );
                   setCurrentPage(1);
                 }}
               >
@@ -1686,24 +2384,25 @@ const Leave: React.FC = () => {
                   Leave Type
                 </option>
 
-                <option value="Medical Leave">
-                  Medical Leave
-                </option>
-
-                <option value="Annual Leave">
-                  Annual Leave
-                </option>
-
-                <option value="Casual Leave">
-                  Casual Leave
-                </option>
+                {leaveTypes.map(
+                  (type) => (
+                    <option
+                      key={type.id}
+                      value={type.id}
+                    >
+                      {type.name}
+                    </option>
+                  )
+                )}
               </select>
 
               <select
                 className="leave-filter leave-approved-filter"
                 value={approvedFilter}
                 onChange={(e) => {
-                  setApprovedFilter(e.target.value);
+                  setApprovedFilter(
+                    e.target.value
+                  );
                   setCurrentPage(1);
                 }}
               >
@@ -1711,20 +2410,25 @@ const Leave: React.FC = () => {
                   Approved By
                 </option>
 
-                <option value="Doglas Martini">
-                  Doglas Martini
-                </option>
-
-                <option value="Warren Morales">
-                  Warren Morales
-                </option>
+                {approvedByOptions.map(
+                  (name) => (
+                    <option
+                      key={name}
+                      value={name}
+                    >
+                      {name}
+                    </option>
+                  )
+                )}
               </select>
 
               <select
                 className="leave-filter leave-status-filter"
                 value={statusFilter}
                 onChange={(e) => {
-                  setStatusFilter(e.target.value);
+                  setStatusFilter(
+                    e.target.value
+                  );
                   setCurrentPage(1);
                 }}
               >
@@ -1749,12 +2453,14 @@ const Leave: React.FC = () => {
                 className="leave-filter leave-sort-filter"
                 value={sortBy}
                 onChange={(e) => {
-                  setSortBy(e.target.value);
+                  setSortBy(
+                    e.target.value
+                  );
                   setCurrentPage(1);
                 }}
               >
-                <option value="Last 7 Days">
-                  Sort By : Last 7 Days
+                <option value="">
+                  Sort By
                 </option>
 
                 <option value="Ascending">
@@ -1763,10 +2469,6 @@ const Leave: React.FC = () => {
 
                 <option value="Descending">
                   Descending
-                </option>
-
-                <option value="Last Month">
-                  Last Month
                 </option>
               </select>
             </div>
@@ -1785,14 +2487,24 @@ const Leave: React.FC = () => {
                 value={rowsPerPage}
                 onChange={(e) => {
                   setRowsPerPage(
-                    Number(e.target.value)
+                    Number(
+                      e.target.value
+                    )
                   );
                   setCurrentPage(1);
                 }}
               >
-                <option value={10}>10</option>
-                <option value={20}>20</option>
-                <option value={30}>30</option>
+                <option value={10}>
+                  10
+                </option>
+
+                <option value={20}>
+                  20
+                </option>
+
+                <option value={30}>
+                  30
+                </option>
               </select>
 
               <span>
@@ -1806,8 +2518,9 @@ const Leave: React.FC = () => {
               placeholder="Search"
               value={search}
               onChange={(e) => {
-                setSearch(e.target.value);
-                setCurrentPage(1);
+                setSearch(
+                  e.target.value
+                );
               }}
             />
           </div>
@@ -1816,7 +2529,8 @@ const Leave: React.FC = () => {
 
             <table
               className={`leave-table ${
-                activeTab === "employeeLeaves"
+                activeTab ===
+                "employeeLeaves"
                   ? "employee"
                   : ""
               }`}
@@ -1828,8 +2542,12 @@ const Leave: React.FC = () => {
                     <input
                       type="checkbox"
                       className="leave-checkbox"
-                      checked={allSelected}
-                      onChange={handleSelectAll}
+                      checked={
+                        allSelected
+                      }
+                      onChange={
+                        handleSelectAll
+                      }
                     />
                   </th>
 
@@ -1897,161 +2615,7 @@ const Leave: React.FC = () => {
               </thead>
 
               <tbody>
-                {visibleData.map((item) => (
-                  <tr key={item.id}>
-
-                    <td className="checkbox-col">
-                      <input
-                        type="checkbox"
-                        className="leave-checkbox"
-                        checked={selectedIds.includes(
-                          item.id
-                        )}
-                        onChange={() =>
-                          toggleSelect(item.id)
-                        }
-                      />
-                    </td>
-
-                    {activeTab ===
-                      "employeeLeaves" && (
-                      <td>
-                        <UserDisplay
-                          name={
-                            item.employee ||
-                            "Anthony Lewis"
-                          }
-                          role={
-                            item.department ||
-                            "Finance"
-                          }
-                        />
-                      </td>
-                    )}
-
-                    <td>
-                      <div className="reason-box">
-                        {item.reason}
-                        <i className="ti ti-info-circle" />
-                      </div>
-                    </td>
-
-                    <td>
-                      {item.requestDate}
-                    </td>
-
-                    <td>
-                      {item.from}
-                    </td>
-
-                    <td>
-                      {item.to}
-                    </td>
-
-                    <td>
-                      <UserDisplay
-                        name={item.approvedBy}
-                        role={item.role}
-                      />
-                    </td>
-
-                    <td>
-                      {item.days}
-                    </td>
-
-                    <td>
-                      <StatusBadge
-                        status={item.status}
-                      />
-                    </td>
-
-                    <td className="action-column">
-
-                      <div className="leave-actions">
-
-                        {activeTab ===
-                          "employeeLeaves" &&
-                          item.status ===
-                            "New" && (
-                            <>
-                              <button
-                                type="button"
-                                className="approve-btn"
-                                onClick={() =>
-                                  openChatModal(item)
-                                }
-                              >
-                                Approve
-                              </button>
-
-                              <button
-                                type="button"
-                                className="reject-btn"
-                                onClick={() =>
-                                  openChatModal(item)
-                                }
-                              >
-                                Reject
-                              </button>
-                            </>
-                          )}
-
-                        {!(
-                          activeTab ===
-                            "employeeLeaves" &&
-                          item.status ===
-                            "New"
-                        ) && (
-                          <button
-                            type="button"
-                            className="action-icon"
-                            title="Message"
-                            onClick={() =>
-                              openChatModal(item)
-                            }
-                          >
-                            <i className="ti ti-messages" />
-                          </button>
-                        )}
-
-                        <button
-                          type="button"
-                          className="action-icon"
-                          title="View"
-                          onClick={() =>
-                            openViewModal(item)
-                          }
-                        >
-                          <i className="ti ti-eye" />
-                        </button>
-
-                        <button
-                          type="button"
-                          className="action-icon"
-                          title="Edit"
-                          onClick={() =>
-                            openEditModal(item)
-                          }
-                        >
-                          <i className="ti ti-edit" />
-                        </button>
-
-                        <button
-                          type="button"
-                          className="action-icon"
-                          title="Delete"
-                          onClick={() =>
-                            openDeleteModal(item)
-                          }
-                        >
-                          <i className="ti ti-trash" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-
-                {visibleData.length === 0 && (
+                {loading && (
                   <tr>
                     <td
                       colSpan={
@@ -2061,14 +2625,223 @@ const Leave: React.FC = () => {
                           : 9
                       }
                       style={{
-                        height: "90px",
-                        textAlign: "center",
+                        height:
+                          "90px",
+                        textAlign:
+                          "center",
                       }}
                     >
-                      No leave records found
+                      Loading leaves...
                     </td>
                   </tr>
                 )}
+
+                {!loading &&
+                  visibleData.map(
+                    (item) => (
+                      <tr
+                        key={item.id}
+                      >
+
+                        <td className="checkbox-col">
+                          <input
+                            type="checkbox"
+                            className="leave-checkbox"
+                            checked={selectedIds.includes(
+                              item.id
+                            )}
+                            onChange={() =>
+                              toggleSelect(
+                                item.id
+                              )
+                            }
+                          />
+                        </td>
+
+                        {activeTab ===
+                          "employeeLeaves" && (
+                          <td>
+                            <UserDisplay
+                              name={
+                                item.employee ||
+                                "-"
+                              }
+                              role={
+                                item.department ||
+                                ""
+                              }
+                            />
+                          </td>
+                        )}
+
+                        <td>
+                          <div className="reason-box">
+                            {item.leaveTypeName}
+                            <i className="ti ti-info-circle" />
+                          </div>
+                        </td>
+
+                        <td>
+                          {
+                            item.requestDate
+                          }
+                        </td>
+
+                        <td>
+                          {item.from}
+                        </td>
+
+                        <td>
+                          {item.to}
+                        </td>
+
+                        <td>
+                          <UserDisplay
+                            name={
+                              item.approvedBy
+                            }
+                            role={
+                              item.approvedByRole
+                            }
+                          />
+                        </td>
+
+                        <td>
+                          {item.days}
+                        </td>
+
+                        <td>
+                          <StatusBadge
+                            status={
+                              item.status
+                            }
+                          />
+                        </td>
+
+                        <td className="action-column">
+
+                          <div className="leave-actions">
+
+                            {activeTab ===
+                              "employeeLeaves" &&
+                              item.status ===
+                                "New" && (
+                                <>
+                                  <button
+                                    type="button"
+                                    className="approve-btn"
+                                    onClick={() =>
+                                      openChatModal(
+                                        item
+                                      )
+                                    }
+                                  >
+                                    Approve
+                                  </button>
+
+                                  <button
+                                    type="button"
+                                    className="reject-btn"
+                                    onClick={() =>
+                                      openChatModal(
+                                        item
+                                      )
+                                    }
+                                  >
+                                    Reject
+                                  </button>
+                                </>
+                              )}
+
+                            {!(
+                              activeTab ===
+                                "employeeLeaves" &&
+                              item.status ===
+                                "New"
+                            ) && (
+                              <button
+                                type="button"
+                                className="action-icon"
+                                title="Message"
+                                onClick={() =>
+                                  openChatModal(
+                                    item
+                                  )
+                                }
+                              >
+                                <i className="ti ti-messages" />
+                              </button>
+                            )}
+
+                            <button
+                              type="button"
+                              className="action-icon"
+                              title="View"
+                              onClick={() =>
+                                openViewModal(
+                                  item
+                                )
+                              }
+                            >
+                              <i className="ti ti-eye" />
+                            </button>
+
+                            <button
+                              type="button"
+                              className="action-icon"
+                              title="Edit"
+                              onClick={() =>
+                                openEditModal(
+                                  item
+                                )
+                              }
+                            >
+                              <i className="ti ti-edit" />
+                            </button>
+
+                            <button
+                              type="button"
+                              className="action-icon"
+                              title="Delete"
+                              disabled={
+                                saving
+                              }
+                              onClick={() =>
+                                openDeleteModal(
+                                  item
+                                )
+                              }
+                            >
+                              <i className="ti ti-trash" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    )
+                  )}
+
+                {!loading &&
+                  visibleData.length ===
+                    0 && (
+                    <tr>
+                      <td
+                        colSpan={
+                          activeTab ===
+                          "employeeLeaves"
+                            ? 10
+                            : 9
+                        }
+                        style={{
+                          height:
+                            "90px",
+                          textAlign:
+                            "center",
+                        }}
+                      >
+                        No leave records found
+                      </td>
+                    </tr>
+                  )}
               </tbody>
             </table>
           </div>
@@ -2077,7 +2850,7 @@ const Leave: React.FC = () => {
 
             <div>
               Showing{" "}
-              {filteredData.length === 0
+              {totalCount === 0
                 ? 0
                 : (safePage - 1) *
                     rowsPerPage +
@@ -2086,23 +2859,26 @@ const Leave: React.FC = () => {
               {Math.min(
                 safePage *
                   rowsPerPage,
-                filteredData.length
+                totalCount
               )}{" "}
               of{" "}
-              {filteredData.length} entries
+              {totalCount} entries
             </div>
 
             <div className="pagination">
 
               <button
                 type="button"
-                disabled={safePage === 1}
+                disabled={
+                  safePage === 1
+                }
                 onClick={() =>
-                  setCurrentPage((page) =>
-                    Math.max(
-                      1,
-                      page - 1
-                    )
+                  setCurrentPage(
+                    (page) =>
+                      Math.max(
+                        1,
+                        page - 1
+                      )
                   )
                 }
               >
@@ -2116,14 +2892,16 @@ const Leave: React.FC = () => {
               <button
                 type="button"
                 disabled={
-                  safePage === totalPages
+                  safePage ===
+                  totalPages
                 }
                 onClick={() =>
-                  setCurrentPage((page) =>
-                    Math.min(
-                      totalPages,
-                      page + 1
-                    )
+                  setCurrentPage(
+                    (page) =>
+                      Math.min(
+                        totalPages,
+                        page + 1
+                      )
                   )
                 }
               >
@@ -2153,7 +2931,7 @@ const Leave: React.FC = () => {
                   <div>
                     <div className="chat-name">
                       {selectedLeave.employee ||
-                        "Anthony Lewis"}
+                        "-"}
                     </div>
 
                     <div className="chat-online">
@@ -2165,7 +2943,9 @@ const Leave: React.FC = () => {
                 <button
                   type="button"
                   className="modal-close-custom"
-                  onClick={closeChatModal}
+                  onClick={
+                    closeChatModal
+                  }
                 >
                   ×
                 </button>
@@ -2178,40 +2958,13 @@ const Leave: React.FC = () => {
                   <div className="chat-left-content">
 
                     <div className="chat-left-message">
-                      Hi John, I wanted to update you on a new company policy regarding remote work.
+                      Hi, I wanted to update you on this leave request.
                     </div>
 
                     <div className="chat-meta">
                       <strong>
-                        Anthony Lewis
-                      </strong>
-
-                      <span className="chat-separator">
-                        ●
-                      </span>
-
-                      08:00 AM
-                    </div>
-                  </div>
-
-                  <span>
-                    ⋮
-                  </span>
-                </div>
-
-                <div className="chat-left-row">
-
-                  <div className="chat-avatar" />
-
-                  <div className="chat-left-content">
-
-                    <div className="chat-small-message">
-                      Do you have a moment?
-                    </div>
-
-                    <div className="chat-meta">
-                      <strong>
-                        Anthony Lewis
+                        {selectedLeave.employee ||
+                          "Employee"}
                       </strong>
 
                       <span className="chat-separator">
@@ -2234,7 +2987,7 @@ const Leave: React.FC = () => {
                     <div className="chat-right-box">
 
                       <div className="chat-right-message">
-                        Sure, Sarah. What’s the new policy?
+                        Sure, let me know if you need anything else.
                       </div>
 
                       <div className="chat-right-meta">
@@ -2264,7 +3017,9 @@ const Leave: React.FC = () => {
                   <input
                     type="text"
                     placeholder="Type Your Message"
-                    value={chatMessage}
+                    value={
+                      chatMessage
+                    }
                     onChange={(e) =>
                       setChatMessage(
                         e.target.value
@@ -2304,7 +3059,9 @@ const Leave: React.FC = () => {
                 <button
                   type="button"
                   className="modal-close-custom"
-                  onClick={closeViewModal}
+                  onClick={
+                    closeViewModal
+                  }
                 >
                   ×
                 </button>
@@ -2317,26 +3074,29 @@ const Leave: React.FC = () => {
                   <ViewItem
                     label="Leave Reason"
                     value={
-                      selectedLeave.reason
+                      selectedLeave.leaveTypeName
                     }
                   />
 
                   <ViewItem
                     label="From"
-                    value="01-10-2025"
+                    value={
+                      selectedLeave.from
+                    }
                   />
 
                   <ViewItem
                     label="To"
-                    value="15-01-2024"
+                    value={
+                      selectedLeave.to
+                    }
                   />
 
                   <ViewItem
                     label="Leave Type"
-                    value={
-                      selectedLeave.leaveType ||
-                      "First Half"
-                    }
+                    value={availTypeLabel(
+                      selectedLeave.availType
+                    )}
                   />
 
                   <ViewItem
@@ -2358,7 +3118,7 @@ const Leave: React.FC = () => {
                     label="Reason"
                     value={
                       selectedLeave.description ||
-                      "Going to Hospital"
+                      "-"
                     }
                   />
                 </div>
@@ -2384,14 +3144,18 @@ const Leave: React.FC = () => {
                 <button
                   type="button"
                   className="modal-close-custom"
-                  onClick={closeEditModal}
+                  onClick={
+                    closeEditModal
+                  }
                 >
                   ×
                 </button>
               </div>
 
               <form
-                onSubmit={handleEditLeave}
+                onSubmit={
+                  handleEditLeave
+                }
               >
 
                 <div className="form-modal-body">
@@ -2404,46 +3168,62 @@ const Leave: React.FC = () => {
                       </label>
 
                       <select
-                        value={form.reason}
+                        value={
+                          form.leaveTypeId
+                        }
                         onChange={(e) =>
-                          setForm((prev) => ({
-                            ...prev,
-                            reason:
-                              e.target.value,
-                          }))
+                          setForm(
+                            (prev) => ({
+                              ...prev,
+                              leaveTypeId:
+                                e.target.value,
+                            })
+                          )
                         }
                       >
-                        <option value="Medical Leave">
-                          Medical Leave
+                        <option value="">
+                          Select Leave Reason
                         </option>
 
-                        <option value="Annual Leave">
-                          Annual Leave
-                        </option>
-
-                        <option value="Casual Leave">
-                          Casual Leave
-                        </option>
+                        {leaveTypes.map(
+                          (type) => (
+                            <option
+                              key={
+                                type.id
+                              }
+                              value={
+                                type.id
+                              }
+                            >
+                              {
+                                type.name
+                              }
+                            </option>
+                          )
+                        )}
                       </select>
                     </div>
 
-                    <div className="form-field">
-                      <label>
-                        From
-                      </label>
+                    {/* FROM - DD/MM/YYYY */}
 
-                      <input
-                        type="date"
-                        value={form.from}
-                        onChange={(e) =>
-                          setForm((prev) => ({
-                            ...prev,
-                            from:
-                              e.target.value,
-                          }))
-                        }
-                      />
-                    </div>
+                    <div className="form-field">
+  <label>From</label>
+
+  <div className="date-input-wrapper">
+    <input
+      type="date"
+      value={ddmmyyyyToISO(form.from) || ""}
+      onChange={(e) => {
+        setForm((prev) => ({
+          ...prev,
+          from: isoToDDMMYYYY(e.target.value),
+        }));
+      }}
+    />
+  </div>
+</div>
+
+                    {/* TO - DD/MM/YYYY */}
 
                     <div className="form-field">
                       <label>
@@ -2452,14 +3232,26 @@ const Leave: React.FC = () => {
 
                       <input
                         type="text"
-                        value={form.to}
-                        onChange={(e) =>
-                          setForm((prev) => ({
-                            ...prev,
-                            to:
-                              e.target.value,
-                          }))
+                        placeholder="DD/MM/YYYY"
+                        inputMode="numeric"
+                        maxLength={10}
+                        value={
+                          form.to
                         }
+                        onChange={(
+                          e
+                        ) => {
+                          setForm(
+                            (prev) => ({
+                              ...prev,
+                              to:
+                                formatDateTyping(
+                                  e.target
+                                    .value
+                                ),
+                            })
+                          );
+                        }}
                       />
                     </div>
 
@@ -2469,26 +3261,38 @@ const Leave: React.FC = () => {
                       </label>
 
                       <select
-                        value={form.leaveType}
+                        value={
+                          form.availType
+                        }
                         onChange={(e) =>
-                          setForm((prev) => ({
-                            ...prev,
-                            leaveType:
-                              e.target.value,
-                          }))
+                          setForm(
+                            (prev) => ({
+                              ...prev,
+                              availType:
+                                Number(
+                                  e.target
+                                    .value
+                                ),
+                            })
+                          )
                         }
                       >
-                        <option value="First Half">
-                          First Half
-                        </option>
-
-                        <option value="Second Half">
-                          Second Half
-                        </option>
-
-                        <option value="Full Day">
-                          Full Day
-                        </option>
+                        {AVAIL_TYPE_OPTIONS.map(
+                          (option) => (
+                            <option
+                              key={
+                                option.value
+                              }
+                              value={
+                                option.value
+                              }
+                            >
+                              {
+                                option.label
+                              }
+                            </option>
+                          )
+                        )}
                       </select>
                     </div>
 
@@ -2499,6 +3303,7 @@ const Leave: React.FC = () => {
 
                       <input
                         type="text"
+                        readOnly
                         value={
                           form.days
                             ? form.days.padStart(
@@ -2506,13 +3311,6 @@ const Leave: React.FC = () => {
                                 "0"
                               )
                             : ""
-                        }
-                        onChange={(e) =>
-                          setForm((prev) => ({
-                            ...prev,
-                            days:
-                              e.target.value,
-                          }))
                         }
                       />
                     </div>
@@ -2524,6 +3322,18 @@ const Leave: React.FC = () => {
 
                       <input
                         type="file"
+                        onChange={(e) =>
+                          setForm(
+                            (prev) => ({
+                              ...prev,
+                              attachment:
+                                e
+                                  .target
+                                  .files?.[0] ||
+                                null,
+                            })
+                          )
+                        }
                       />
                     </div>
 
@@ -2534,14 +3344,17 @@ const Leave: React.FC = () => {
 
                       <textarea
                         value={
-                          form.description
+                          form.reasonText
                         }
                         onChange={(e) =>
-                          setForm((prev) => ({
-                            ...prev,
-                            description:
-                              e.target.value,
-                          }))
+                          setForm(
+                            (prev) => ({
+                              ...prev,
+                              reasonText:
+                                e.target
+                                  .value,
+                            })
+                          )
                         }
                       />
                     </div>
@@ -2553,7 +3366,9 @@ const Leave: React.FC = () => {
                   <button
                     type="button"
                     className="cancel-btn"
-                    onClick={closeEditModal}
+                    onClick={
+                      closeEditModal
+                    }
                   >
                     Cancel
                   </button>
@@ -2561,8 +3376,13 @@ const Leave: React.FC = () => {
                   <button
                     type="submit"
                     className="save-btn"
+                    disabled={
+                      saving
+                    }
                   >
-                    Save Changes
+                    {saving
+                      ? "Saving..."
+                      : "Save Changes"}
                   </button>
                 </div>
               </form>
@@ -2587,7 +3407,7 @@ const Leave: React.FC = () => {
               </h3>
 
               <p className="delete-modal-text">
-                You want to delete all the marked items, this cant be undone once you delete.
+                You want to delete this leave request, this can't be undone once you delete.
               </p>
 
               <div className="delete-modal-actions">
@@ -2595,7 +3415,9 @@ const Leave: React.FC = () => {
                 <button
                   type="button"
                   className="delete-cancel-btn"
-                  onClick={closeDeleteModal}
+                  onClick={
+                    closeDeleteModal
+                  }
                 >
                   Cancel
                 </button>
@@ -2603,9 +3425,16 @@ const Leave: React.FC = () => {
                 <button
                   type="button"
                   className="delete-confirm-btn"
-                  onClick={handleDeleteLeave}
+                  disabled={
+                    saving
+                  }
+                  onClick={
+                    handleDeleteLeave
+                  }
                 >
-                  Yes, Delete
+                  {saving
+                    ? "Deleting..."
+                    : "Yes, Delete"}
                 </button>
               </div>
             </div>
@@ -2629,8 +3458,12 @@ const Leave: React.FC = () => {
                 type="button"
                 className="modal-close-custom"
                 onClick={() => {
-                  setShowAddModal(false);
-                  setForm(emptyForm);
+                  setShowAddModal(
+                    false
+                  );
+                  setForm(
+                    emptyForm
+                  );
                 }}
               >
                 ×
@@ -2638,7 +3471,9 @@ const Leave: React.FC = () => {
             </div>
 
             <form
-              onSubmit={handleAddLeave}
+              onSubmit={
+                handleAddLeave
+              }
             >
 
               <div className="form-modal-body">
@@ -2651,32 +3486,43 @@ const Leave: React.FC = () => {
                     </label>
 
                     <select
-                      value={form.reason}
+                      value={
+                        form.leaveTypeId
+                      }
                       onChange={(e) =>
-                        setForm((prev) => ({
-                          ...prev,
-                          reason:
-                            e.target.value,
-                        }))
+                        setForm(
+                          (prev) => ({
+                            ...prev,
+                            leaveTypeId:
+                              e.target.value,
+                          })
+                        )
                       }
                     >
                       <option value="">
                         Select Leave Reason
                       </option>
 
-                      <option value="Medical Leave">
-                        Medical Leave
-                      </option>
-
-                      <option value="Annual Leave">
-                        Annual Leave
-                      </option>
-
-                      <option value="Casual Leave">
-                        Casual Leave
-                      </option>
+                      {leaveTypes.map(
+                        (type) => (
+                          <option
+                            key={
+                              type.id
+                            }
+                            value={
+                              type.id
+                            }
+                          >
+                            {
+                              type.name
+                            }
+                          </option>
+                        )
+                      )}
                     </select>
                   </div>
+
+                  {/* FROM - DD/MM/YYYY */}
 
                   <div className="form-field">
                     <label>
@@ -2684,17 +3530,29 @@ const Leave: React.FC = () => {
                     </label>
 
                     <input
-                      type="date"
-                      value={form.from}
+                      type="text"
+                      placeholder="DD/MM/YYYY"
+                      inputMode="numeric"
+                      maxLength={10}
+                      value={
+                        form.from
+                      }
                       onChange={(e) =>
-                        setForm((prev) => ({
-                          ...prev,
-                          from:
-                            e.target.value,
-                        }))
+                        setForm(
+                          (prev) => ({
+                            ...prev,
+                            from:
+                              formatDateTyping(
+                                e.target
+                                  .value
+                              ),
+                          })
+                        )
                       }
                     />
                   </div>
+
+                  {/* TO - DD/MM/YYYY */}
 
                   <div className="form-field">
                     <label>
@@ -2702,14 +3560,24 @@ const Leave: React.FC = () => {
                     </label>
 
                     <input
-                      type="date"
-                      value={form.to}
+                      type="text"
+                      placeholder="DD/MM/YYYY"
+                      inputMode="numeric"
+                      maxLength={10}
+                      value={
+                        form.to
+                      }
                       onChange={(e) =>
-                        setForm((prev) => ({
-                          ...prev,
-                          to:
-                            e.target.value,
-                        }))
+                        setForm(
+                          (prev) => ({
+                            ...prev,
+                            to:
+                              formatDateTyping(
+                                e.target
+                                  .value
+                              ),
+                          })
+                        )
                       }
                     />
                   </div>
@@ -2720,30 +3588,38 @@ const Leave: React.FC = () => {
                     </label>
 
                     <select
-                      value={form.leaveType}
+                      value={
+                        form.availType
+                      }
                       onChange={(e) =>
-                        setForm((prev) => ({
-                          ...prev,
-                          leaveType:
-                            e.target.value,
-                        }))
+                        setForm(
+                          (prev) => ({
+                            ...prev,
+                            availType:
+                              Number(
+                                e.target
+                                  .value
+                              ),
+                          })
+                        )
                       }
                     >
-                      <option value="">
-                        Select
-                      </option>
-
-                      <option value="First Half">
-                        First Half
-                      </option>
-
-                      <option value="Second Half">
-                        Second Half
-                      </option>
-
-                      <option value="Full Day">
-                        Full Day
-                      </option>
+                      {AVAIL_TYPE_OPTIONS.map(
+                        (option) => (
+                          <option
+                            key={
+                              option.value
+                            }
+                            value={
+                              option.value
+                            }
+                          >
+                            {
+                              option.label
+                            }
+                          </option>
+                        )
+                      )}
                     </select>
                   </div>
 
@@ -2754,13 +3630,18 @@ const Leave: React.FC = () => {
 
                     <input
                       type="number"
-                      value={form.days}
+                      value={
+                        form.days
+                      }
                       onChange={(e) =>
-                        setForm((prev) => ({
-                          ...prev,
-                          days:
-                            e.target.value,
-                        }))
+                        setForm(
+                          (prev) => ({
+                            ...prev,
+                            days:
+                              e.target
+                                .value,
+                          })
+                        )
                       }
                     />
                   </div>
@@ -2772,6 +3653,18 @@ const Leave: React.FC = () => {
 
                     <input
                       type="file"
+                      onChange={(e) =>
+                        setForm(
+                          (prev) => ({
+                            ...prev,
+                            attachment:
+                              e
+                                .target
+                                .files?.[0] ||
+                              null,
+                          })
+                        )
+                      }
                     />
                   </div>
 
@@ -2782,14 +3675,17 @@ const Leave: React.FC = () => {
 
                     <textarea
                       value={
-                        form.description
+                        form.reasonText
                       }
                       onChange={(e) =>
-                        setForm((prev) => ({
-                          ...prev,
-                          description:
-                            e.target.value,
-                        }))
+                        setForm(
+                          (prev) => ({
+                            ...prev,
+                            reasonText:
+                              e.target
+                                .value,
+                          })
+                        )
                       }
                     />
                   </div>
@@ -2802,8 +3698,12 @@ const Leave: React.FC = () => {
                   type="button"
                   className="cancel-btn"
                   onClick={() => {
-                    setShowAddModal(false);
-                    setForm(emptyForm);
+                    setShowAddModal(
+                      false
+                    );
+                    setForm(
+                      emptyForm
+                    );
                   }}
                 >
                   Cancel
@@ -2812,8 +3712,13 @@ const Leave: React.FC = () => {
                 <button
                   type="submit"
                   className="save-btn"
+                  disabled={
+                    saving
+                  }
                 >
-                  Add Leave
+                  {saving
+                    ? "Saving..."
+                    : "Add Leave"}
                 </button>
               </div>
             </form>
@@ -2897,3 +3802,4 @@ const ViewItem = ({
 };
 
 export default Leave;
+

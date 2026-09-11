@@ -29,44 +29,54 @@ type UserStatus =
 
 interface UserItem {
   id: number;
+
   firstName: string;
   lastName: string;
+
   username: string;
+
   name: string;
+
   email: string;
+
   phone: string;
+
+  company: string;
+
+  department: string;
+
+  designation: string;
+
+  about: string;
+
   createdDate: string;
+
   role: UserRole;
+
   status: UserStatus;
 }
 
 interface UserForm {
   firstName: string;
   lastName: string;
+
   username: string;
+
   email: string;
+
   password: string;
+
   confirmPassword: string;
+
   phone: string;
-  role: UserRole | "";
-}
 
-type PermissionKey =
-  | "read"
-  | "write"
-  | "create"
-  | "delete"
-  | "import"
-  | "export";
+  company: string;
 
-interface ModulePermission {
-  module: string;
-  read: boolean;
-  write: boolean;
-  create: boolean;
-  delete: boolean;
-  import: boolean;
-  export: boolean;
+  department: string;
+
+  designation: string;
+
+  about: string;
 }
 
 /* =========================================
@@ -76,176 +86,357 @@ interface ModulePermission {
 const initialUsers: UserItem[] = [
   {
     id: 1,
+
     firstName: "Anthony",
     lastName: "Lewis",
+
     username: "anthony",
+
     name: "Anthony Lewis",
+
     email: "anthony@example.com",
+
     phone: "988765544",
+
+    company: "Adequate",
+
+    department: "IT",
+
+    designation: "Developer",
+
+    about:
+      "Frontend developer working on HR management applications.",
+
     createdDate: "12 Sep 2024",
+
     role: "Employee",
+
     status: "Active",
   },
+
   {
     id: 2,
+
     firstName: "Brian",
     lastName: "Villalobos",
+
     username: "brian",
+
     name: "Brian Villalobos",
+
     email: "brian@example.com",
+
     phone: "987654321",
+
+    company: "Adequate",
+
+    department: "Sales",
+
+    designation: "Sales Executive",
+
+    about:
+      "Responsible for sales activities and customer relationships.",
+
     createdDate: "24 Oct 2024",
+
     role: "Employee",
+
     status: "Active",
   },
+
   {
     id: 3,
+
     firstName: "Sophie",
     lastName: "Headrick",
+
     username: "sophie",
+
     name: "Sophie Headrick",
+
     email: "sophie@example.com",
+
     phone: "987654322",
+
+    company: "Adequate",
+
+    department: "HR",
+
+    designation: "HR Executive",
+
+    about:
+      "Handles employee management and HR related activities.",
+
     createdDate: "18 Feb 2024",
+
     role: "HR",
+
     status: "Active",
   },
+
   {
     id: 4,
+
     firstName: "Stephan",
     lastName: "Peralt",
+
     username: "stephan",
+
     name: "Stephan Peralt",
+
     email: "peral@example.com",
+
     phone: "987654323",
+
+    company: "Adequate",
+
+    department: "Finance",
+
+    designation: "Accountant",
+
+    about:
+      "Handles accounting and financial operations.",
+
     createdDate: "17 Oct 2024",
+
     role: "Employee",
+
     status: "Active",
   },
+
   {
     id: 5,
+
     firstName: "Thomas",
     lastName: "Bordelon",
+
     username: "thomas",
+
     name: "Thomas Bordelon",
+
     email: "thomas@example.com",
+
     phone: "987654324",
+
+    company: "Adequate",
+
+    department: "HR",
+
+    designation: "HR Manager",
+
+    about:
+      "Manages HR operations and employee relations.",
+
     createdDate: "20 Jul 2024",
+
     role: "HR",
+
     status: "Active",
   },
+
   {
     id: 6,
+
     firstName: "Doglas",
     lastName: "Martini",
+
     username: "doglas",
+
     name: "Doglas Martini",
+
     email: "martniwr@example.com",
+
     phone: "987654325",
+
+    company: "Adequate",
+
+    department: "Operations",
+
+    designation: "Manager",
+
+    about:
+      "Manages daily business operations.",
+
     createdDate: "10 Apr 2024",
+
     role: "Employee",
+
     status: "Active",
   },
+
   {
     id: 7,
+
     firstName: "Cameron",
     lastName: "Drake",
+
     username: "cameron",
+
     name: "Cameron Drake",
+
     email: "cameron@example.com",
+
     phone: "987654326",
+
+    company: "Adequate",
+
+    department: "Marketing",
+
+    designation: "Marketing Executive",
+
+    about:
+      "Works on marketing campaigns and brand activities.",
+
     createdDate: "29 Aug 2024",
+
     role: "HR",
+
     status: "Active",
   },
+
   {
     id: 8,
+
     firstName: "Harvey",
     lastName: "Smith",
+
     username: "harvey",
+
     name: "Harvey Smith",
+
     email: "harvey@example.com",
+
     phone: "987654327",
+
+    company: "Adequate",
+
+    department: "IT",
+
+    designation: "Designer",
+
+    about:
+      "Works on UI and visual design requirements.",
+
     createdDate: "22 Feb 2024",
+
     role: "Employee",
+
     status: "Inactive",
   },
+
   {
     id: 9,
+
     firstName: "Michael",
     lastName: "Walker",
+
     username: "michael",
+
     name: "Michael Walker",
+
     email: "michael@example.com",
+
     phone: "987654328",
+
+    company: "Adequate",
+
+    department: "Sales",
+
+    designation: "Sales Manager",
+
+    about:
+      "Manages sales team and business development.",
+
     createdDate: "03 Nov 2024",
+
     role: "HR",
+
     status: "Active",
   },
+
   {
     id: 10,
+
     firstName: "Doris",
     lastName: "Crowley",
+
     username: "doris",
+
     name: "Doris Crowley",
+
     email: "doris@example.com",
+
     phone: "987654329",
+
+    company: "Adequate",
+
+    department: "Operations",
+
+    designation: "Manager",
+
+    about:
+      "Handles operations and team coordination.",
+
     createdDate: "17 Dec 2024",
+
     role: "HR",
+
     status: "Active",
   },
 ];
 
+/* =========================================
+   EMPTY FORM
+========================================= */
+
 const emptyForm: UserForm = {
   firstName: "",
+
   lastName: "",
+
   username: "",
+
   email: "",
+
   password: "",
+
   confirmPassword: "",
+
   phone: "",
-  role: "",
+
+  company: "",
+
+  department: "",
+
+  designation: "",
+
+  about: "",
 };
 
-const createEmptyPermissions =
-  (): ModulePermission[] => [
-    {
-      module: "Employee",
-      read: false,
-      write: false,
-      create: false,
-      delete: false,
-      import: false,
-      export: false,
-    },
-    {
-      module: "Holidays",
-      read: false,
-      write: false,
-      create: false,
-      delete: false,
-      import: false,
-      export: false,
-    },
-    {
-      module: "Leaves",
-      read: false,
-      write: false,
-      create: false,
-      delete: false,
-      import: false,
-      export: false,
-    },
-    {
-      module: "Events",
-      read: false,
-      write: false,
-      create: false,
-      delete: false,
-      import: false,
-      export: false,
-    },
-  ];
+/* =========================================
+   DROPDOWN DATA
+========================================= */
+
+const departments = [
+  "IT",
+  "HR",
+  "Finance",
+  "Sales",
+  "Marketing",
+  "Operations",
+];
+
+const designations = [
+  "Manager",
+  "HR Manager",
+  "HR Executive",
+  "Developer",
+  "Designer",
+  "Accountant",
+  "Sales Executive",
+  "Sales Manager",
+  "Marketing Executive",
+];
 
 /* =========================================
    COMPONENT
@@ -284,7 +475,9 @@ const Users: React.FC = () => {
   const [selected, setSelected] =
     useState<number[]>([]);
 
-  /* MODALS */
+  /* =========================================
+     MODALS
+  ========================================= */
 
   const [addOpen, setAddOpen] =
     useState(false);
@@ -307,15 +500,12 @@ const Users: React.FC = () => {
   const [deleteId, setDeleteId] =
     useState<number | null>(null);
 
+  /* =========================================
+     FORM
+  ========================================= */
+
   const [form, setForm] =
     useState<UserForm>(emptyForm);
-
-  const [
-    permissions,
-    setPermissions,
-  ] = useState<
-    ModulePermission[]
-  >(createEmptyPermissions());
 
   const [
     showPassword,
@@ -352,6 +542,12 @@ const Users: React.FC = () => {
               .toLowerCase()
               .includes(q) ||
             item.status
+              .toLowerCase()
+              .includes(q) ||
+            item.department
+              .toLowerCase()
+              .includes(q) ||
+            item.designation
               .toLowerCase()
               .includes(q)
         );
@@ -475,44 +671,17 @@ const Users: React.FC = () => {
   };
 
   /* =========================================
-     PERMISSIONS
-  ========================================= */
-
-  const togglePermission = (
-    moduleIndex: number,
-    permission: PermissionKey
-  ) => {
-    setPermissions((prev) =>
-      prev.map((item, index) =>
-        index === moduleIndex
-          ? {
-              ...item,
-              [permission]:
-                !item[
-                  permission
-                ],
-            }
-          : item
-      )
-    );
-  };
-
-  /* =========================================
      ADD USER
   ========================================= */
 
   const openAddModal = () => {
-    setForm(emptyForm);
-
-    setPermissions(
-      createEmptyPermissions()
-    );
+    setForm({
+      ...emptyForm,
+    });
 
     setShowPassword(false);
 
-    setShowConfirmPassword(
-      false
-    );
+    setShowConfirmPassword(false);
 
     setAddOpen(true);
   };
@@ -520,7 +689,13 @@ const Users: React.FC = () => {
   const closeAddModal = () => {
     setAddOpen(false);
 
-    setForm(emptyForm);
+    setForm({
+      ...emptyForm,
+    });
+
+    setShowPassword(false);
+
+    setShowConfirmPassword(false);
   };
 
   const handleAddUser = (
@@ -532,7 +707,16 @@ const Users: React.FC = () => {
       !form.firstName.trim() ||
       !form.lastName.trim() ||
       !form.email.trim() ||
-      !form.role
+      !form.department ||
+      !form.designation
+    ) {
+      return;
+    }
+
+    if (
+      form.password &&
+      form.password !==
+        form.confirmPassword
     ) {
       return;
     }
@@ -565,11 +749,22 @@ const Users: React.FC = () => {
       phone:
         form.phone.trim(),
 
+      company:
+        form.company.trim(),
+
+      department:
+        form.department,
+
+      designation:
+        form.designation,
+
+      about:
+        form.about.trim(),
+
       createdDate:
         "03 Sep 2026",
 
-      role:
-        form.role as UserRole,
+      role: "Employee",
 
       status: "Active",
     };
@@ -601,60 +796,32 @@ const Users: React.FC = () => {
       username:
         user.username,
 
-      email: user.email,
+      email:
+        user.email,
 
       password: "",
 
       confirmPassword: "",
 
-      phone: user.phone,
+      phone:
+        user.phone,
 
-      role: user.role,
+      company:
+        user.company,
+
+      department:
+        user.department,
+
+      designation:
+        user.designation,
+
+      about:
+        user.about,
     });
 
-    /*
-      Same checked style as
-      original Edit User design
-    */
+    setShowPassword(false);
 
-    setPermissions([
-      {
-        module: "Employee",
-        read: true,
-        write: false,
-        create: true,
-        delete: false,
-        import: true,
-        export: true,
-      },
-      {
-        module: "Holidays",
-        read: false,
-        write: true,
-        create: true,
-        delete: true,
-        import: false,
-        export: false,
-      },
-      {
-        module: "Leaves",
-        read: false,
-        write: false,
-        create: true,
-        delete: true,
-        import: true,
-        export: true,
-      },
-      {
-        module: "Events",
-        read: true,
-        write: false,
-        create: false,
-        delete: false,
-        import: false,
-        export: true,
-      },
-    ]);
+    setShowConfirmPassword(false);
 
     setEditOpen(true);
   };
@@ -664,7 +831,13 @@ const Users: React.FC = () => {
 
     setEditingUser(null);
 
-    setForm(emptyForm);
+    setForm({
+      ...emptyForm,
+    });
+
+    setShowPassword(false);
+
+    setShowConfirmPassword(false);
   };
 
   const handleEditUser = (
@@ -676,6 +849,24 @@ const Users: React.FC = () => {
       return;
     }
 
+    if (
+      !form.firstName.trim() ||
+      !form.lastName.trim() ||
+      !form.email.trim() ||
+      !form.department ||
+      !form.designation
+    ) {
+      return;
+    }
+
+    if (
+      form.password &&
+      form.password !==
+        form.confirmPassword
+    ) {
+      return;
+    }
+
     setUsers((prev) =>
       prev.map((item) =>
         item.id ===
@@ -684,25 +875,33 @@ const Users: React.FC = () => {
               ...item,
 
               firstName:
-                form.firstName,
+                form.firstName.trim(),
 
               lastName:
-                form.lastName,
+                form.lastName.trim(),
 
               username:
-                form.username,
+                form.username.trim(),
 
-              name: `${form.firstName} ${form.lastName}`.trim(),
+              name: `${form.firstName.trim()} ${form.lastName.trim()}`.trim(),
 
               email:
-                form.email,
+                form.email.trim(),
 
               phone:
-                form.phone,
+                form.phone.trim(),
 
-              role:
-                (form.role ||
-                  item.role) as UserRole,
+              company:
+                form.company.trim(),
+
+              department:
+                form.department,
+
+              designation:
+                form.designation,
+
+              about:
+                form.about.trim(),
             }
           : item
       )
@@ -752,7 +951,7 @@ const Users: React.FC = () => {
   };
 
   /* =========================================
-     FORM
+     FORM UPDATE
   ========================================= */
 
   const updateForm = (
@@ -1232,23 +1431,26 @@ const Users: React.FC = () => {
         }
 
         .users-modal-close {
-          width: 20px;
-          height: 20px;
+          width: 28px;
+          height: 28px;
           padding: 0;
           border: 0;
-          border-radius: 50%;
-          background: #747d8a;
-          color: #fff;
+          background: transparent;
+          color: #667085;
           display: flex;
           align-items: center;
           justify-content: center;
-          font-size: 14px;
+          font-size: 24px;
           line-height: 1;
           cursor: pointer;
         }
 
+        .users-modal-close:hover {
+          color: #172033;
+        }
+
         .users-modal-body {
-          padding: 17px;
+          padding: 20px;
         }
 
         .users-form-grid {
@@ -1265,6 +1467,11 @@ const Users: React.FC = () => {
           font-weight: 500;
         }
 
+        .users-required {
+          color: #e53935;
+          margin-left: 2px;
+        }
+
         .users-form-group input,
         .users-form-group select {
           width: 100%;
@@ -1277,6 +1484,19 @@ const Users: React.FC = () => {
           color: #26344d;
           font-size: 13px;
         }
+
+        .users-form-group input:focus,
+        .users-form-group select:focus,
+        .users-about:focus {
+          border-color: #c39237;
+          box-shadow: 0 0 0 2px rgba(195,146,55,.08);
+        }
+
+        .users-form-group select {
+          cursor: pointer;
+        }
+
+        /* PASSWORD */
 
         .users-password-wrap {
           position: relative;
@@ -1302,66 +1522,41 @@ const Users: React.FC = () => {
           cursor: pointer;
         }
 
-        /* PERMISSIONS */
+        /* =========================================
+           ABOUT
+        ========================================= */
 
-        .users-permission-card {
-          margin-top: 18px;
-          overflow-x: auto;
-          border: 1px solid #e0e4e9;
-          border-radius: 5px;
+        .users-about-group {
+          grid-column: 1 / -1;
+          margin-top: 0;
         }
 
-        .users-permission-table {
+        .users-about {
           width: 100%;
-          min-width: 650px;
-          border-collapse: collapse;
+          min-height: 78px;
+          padding: 10px;
+          resize: vertical;
+          border: 1px solid #dce1e7;
+          border-radius: 5px;
+          outline: none;
+          background: #fff;
+          color: #26344d;
+          font-family: inherit;
+          font-size: 13px;
+          line-height: 1.5;
         }
 
-        .users-permission-table thead {
-          background: #e5e7eb;
+        .users-about::placeholder {
+          color: #9aa3b2;
         }
 
-        .users-permission-table th {
-          height: 42px;
-          padding: 0 13px;
-          color: #13213e;
-          font-size: 12px;
-          font-weight: 600;
-          text-align: center;
-        }
-
-        .users-permission-table th:first-child {
-          text-align: left;
-        }
-
-        .users-permission-table td {
-          height: 44px;
-          padding: 0 13px;
-          border-bottom: 1px solid #e5e7eb;
-          color: #374358;
-          font-size: 12px;
-          text-align: center;
-        }
-
-        .users-permission-table td:first-child {
-          color: #17233e;
-          text-align: left;
-          font-weight: 500;
-        }
-
-        .users-permission-table tbody tr:last-child td {
-          border-bottom: 0;
-        }
-
-        .users-permission-checkbox {
-          width: 16px;
-          height: 16px;
-          cursor: pointer;
-        }
+        /* =========================================
+           MODAL FOOTER
+        ========================================= */
 
         .users-modal-footer {
           min-height: 64px;
-          padding: 10px 13px;
+          padding: 10px 20px;
           position: sticky;
           bottom: 0;
           z-index: 10;
@@ -1370,14 +1565,13 @@ const Users: React.FC = () => {
           display: flex;
           align-items: center;
           justify-content: flex-end;
-          gap: 8px;
+          gap: 10px;
         }
 
         .users-modal-cancel,
         .users-modal-save {
           height: 39px;
-          padding: 0 15px;
-          border: 0;
+          padding: 0 17px;
           border-radius: 5px;
           font-size: 13px;
           cursor: pointer;
@@ -1389,10 +1583,20 @@ const Users: React.FC = () => {
           color: #172033;
         }
 
+        .users-modal-cancel:hover {
+          background: #f7f8fa;
+        }
+
         .users-modal-save {
+          border: 1px solid #c39237;
           background: #c39237;
           color: #fff;
           font-weight: 600;
+        }
+
+        .users-modal-save:hover {
+          background: #b58430;
+          border-color: #b58430;
         }
 
         /* =========================================
@@ -1464,6 +1668,10 @@ const Users: React.FC = () => {
           font-weight: 600;
         }
 
+        /* =========================================
+           RESPONSIVE
+        ========================================= */
+
         @media(max-width:900px) {
           .users-card-header {
             flex-direction: column;
@@ -1485,6 +1693,10 @@ const Users: React.FC = () => {
             grid-template-columns: 1fr;
           }
 
+          .users-about-group {
+            grid-column: auto;
+          }
+
           .users-toolbar {
             flex-direction: column;
             align-items: stretch;
@@ -1504,6 +1716,10 @@ const Users: React.FC = () => {
 
           .users-filters {
             flex-direction: column;
+          }
+
+          .users-form-modal {
+            max-height: calc(100vh - 20px);
           }
         }
         `}
@@ -1677,9 +1893,7 @@ const Users: React.FC = () => {
             </div>
           </div>
 
-          {/* =========================================
-              TOOLBAR
-          ========================================= */}
+          {/* TOOLBAR */}
 
           <div className="users-toolbar">
             <div className="users-row-control">
@@ -1739,9 +1953,7 @@ const Users: React.FC = () => {
             />
           </div>
 
-          {/* =========================================
-              TABLE
-          ========================================= */}
+          {/* TABLE */}
 
           <div className="users-table-wrapper">
             <table className="users-table">
@@ -1812,6 +2024,7 @@ const Users: React.FC = () => {
                 {visibleUsers.map(
                   (user) => (
                     <tr key={user.id}>
+
                       {/* CHECKBOX */}
 
                       <td className="users-check-col">
@@ -1892,8 +2105,6 @@ const Users: React.FC = () => {
                       <td>
                         <div className="users-actions">
 
-                          {/* SHIELD */}
-
                           <button
                             type="button"
                             className="users-action-btn"
@@ -1903,8 +2114,6 @@ const Users: React.FC = () => {
                               size={15}
                             />
                           </button>
-
-                          {/* EDIT */}
 
                           <button
                             type="button"
@@ -1921,8 +2130,6 @@ const Users: React.FC = () => {
                             />
                           </button>
 
-                          {/* DELETE */}
-
                           <button
                             type="button"
                             className="users-action-btn"
@@ -1937,6 +2144,7 @@ const Users: React.FC = () => {
                               size={15}
                             />
                           </button>
+
                         </div>
                       </td>
                     </tr>
@@ -1951,7 +2159,6 @@ const Users: React.FC = () => {
                       style={{
                         height:
                           "90px",
-
                         textAlign:
                           "center",
                       }}
@@ -1964,9 +2171,7 @@ const Users: React.FC = () => {
             </table>
           </div>
 
-          {/* =========================================
-              FOOTER
-          ========================================= */}
+          {/* FOOTER */}
 
           <div className="users-table-footer">
             <div>
@@ -1982,7 +2187,6 @@ const Users: React.FC = () => {
               {Math.min(
                 safeCurrentPage *
                   rowsPerPage,
-
                 filteredUsers.length
               )}{" "}
               of{" "}
@@ -1993,6 +2197,7 @@ const Users: React.FC = () => {
             </div>
 
             <div className="users-pagination">
+
               <button
                 type="button"
                 className="users-page-arrow"
@@ -2042,6 +2247,7 @@ const Users: React.FC = () => {
                   size={16}
                 />
               </button>
+
             </div>
           </div>
         </div>
@@ -2053,10 +2259,15 @@ const Users: React.FC = () => {
 
       {addOpen && (
         <div className="users-modal-overlay">
+
           <div className="users-form-modal">
+
+            {/* HEADER */}
+
             <div className="users-modal-header">
+
               <h3>
-                Add User
+                Add New User
               </h3>
 
               <button
@@ -2068,6 +2279,7 @@ const Users: React.FC = () => {
               >
                 ×
               </button>
+
             </div>
 
             <form
@@ -2075,13 +2287,16 @@ const Users: React.FC = () => {
                 handleAddUser
               }
             >
+
               <div className="users-modal-body">
 
-                {/* FORM */}
-
                 <div className="users-form-grid">
+
+                  {/* FIRST NAME */}
+
                   <UserInput
                     label="First Name"
+                    required
                     value={
                       form.firstName
                     }
@@ -2092,6 +2307,8 @@ const Users: React.FC = () => {
                       )
                     }
                   />
+
+                  {/* LAST NAME */}
 
                   <UserInput
                     label="Last Name"
@@ -2106,8 +2323,11 @@ const Users: React.FC = () => {
                     }
                   />
 
+                  {/* USERNAME */}
+
                   <UserInput
-                    label="User Name"
+                    label="Username"
+                    required
                     value={
                       form.username
                     }
@@ -2119,8 +2339,11 @@ const Users: React.FC = () => {
                     }
                   />
 
+                  {/* EMAIL */}
+
                   <UserInput
                     label="Email"
+                    required
                     value={
                       form.email
                     }
@@ -2135,11 +2358,13 @@ const Users: React.FC = () => {
                   {/* PASSWORD */}
 
                   <div className="users-form-group">
+
                     <label>
                       Password
                     </label>
 
                     <div className="users-password-wrap">
+
                       <input
                         type={
                           showPassword
@@ -2177,17 +2402,20 @@ const Users: React.FC = () => {
                           />
                         )}
                       </button>
+
                     </div>
                   </div>
 
                   {/* CONFIRM PASSWORD */}
 
                   <div className="users-form-group">
+
                     <label>
                       Confirm Password
                     </label>
 
                     <div className="users-password-wrap">
+
                       <input
                         type={
                           showConfirmPassword
@@ -2200,7 +2428,6 @@ const Users: React.FC = () => {
                         onChange={(e) =>
                           updateForm(
                             "confirmPassword",
-
                             e.target
                               .value
                           )
@@ -2226,11 +2453,15 @@ const Users: React.FC = () => {
                           />
                         )}
                       </button>
+
                     </div>
                   </div>
 
+                  {/* PHONE */}
+
                   <UserInput
-                    label="Phone"
+                    label="Phone Number"
+                    required
                     value={
                       form.phone
                     }
@@ -2242,51 +2473,94 @@ const Users: React.FC = () => {
                     }
                   />
 
-                  {/* ROLE */}
+                  {/* COMPANY */}
 
-                  <div className="users-form-group">
+                  <UserInput
+                    label="Company"
+                    value={
+                      form.company
+                    }
+                    onChange={(value) =>
+                      updateForm(
+                        "company",
+                        value
+                      )
+                    }
+                  />
+
+                  {/* DEPARTMENT */}
+
+                  <SelectInput
+                    label="Department"
+                    required
+                    value={
+                      form.department
+                    }
+                    placeholder="Select Department"
+                    options={
+                      departments
+                    }
+                    onChange={(value) =>
+                      updateForm(
+                        "department",
+                        value
+                      )
+                    }
+                  />
+
+                  {/* DESIGNATION */}
+
+                  <SelectInput
+                    label="Designation"
+                    required
+                    value={
+                      form.designation
+                    }
+                    placeholder="Select Designation"
+                    options={
+                      designations
+                    }
+                    onChange={(value) =>
+                      updateForm(
+                        "designation",
+                        value
+                      )
+                    }
+                  />
+
+                  {/* ABOUT */}
+
+                  <div className="users-form-group users-about-group">
+
                     <label>
-                      Role
+                      About
                     </label>
 
-                    <select
-                      value={form.role}
+                    <textarea
+                      className="users-about"
+                      rows={3}
+                      placeholder="Write something about the user..."
+                      value={
+                        form.about
+                      }
                       onChange={(e) =>
                         updateForm(
-                          "role",
-
-                          e.target.value
+                          "about",
+                          e.target
+                            .value
                         )
                       }
-                    >
-                      <option value="">
-                        Select
-                      </option>
+                    />
 
-                      <option value="Employee">
-                        Employee
-                      </option>
-
-                      <option value="HR">
-                        HR
-                      </option>
-                    </select>
                   </div>
+
                 </div>
-
-                {/* PERMISSIONS */}
-
-                <PermissionsTable
-                  permissions={
-                    permissions
-                  }
-                  onToggle={
-                    togglePermission
-                  }
-                />
               </div>
 
+              {/* FOOTER */}
+
               <div className="users-modal-footer">
+
                 <button
                   type="button"
                   className="users-modal-cancel"
@@ -2301,9 +2575,11 @@ const Users: React.FC = () => {
                   type="submit"
                   className="users-modal-save"
                 >
-                  Add User
+                  Save User
                 </button>
+
               </div>
+
             </form>
           </div>
         </div>
@@ -2316,8 +2592,13 @@ const Users: React.FC = () => {
       {editOpen &&
         editingUser && (
           <div className="users-modal-overlay">
+
             <div className="users-form-modal">
+
+              {/* HEADER */}
+
               <div className="users-modal-header">
+
                 <h3>
                   Edit User
                 </h3>
@@ -2331,6 +2612,7 @@ const Users: React.FC = () => {
                 >
                   ×
                 </button>
+
               </div>
 
               <form
@@ -2338,10 +2620,16 @@ const Users: React.FC = () => {
                   handleEditUser
                 }
               >
+
                 <div className="users-modal-body">
+
                   <div className="users-form-grid">
+
+                    {/* FIRST NAME */}
+
                     <UserInput
                       label="First Name"
+                      required
                       value={
                         form.firstName
                       }
@@ -2352,6 +2640,8 @@ const Users: React.FC = () => {
                         )
                       }
                     />
+
+                    {/* LAST NAME */}
 
                     <UserInput
                       label="Last Name"
@@ -2366,8 +2656,11 @@ const Users: React.FC = () => {
                       }
                     />
 
+                    {/* USERNAME */}
+
                     <UserInput
-                      label="User Name"
+                      label="Username"
+                      required
                       value={
                         form.username
                       }
@@ -2379,8 +2672,11 @@ const Users: React.FC = () => {
                       }
                     />
 
+                    {/* EMAIL */}
+
                     <UserInput
                       label="Email"
+                      required
                       value={
                         form.email
                       }
@@ -2392,12 +2688,16 @@ const Users: React.FC = () => {
                       }
                     />
 
+                    {/* PASSWORD */}
+
                     <div className="users-form-group">
+
                       <label>
                         Password
                       </label>
 
                       <div className="users-password-wrap">
+
                         <input
                           type={
                             showPassword
@@ -2410,7 +2710,6 @@ const Users: React.FC = () => {
                           onChange={(e) =>
                             updateForm(
                               "password",
-
                               e.target
                                 .value
                             )
@@ -2436,15 +2735,20 @@ const Users: React.FC = () => {
                             />
                           )}
                         </button>
+
                       </div>
                     </div>
 
+                    {/* CONFIRM PASSWORD */}
+
                     <div className="users-form-group">
+
                       <label>
                         Confirm Password
                       </label>
 
                       <div className="users-password-wrap">
+
                         <input
                           type={
                             showConfirmPassword
@@ -2457,7 +2761,6 @@ const Users: React.FC = () => {
                           onChange={(e) =>
                             updateForm(
                               "confirmPassword",
-
                               e.target
                                 .value
                             )
@@ -2483,11 +2786,15 @@ const Users: React.FC = () => {
                             />
                           )}
                         </button>
+
                       </div>
                     </div>
 
+                    {/* PHONE */}
+
                     <UserInput
-                      label="Phone"
+                      label="Phone Number"
+                      required
                       value={
                         form.phone
                       }
@@ -2499,50 +2806,94 @@ const Users: React.FC = () => {
                       }
                     />
 
-                    <div className="users-form-group">
+                    {/* COMPANY */}
+
+                    <UserInput
+                      label="Company"
+                      value={
+                        form.company
+                      }
+                      onChange={(value) =>
+                        updateForm(
+                          "company",
+                          value
+                        )
+                      }
+                    />
+
+                    {/* DEPARTMENT */}
+
+                    <SelectInput
+                      label="Department"
+                      required
+                      value={
+                        form.department
+                      }
+                      placeholder="Select Department"
+                      options={
+                        departments
+                      }
+                      onChange={(value) =>
+                        updateForm(
+                          "department",
+                          value
+                        )
+                      }
+                    />
+
+                    {/* DESIGNATION */}
+
+                    <SelectInput
+                      label="Designation"
+                      required
+                      value={
+                        form.designation
+                      }
+                      placeholder="Select Designation"
+                      options={
+                        designations
+                      }
+                      onChange={(value) =>
+                        updateForm(
+                          "designation",
+                          value
+                        )
+                      }
+                    />
+
+                    {/* ABOUT */}
+
+                    <div className="users-form-group users-about-group">
+
                       <label>
-                        Role
+                        About
                       </label>
 
-                      <select
+                      <textarea
+                        className="users-about"
+                        rows={3}
+                        placeholder="Write something about the user..."
                         value={
-                          form.role
+                          form.about
                         }
                         onChange={(e) =>
                           updateForm(
-                            "role",
-
+                            "about",
                             e.target
                               .value
                           )
                         }
-                      >
-                        <option value="">
-                          Select
-                        </option>
+                      />
 
-                        <option value="Employee">
-                          Employee
-                        </option>
-
-                        <option value="HR">
-                          HR
-                        </option>
-                      </select>
                     </div>
-                  </div>
 
-                  <PermissionsTable
-                    permissions={
-                      permissions
-                    }
-                    onToggle={
-                      togglePermission
-                    }
-                  />
+                  </div>
                 </div>
 
+                {/* FOOTER */}
+
                 <div className="users-modal-footer">
+
                   <button
                     type="button"
                     className="users-modal-cancel"
@@ -2559,7 +2910,9 @@ const Users: React.FC = () => {
                   >
                     Save Changes
                   </button>
+
                 </div>
+
               </form>
             </div>
           </div>
@@ -2571,7 +2924,9 @@ const Users: React.FC = () => {
 
       {deleteOpen && (
         <div className="users-modal-overlay">
+
           <div className="users-delete-modal">
+
             <div className="users-delete-icon">
               <Trash2
                 size={31}
@@ -2591,6 +2946,7 @@ const Users: React.FC = () => {
             </p>
 
             <div className="users-delete-actions">
+
               <button
                 type="button"
                 className="users-delete-cancel"
@@ -2610,7 +2966,9 @@ const Users: React.FC = () => {
               >
                 Yes, Delete
               </button>
+
             </div>
+
           </div>
         </div>
       )}
@@ -2619,12 +2977,16 @@ const Users: React.FC = () => {
 };
 
 /* =========================================
-   REUSABLE INPUT
+   REUSABLE TEXT INPUT
 ========================================= */
 
 interface UserInputProps {
   label: string;
+
   value: string;
+
+  required?: boolean;
+
   onChange: (
     value: string
   ) => void;
@@ -2633,12 +2995,20 @@ interface UserInputProps {
 const UserInput = ({
   label,
   value,
+  required = false,
   onChange,
 }: UserInputProps) => {
   return (
     <div className="users-form-group">
+
       <label>
         {label}
+
+        {required && (
+          <span className="users-required">
+            *
+          </span>
+        )}
       </label>
 
       <input
@@ -2650,132 +3020,76 @@ const UserInput = ({
           )
         }
       />
+
     </div>
   );
 };
 
 /* =========================================
-   PERMISSION TABLE
+   REUSABLE SELECT INPUT
 ========================================= */
 
-interface PermissionsTableProps {
-  permissions:
-    ModulePermission[];
+interface SelectInputProps {
+  label: string;
 
-  onToggle: (
-    moduleIndex: number,
-    permission: PermissionKey
+  value: string;
+
+  placeholder: string;
+
+  options: string[];
+
+  required?: boolean;
+
+  onChange: (
+    value: string
   ) => void;
 }
 
-const PermissionsTable = ({
-  permissions,
-  onToggle,
-}: PermissionsTableProps) => {
-  const permissionKeys: {
-    label: string;
-    key: PermissionKey;
-  }[] = [
-    {
-      label: "Read",
-      key: "read",
-    },
-    {
-      label: "Write",
-      key: "write",
-    },
-    {
-      label: "Create",
-      key: "create",
-    },
-    {
-      label: "Delete",
-      key: "delete",
-    },
-    {
-      label: "Import",
-      key: "import",
-    },
-    {
-      label: "Export",
-      key: "export",
-    },
-  ];
-
+const SelectInput = ({
+  label,
+  value,
+  placeholder,
+  options,
+  required = false,
+  onChange,
+}: SelectInputProps) => {
   return (
-    <div className="users-permission-card">
-      <table className="users-permission-table">
-        <thead>
-          <tr>
-            <th>
-              Module Permissions
-            </th>
+    <div className="users-form-group">
 
-            {permissionKeys.map(
-              (permission) => (
-                <th
-                  key={
-                    permission.key
-                  }
-                >
-                  {
-                    permission.label
-                  }
-                </th>
-              )
-            )}
-          </tr>
-        </thead>
+      <label>
+        {label}
 
-        <tbody>
-          {permissions.map(
-            (
-              module,
-              index
-            ) => (
-              <tr
-                key={
-                  module.module
-                }
-              >
-                <td>
-                  {module.module}
-                </td>
+        {required && (
+          <span className="users-required">
+            *
+          </span>
+        )}
+      </label>
 
-                {permissionKeys.map(
-                  (
-                    permission
-                  ) => (
-                    <td
-                      key={
-                        permission.key
-                      }
-                    >
-                      <input
-                        type="checkbox"
-                        className="users-permission-checkbox"
-                        checked={
-                          module[
-                            permission
-                              .key
-                          ]
-                        }
-                        onChange={() =>
-                          onToggle(
-                            index,
+      <select
+        value={value}
+        onChange={(e) =>
+          onChange(
+            e.target.value
+          )
+        }
+      >
+        <option value="">
+          {placeholder}
+        </option>
 
-                            permission.key
-                          )
-                        }
-                      />
-                    </td>
-                  )
-                )}
-              </tr>
-            )
-          )}
-        </tbody>
-      </table>
+        {options.map(
+          (option) => (
+            <option
+              key={option}
+              value={option}
+            >
+              {option}
+            </option>
+          )
+        )}
+      </select>
+
     </div>
   );
 };

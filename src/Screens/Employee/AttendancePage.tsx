@@ -25,15 +25,32 @@ interface AttendanceRow {
   raw?: any;
 }
 
+interface AttendanceApiData {
+  employee?: any;
+  todayAttendance?: any;
+  attendanceSummary?: any;
+  attendanceList?: any[];
+  pagination?: any;
+}
+
 const AttendancePage: React.FC = () => {
   const navigate = useNavigate();
 
   const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [currentPage, setCurrentPage] = useState(1);
+
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [sortFilter, setSortFilter] = useState("Last 7 Days");
 
-  const [attendanceData, setAttendanceData] = useState<AttendanceRow[]>([]);
+  const [attendanceData, setAttendanceData] = useState<AttendanceRow[]>(
+    []
+  );
+
+  const [todayAttendance, setTodayAttendance] = useState<any>(null);
+  const [attendanceSummary, setAttendanceSummary] = useState<any>(null);
+  const [paginationData, setPaginationData] = useState<any>(null);
+
   const [loading, setLoading] = useState(false);
   const [punchingOut, setPunchingOut] = useState(false);
   const [error, setError] = useState("");
@@ -45,11 +62,12 @@ const AttendancePage: React.FC = () => {
   const getValue = (
     item: any,
     keys: string[],
-    fallback = "-"
+    fallback: any = "-"
   ): any => {
+    if (!item) return fallback;
+
     for (const key of keys) {
       if (
-        item &&
         item[key] !== undefined &&
         item[key] !== null &&
         item[key] !== ""
@@ -61,8 +79,14 @@ const AttendancePage: React.FC = () => {
     return fallback;
   };
 
+  /* =====================================================
+     FORMAT DATE
+  ===================================================== */
+
   const formatDate = (value: any): string => {
-    if (!value || value === "-") return "-";
+    if (!value || value === "-") {
+      return "-";
+    }
 
     const date = new Date(value);
 
@@ -77,20 +101,56 @@ const AttendancePage: React.FC = () => {
     });
   };
 
+  /* =====================================================
+     FORMAT TIME
+  ===================================================== */
+
   const formatTime = (value: any): string => {
-    if (!value || value === "-") return "-";
+    if (!value || value === "-") {
+      return "-";
+    }
 
-    const valueString = String(value);
+    const valueString = String(value).trim();
 
-    // Already formatted time
+    /*
+     * If API already returns something like:
+     * 10:00 AM
+     * 08:35 PM
+     * don't convert it again.
+     */
     if (
-      valueString.includes("AM") ||
-      valueString.includes("PM")
+      valueString.toUpperCase().includes("AM") ||
+      valueString.toUpperCase().includes("PM")
     ) {
       return valueString;
     }
 
-    const date = new Date(value);
+    /*
+     * Handle HH:mm:ss directly.
+     */
+    const timeMatch = valueString.match(
+      /^(\d{1,2}):(\d{2})(?::(\d{2}))?$/
+    );
+
+    if (timeMatch) {
+      const hours = Number(timeMatch[1]);
+      const minutes = Number(timeMatch[2]);
+
+      if (hours >= 0 && hours <= 23) {
+        const date = new Date();
+
+        date.setHours(hours);
+        date.setMinutes(minutes);
+        date.setSeconds(0);
+
+        return date.toLocaleTimeString("en-US", {
+          hour: "2-digit",
+          minute: "2-digit",
+        });
+      }
+    }
+
+    const date = new Date(valueString);
 
     if (!Number.isNaN(date.getTime())) {
       return date.toLocaleTimeString("en-US", {
@@ -102,7 +162,15 @@ const AttendancePage: React.FC = () => {
     return valueString;
   };
 
+  /* =====================================================
+     NORMALIZE STATUS
+  ===================================================== */
+
   const normalizeStatus = (value: any): AttendanceStatus => {
+    if (typeof value === "boolean") {
+      return value ? "Present" : "Absent";
+    }
+
     const status = String(value ?? "")
       .trim()
       .toLowerCase();
@@ -110,7 +178,8 @@ const AttendancePage: React.FC = () => {
     if (
       status === "absent" ||
       status === "2" ||
-      status === "false"
+      status === "false" ||
+      status === "0"
     ) {
       return "Absent";
     }
@@ -118,20 +187,91 @@ const AttendancePage: React.FC = () => {
     return "Present";
   };
 
+  /* =====================================================
+     PRODUCTION COLOR
+  ===================================================== */
+
   const normalizeProductionColor = (
-    value: any
+    value: any,
+    productionHours?: any
   ): "green" | "blue" | "red" => {
     const text = String(value ?? "").toLowerCase();
 
-    if (text.includes("red")) return "red";
-    if (text.includes("blue")) return "blue";
+    if (text.includes("red")) {
+      return "red";
+    }
+
+    if (text.includes("blue")) {
+      return "blue";
+    }
+
+    /*
+     * If backend does not provide color,
+     * use production hours as fallback.
+     */
+    const hours = parseFloat(
+      String(productionHours ?? "").replace(/[^\d.]/g, "")
+    );
+
+    if (!Number.isNaN(hours)) {
+      if (hours < 3) {
+        return "red";
+      }
+
+      if (hours < 6) {
+        return "blue";
+      }
+    }
 
     return "green";
   };
 
-  const extractAttendanceArray = (response: any): any[] => {
-    if (Array.isArray(response)) {
-      return response;
+  /* =====================================================
+     EXTRACT ATTENDANCE LIST
+  ===================================================== */
+
+  const extractAttendanceArray = (
+    response: any
+  ): any[] => {
+    /*
+     * ACTUAL API RESPONSE:
+     *
+     * {
+     *   statusCode: 200,
+     *   message: "",
+     *   data: {
+     *     employee: {},
+     *     todayAttendance: {},
+     *     attendanceSummary: {},
+     *     attendanceList: [],
+     *     pagination: {}
+     *   },
+     *   isSuccess: true
+     * }
+     */
+
+    if (
+      Array.isArray(
+        response?.data?.attendanceList
+      )
+    ) {
+      return response.data.attendanceList;
+    }
+
+    if (
+      Array.isArray(
+        response?.data?.AttendanceList
+      )
+    ) {
+      return response.data.AttendanceList;
+    }
+
+    if (Array.isArray(response?.attendanceList)) {
+      return response.attendanceList;
+    }
+
+    if (Array.isArray(response?.AttendanceList)) {
+      return response.AttendanceList;
     }
 
     if (Array.isArray(response?.data)) {
@@ -142,32 +282,16 @@ const AttendancePage: React.FC = () => {
       return response.Data;
     }
 
-    if (Array.isArray(response?.items)) {
-      return response.items;
-    }
-
-    if (Array.isArray(response?.Items)) {
-      return response.Items;
-    }
-
-    if (Array.isArray(response?.result)) {
-      return response.result;
-    }
-
-    if (Array.isArray(response?.Result)) {
-      return response.Result;
-    }
-
-    if (Array.isArray(response?.data?.items)) {
-      return response.data.items;
-    }
-
-    if (Array.isArray(response?.data?.Items)) {
-      return response.data.Items;
+    if (Array.isArray(response)) {
+      return response;
     }
 
     return [];
   };
+
+  /* =====================================================
+     MAP ATTENDANCE ITEM
+  ===================================================== */
 
   const mapAttendanceItem = (
     item: any
@@ -179,16 +303,35 @@ const AttendancePage: React.FC = () => {
       "AttendanceStatus",
       "statusName",
       "StatusName",
+      "isPresent",
+      "IsPresent",
     ]);
 
-    const productionValue = getValue(item, [
-      "productionHours",
-      "ProductionHours",
-      "productiveHours",
-      "ProductiveHours",
-      "productionHour",
-      "ProductionHour",
-    ]);
+    const productionValue = getValue(
+      item,
+      [
+        "productionHours",
+        "ProductionHours",
+        "productiveHours",
+        "ProductiveHours",
+        "productionHour",
+        "ProductionHour",
+        "productiveHour",
+        "ProductiveHour",
+      ],
+      "-"
+    );
+
+    const productionColorValue = getValue(
+      item,
+      [
+        "productionColor",
+        "ProductionColor",
+        "color",
+        "Color",
+      ],
+      ""
+    );
 
     return {
       id: String(
@@ -212,6 +355,8 @@ const AttendancePage: React.FC = () => {
           "Date",
           "attendanceDate",
           "AttendanceDate",
+          "attendanceDateTime",
+          "AttendanceDateTime",
           "createdDate",
           "CreatedDate",
         ])
@@ -227,6 +372,8 @@ const AttendancePage: React.FC = () => {
           "InTime",
           "punchIn",
           "PunchIn",
+          "punchInTime",
+          "PunchInTime",
         ])
       ),
 
@@ -242,52 +389,67 @@ const AttendancePage: React.FC = () => {
           "OutTime",
           "punchOut",
           "PunchOut",
+          "punchOutTime",
+          "PunchOutTime",
         ])
       ),
 
       breakTime: String(
-        getValue(item, [
-          "breakTime",
-          "BreakTime",
-          "breakHours",
-          "BreakHours",
-          "totalBreak",
-          "TotalBreak",
-        ])
+        getValue(
+          item,
+          [
+            "breakTime",
+            "BreakTime",
+            "breakHours",
+            "BreakHours",
+            "totalBreak",
+            "TotalBreak",
+            "totalBreakTime",
+            "TotalBreakTime",
+          ],
+          "-"
+        )
       ),
 
       late: String(
-        getValue(item, [
-          "late",
-          "Late",
-          "lateTime",
-          "LateTime",
-          "lateMinutes",
-          "LateMinutes",
-        ])
+        getValue(
+          item,
+          [
+            "late",
+            "Late",
+            "lateTime",
+            "LateTime",
+            "lateMinutes",
+            "LateMinutes",
+          ],
+          "-"
+        )
       ),
 
       overtime: String(
-        getValue(item, [
-          "overtime",
-          "Overtime",
-          "overTime",
-          "OverTime",
-          "overtimeMinutes",
-          "OvertimeMinutes",
-        ])
+        getValue(
+          item,
+          [
+            "overtime",
+            "Overtime",
+            "overTime",
+            "OverTime",
+            "overtimeMinutes",
+            "OvertimeMinutes",
+          ],
+          "-"
+        )
       ),
 
-      productionHours: String(productionValue),
-
-      productionColor: normalizeProductionColor(
-        getValue(item, [
-          "productionColor",
-          "ProductionColor",
-          "color",
-          "Color",
-        ])
+      productionHours: String(
+        productionValue
       ),
+
+      productionColor:
+        normalizeProductionColor(
+          productionColorValue,
+          productionValue
+        ),
 
       raw: item,
     };
@@ -302,40 +464,105 @@ const AttendancePage: React.FC = () => {
       setLoading(true);
       setError("");
 
+      /*
+       * IMPORTANT:
+       *
+       * Do NOT send FromDate / ToDate here.
+       *
+       * Backend currently throws:
+       *
+       * "Cannot write DateTime with Kind=Unspecified
+       *  to PostgreSQL type timestamp with time zone"
+       *
+       * So first we call the API without date parameters.
+       */
+
       const params: AttendancePageParams = {
         PageNumber: 1,
         PageSize: 100,
       };
 
       /*
-       * Status API ko tab bhej rahe hain jab filter selected hai.
+       * Status and SortBy are intentionally NOT sent
+       * to backend for now.
        *
-       * NOTE:
-       * Agar backend me Present/Absent ka numeric enum different hai,
-       * to yahan backend ke according mapping change kar sakte hain.
+       * We filter/sort on frontend because the backend
+       * response is already returning attendanceList.
        */
-      if (statusFilter) {
-        params.Status =
-          statusFilter === "Present" ? 1 : 2;
+
+      console.log(
+        "GET ATTENDANCE PARAMS:",
+        params
+      );
+
+      const response =
+        await getEmployeeAttendance(params);
+
+      console.log(
+        "ATTENDANCE FULL RESPONSE:",
+        response
+      );
+
+      /*
+       * Handle API failure.
+       */
+      if (
+        response?.isSuccess === false ||
+        response?.statusCode >= 400
+      ) {
+        throw new Error(
+          response?.message ||
+            "Unable to load attendance data."
+        );
       }
 
       /*
-       * SortBy ko backend ke expected value ke according
-       * bheja ja sakta hai.
+       * Save dashboard information.
        */
-      if (sortFilter) {
-        params.SortBy = sortFilter;
-      }
+      const apiData: AttendanceApiData =
+        response?.data || {};
 
-      const response = await getEmployeeAttendance(params);
+      setTodayAttendance(
+        apiData?.todayAttendance || null
+      );
 
-      const apiData = extractAttendanceArray(response);
+      setAttendanceSummary(
+        apiData?.attendanceSummary || null
+      );
 
-      const mappedData = apiData.map(
+      setPaginationData(
+        apiData?.pagination || null
+      );
+
+      /*
+       * Extract attendanceList.
+       */
+      const apiList =
+        extractAttendanceArray(response);
+
+      console.log(
+        "ATTENDANCE LIST:",
+        apiList
+      );
+
+      /*
+       * Convert API rows into table rows.
+       */
+      const mappedData = apiList.map(
         mapAttendanceItem
       );
 
+      console.log(
+        "MAPPED ATTENDANCE DATA:",
+        mappedData
+      );
+
       setAttendanceData(mappedData);
+
+      /*
+       * Reset page after fresh API data.
+       */
+      setCurrentPage(1);
     } catch (err: any) {
       console.error(
         "Get employee attendance error:",
@@ -343,6 +570,9 @@ const AttendancePage: React.FC = () => {
       );
 
       setAttendanceData([]);
+      setTodayAttendance(null);
+      setAttendanceSummary(null);
+      setPaginationData(null);
 
       setError(
         err?.response?.data?.message ||
@@ -355,35 +585,156 @@ const AttendancePage: React.FC = () => {
     }
   };
 
-  useEffect(() => {
-    loadAttendance();
-  }, [statusFilter, sortFilter]);
-
   /* =====================================================
-     SEARCH + FRONTEND FILTER
+     INITIAL LOAD
   ===================================================== */
 
-  const filteredData = useMemo(() => {
+  useEffect(() => {
+    loadAttendance();
+  }, []);
+
+  /* =====================================================
+     RESET PAGE ON FILTER / SEARCH
+  ===================================================== */
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [
+    search,
+    statusFilter,
+    sortFilter,
+    rowsPerPage,
+  ]);
+
+  /* =====================================================
+     FRONTEND FILTER + SORT
+  ===================================================== */
+
+  const processedData = useMemo(() => {
     let data = [...attendanceData];
 
+    /*
+     * SEARCH
+     */
     if (search.trim()) {
-      const value = search.toLowerCase().trim();
+      const value = search
+        .toLowerCase()
+        .trim();
 
-      data = data.filter((item) =>
-        Object.values(item).some((field) =>
-          String(field ?? "")
-            .toLowerCase()
-            .includes(value)
-        )
+      data = data.filter((item) => {
+        return Object.values(item).some(
+          (field) =>
+            String(field ?? "")
+              .toLowerCase()
+              .includes(value)
+        );
+      });
+    }
+
+    /*
+     * STATUS FILTER
+     */
+    if (statusFilter) {
+      data = data.filter(
+        (item) =>
+          item.status === statusFilter
       );
     }
 
-    return data.slice(0, rowsPerPage);
+    /*
+     * SORT
+     */
+    if (
+      sortFilter === "Ascending"
+    ) {
+      data.sort((a, b) =>
+        a.date.localeCompare(b.date)
+      );
+    }
+
+    if (
+      sortFilter === "Descending"
+    ) {
+      data.sort((a, b) =>
+        b.date.localeCompare(a.date)
+      );
+    }
+
+    if (
+      sortFilter === "Recently Added"
+    ) {
+      data.reverse();
+    }
+
+    /*
+     * Last 7 Days / Last Month
+     *
+     * We do NOT filter these locally because
+     * API may already be returning the requested
+     * attendance period and date formats can differ.
+     *
+     * Once backend date filter is fixed, these can
+     * be connected directly to FromDate/ToDate.
+     */
+
+    return data;
   }, [
     attendanceData,
     search,
+    statusFilter,
+    sortFilter,
+  ]);
+
+  /* =====================================================
+     PAGINATION
+  ===================================================== */
+
+  const totalEntries =
+    processedData.length;
+
+  const totalPages = Math.max(
+    1,
+    Math.ceil(
+      totalEntries / rowsPerPage
+    )
+  );
+
+  const paginatedData = useMemo(() => {
+    const start =
+      (currentPage - 1) *
+      rowsPerPage;
+
+    const end =
+      start + rowsPerPage;
+
+    return processedData.slice(
+      start,
+      end
+    );
+  }, [
+    processedData,
+    currentPage,
     rowsPerPage,
   ]);
+
+  /* =====================================================
+     PAGE NAVIGATION
+  ===================================================== */
+
+  const goToPreviousPage = () => {
+    setCurrentPage((page) =>
+      Math.max(1, page - 1)
+    );
+  };
+
+  const goToNextPage = () => {
+    setCurrentPage((page) =>
+      Math.min(
+        totalPages,
+        page + 1
+      )
+    );
+  };
 
   /* =====================================================
      PUNCH OUT
@@ -397,8 +748,7 @@ const AttendancePage: React.FC = () => {
       await logoutAttendance();
 
       /*
-       * Logout API successful hone ke baad
-       * latest attendance data dobara fetch.
+       * Refresh attendance after punch out.
        */
       await loadAttendance();
     } catch (err: any) {
@@ -417,6 +767,61 @@ const AttendancePage: React.FC = () => {
       setPunchingOut(false);
     }
   };
+
+  /* =====================================================
+     DASHBOARD VALUES
+  ===================================================== */
+
+  const getSummaryValue = (
+    keys: string[],
+    fallback: string
+  ) => {
+    return String(
+      getValue(
+        attendanceSummary,
+        keys,
+        fallback
+      )
+    );
+  };
+
+  const todayProduction =
+    getValue(
+      todayAttendance,
+      [
+        "productionHours",
+        "ProductionHours",
+        "productiveHours",
+        "ProductiveHours",
+      ],
+      "3.45 hrs"
+    );
+
+  const todayPunchIn =
+    getValue(
+      todayAttendance,
+      [
+        "checkIn",
+        "CheckIn",
+        "checkInTime",
+        "CheckInTime",
+        "punchIn",
+        "PunchIn",
+      ],
+      "10:00 AM"
+    );
+
+  const todayDate =
+    getValue(
+      todayAttendance,
+      [
+        "date",
+        "Date",
+        "attendanceDate",
+        "AttendanceDate",
+      ],
+      "11 Mar 2025"
+    );
 
   /* =====================================================
      UI
@@ -444,16 +849,21 @@ const AttendancePage: React.FC = () => {
           </button>
 
           <span>/</span>
+
           <span className="active">
             Attendance
           </span>
         </div>
       </div>
 
-      {/* ERROR */}
+      {/* =========================
+          ERROR
+      ========================= */}
+
       {error && (
         <div className="attendance-error">
           <i className="ti ti-alert-circle"></i>
+
           <span>{error}</span>
 
           <button
@@ -476,13 +886,20 @@ const AttendancePage: React.FC = () => {
           <div className="card attendance-main-card flex-fill">
             <div className="card-body">
               <div className="text-center attendance-greeting">
-                <p>Good Morning, Adrian</p>
+                <p>
+                  Good Morning, Adrian
+                </p>
+
                 <h4>
-                  08:35 AM, 11 Mar 2025
+                  {formatTime(
+                    todayDate
+                  ) === "-"
+                    ? todayDate
+                    : formatDate(
+                        todayDate
+                      )}
                 </h4>
               </div>
-
-              {/* PROFILE CIRCLE */}
 
               <div className="attendance-circle">
                 <div className="attendance-circle-inner">
@@ -495,21 +912,32 @@ const AttendancePage: React.FC = () => {
 
               <div className="text-center">
                 <div className="production-badge">
-                  Production : 3.45 hrs
+                  Production :{" "}
+                  {String(
+                    todayProduction
+                  )}
                 </div>
 
                 <div className="punch-info">
                   <i className="ti ti-fingerprint"></i>
+
                   <span>
-                    Punch In at 10.00 AM
+                    Punch In at{" "}
+                    {formatTime(
+                      todayPunchIn
+                    )}
                   </span>
                 </div>
 
                 <button
                   type="button"
                   className="punch-out-btn"
-                  onClick={handlePunchOut}
-                  disabled={punchingOut}
+                  onClick={
+                    handlePunchOut
+                  }
+                  disabled={
+                    punchingOut
+                  }
                 >
                   {punchingOut
                     ? "Punching Out..."
@@ -527,7 +955,15 @@ const AttendancePage: React.FC = () => {
             <SummaryCard
               icon="ti ti-clock-stop"
               iconClass="gold"
-              value="8.36"
+              value={getSummaryValue(
+                [
+                  "totalHoursToday",
+                  "TotalHoursToday",
+                  "todayHours",
+                  "TodayHours",
+                ],
+                "8.36"
+              )}
               total="9"
               title="Total Hours Today"
               percentage="5% This Week"
@@ -537,7 +973,15 @@ const AttendancePage: React.FC = () => {
             <SummaryCard
               icon="ti ti-clock-up"
               iconClass="dark"
-              value="10"
+              value={getSummaryValue(
+                [
+                  "totalHoursWeek",
+                  "TotalHoursWeek",
+                  "weekHours",
+                  "WeekHours",
+                ],
+                "10"
+              )}
               total="40"
               title="Total Hours Week"
               percentage="7% Last Week"
@@ -547,7 +991,15 @@ const AttendancePage: React.FC = () => {
             <SummaryCard
               icon="ti ti-calendar-up"
               iconClass="blue"
-              value="75"
+              value={getSummaryValue(
+                [
+                  "totalHoursMonth",
+                  "TotalHoursMonth",
+                  "monthHours",
+                  "MonthHours",
+                ],
+                "75"
+              )}
               total="98"
               title="Total Hours Month"
               percentage="8% Last Month"
@@ -557,7 +1009,15 @@ const AttendancePage: React.FC = () => {
             <SummaryCard
               icon="ti ti-calendar-star"
               iconClass="pink"
-              value="1500"
+              value={getSummaryValue(
+                [
+                  "totalHoursYear",
+                  "TotalHoursYear",
+                  "yearHours",
+                  "YearHours",
+                ],
+                "1500"
+              )}
               total="3285"
               title="Total Hours Year"
               percentage="6% Last Month"
@@ -573,38 +1033,71 @@ const AttendancePage: React.FC = () => {
                     <TimelineInfo
                       dotClass="blue-dot"
                       title="Today"
-                      value="10 Oct, 2025"
+                      value={
+                        formatDate(
+                          todayDate
+                        ) || "-"
+                      }
                     />
 
                     <TimelineInfo
                       dotClass="gray-dot"
                       title="Total Working hours"
-                      value="12h 36m"
+                      value={getSummaryValue(
+                        [
+                          "totalWorkingHours",
+                          "TotalWorkingHours",
+                        ],
+                        "12h 36m"
+                      )}
                     />
 
                     <TimelineInfo
                       dotClass="green-dot"
                       title="Productive Hours"
-                      value="08h 36m"
+                      value={getSummaryValue(
+                        [
+                          "productiveHours",
+                          "ProductiveHours",
+                        ],
+                        "08h 36m"
+                      )}
                     />
 
                     <TimelineInfo
                       dotClass="yellow-dot"
                       title="Break hours"
-                      value="22m 15s"
+                      value={getSummaryValue(
+                        [
+                          "breakHours",
+                          "BreakHours",
+                          "totalBreak",
+                          "TotalBreak",
+                        ],
+                        "22m 15s"
+                      )}
                     />
                   </div>
 
                   <div className="timeline-progress">
                     <div className="timeline-blank large" />
+
                     <div className="timeline-segment productive s1" />
+
                     <div className="timeline-segment break s2" />
+
                     <div className="timeline-segment productive s3" />
+
                     <div className="timeline-segment break s4" />
+
                     <div className="timeline-segment productive s5" />
+
                     <div className="timeline-segment break s6" />
+
                     <div className="timeline-segment blue s7" />
+
                     <div className="timeline-segment blue s8" />
+
                     <div className="timeline-blank final" />
                   </div>
 
@@ -629,7 +1122,10 @@ const AttendancePage: React.FC = () => {
                       "10:00",
                       "11:00",
                     ].map(
-                      (time, index) => (
+                      (
+                        time,
+                        index
+                      ) => (
                         <span
                           key={`${time}-${index}`}
                         >
@@ -651,15 +1147,18 @@ const AttendancePage: React.FC = () => {
 
       <div className="card employee-attendance-card">
         <div className="employee-attendance-header">
-          <h5>Employee Attendance</h5>
+          <h5>
+            Employee Attendance
+          </h5>
 
           <div className="attendance-filters">
             <select
               className="attendance-filter-control date-filter"
               defaultValue="date"
+              disabled
             >
               <option value="date">
-                08/28/2026 - 09/03/2026
+                Attendance Data
               </option>
             </select>
 
@@ -721,22 +1220,36 @@ const AttendancePage: React.FC = () => {
 
         <div className="table-top-controls">
           <div className="entries-control">
-            <span>Row Per Page</span>
+            <span>
+              Row Per Page
+            </span>
 
             <select
               value={rowsPerPage}
               onChange={(e) =>
                 setRowsPerPage(
-                  Number(e.target.value)
+                  Number(
+                    e.target.value
+                  )
                 )
               }
             >
-              <option value={10}>10</option>
-              <option value={25}>25</option>
-              <option value={50}>50</option>
+              <option value={10}>
+                10
+              </option>
+
+              <option value={25}>
+                25
+              </option>
+
+              <option value={50}>
+                50
+              </option>
             </select>
 
-            <span>Entries</span>
+            <span>
+              Entries
+            </span>
           </div>
 
           <input
@@ -744,7 +1257,9 @@ const AttendancePage: React.FC = () => {
             placeholder="Search"
             value={search}
             onChange={(e) =>
-              setSearch(e.target.value)
+              setSearch(
+                e.target.value
+              )
             }
           />
         </div>
@@ -756,12 +1271,19 @@ const AttendancePage: React.FC = () => {
             <thead>
               <tr>
                 <SortableHeader title="Date" />
+
                 <SortableHeader title="Check In" />
+
                 <SortableHeader title="Status" />
+
                 <SortableHeader title="Check Out" />
+
                 <SortableHeader title="Break" />
+
                 <SortableHeader title="Late" />
+
                 <SortableHeader title="Overtime" />
+
                 <SortableHeader title="Production Hours" />
               </tr>
             </thead>
@@ -775,32 +1297,40 @@ const AttendancePage: React.FC = () => {
                   >
                     <div className="attendance-loader">
                       <span className="spinner-border spinner-border-sm"></span>
+
                       Loading attendance...
                     </div>
                   </td>
                 </tr>
-              ) : filteredData.length === 0 ? (
+              ) : paginatedData.length ===
+                0 ? (
                 <tr>
                   <td
                     colSpan={8}
                     className="attendance-empty"
                   >
                     <i className="ti ti-calendar-off"></i>
+
                     <span>
                       No attendance records found
                     </span>
                   </td>
                 </tr>
               ) : (
-                filteredData.map(
-                  (row, index) => (
+                paginatedData.map(
+                  (
+                    row,
+                    index
+                  ) => (
                     <tr
                       key={
                         row.id ||
                         `${row.date}-${index}`
                       }
                     >
-                      <td>{row.date}</td>
+                      <td>
+                        {row.date}
+                      </td>
 
                       <td>
                         {row.checkIn}
@@ -845,7 +1375,9 @@ const AttendancePage: React.FC = () => {
                         >
                           <i className="ti ti-clock-hour-11"></i>
 
-                          {row.productionHours}
+                          {
+                            row.productionHours
+                          }
                         </span>
                       </td>
                     </tr>
@@ -861,15 +1393,33 @@ const AttendancePage: React.FC = () => {
         <div className="attendance-table-footer">
           <span>
             Showing{" "}
-            {filteredData.length > 0
-              ? `1 - ${filteredData.length}`
+            {totalEntries > 0
+              ? `${
+                  (currentPage -
+                    1) *
+                    rowsPerPage +
+                  1
+                } - ${
+                  Math.min(
+                    currentPage *
+                      rowsPerPage,
+                    totalEntries
+                  )
+                }`
               : "0"}{" "}
-            of {attendanceData.length}{" "}
-            entries
+            of {totalEntries} entries
           </span>
 
           <div className="pagination-box">
-            <button type="button">
+            <button
+              type="button"
+              onClick={
+                goToPreviousPage
+              }
+              disabled={
+                currentPage === 1
+              }
+            >
               <i className="ti ti-chevron-left"></i>
             </button>
 
@@ -877,10 +1427,19 @@ const AttendancePage: React.FC = () => {
               type="button"
               className="active-page"
             >
-              1
+              {currentPage}
             </button>
 
-            <button type="button">
+            <button
+              type="button"
+              onClick={
+                goToNextPage
+              }
+              disabled={
+                currentPage ===
+                totalPages
+              }
+            >
               <i className="ti ti-chevron-right"></i>
             </button>
           </div>
@@ -973,7 +1532,7 @@ const AttendancePage: React.FC = () => {
           font-size: 12px;
         }
 
-        /* LEFT ATTENDANCE CARD */
+        /* LEFT CARD */
 
         .attendance-main-card {
           width: 100%;
@@ -987,7 +1546,6 @@ const AttendancePage: React.FC = () => {
           font-size: 13px;
           color: #657084;
           margin: 0 0 6px;
-          font-weight: 400;
         }
 
         .attendance-greeting h4 {
@@ -1004,11 +1562,10 @@ const AttendancePage: React.FC = () => {
           height: 110px;
           margin: 0 auto 16px;
           border-radius: 50%;
-          background:
-            conic-gradient(
-              #08b85b 0deg 234deg,
-              #d0d0d0 234deg 360deg
-            );
+          background: conic-gradient(
+            #08b85b 0deg 234deg,
+            #d0d0d0 234deg 360deg
+          );
           padding: 4px;
         }
 
@@ -1068,7 +1625,6 @@ const AttendancePage: React.FC = () => {
           color: #fff;
           font-size: 13px;
           font-weight: 600;
-          transition: opacity 0.2s ease;
         }
 
         .punch-out-btn:hover {
@@ -1080,7 +1636,7 @@ const AttendancePage: React.FC = () => {
           cursor: not-allowed;
         }
 
-        /* SUMMARY CARDS */
+        /* SUMMARY */
 
         .summary-column {
           display: flex;
@@ -1156,7 +1712,6 @@ const AttendancePage: React.FC = () => {
           color: #69758a;
           font-size: 12px;
           padding-top: 9px;
-          white-space: nowrap;
         }
 
         .summary-arrow {
@@ -1179,7 +1734,7 @@ const AttendancePage: React.FC = () => {
           background: #ef1717;
         }
 
-        /* TIMELINE CARD */
+        /* TIMELINE */
 
         .timeline-card .card-body {
           padding: 21px 20px;
@@ -1310,11 +1865,10 @@ const AttendancePage: React.FC = () => {
           color: #69758a;
         }
 
-        /* TABLE CARD */
+        /* TABLE */
 
         .employee-attendance-card {
           overflow: hidden;
-          margin-top: 0;
         }
 
         .employee-attendance-header {
@@ -1331,7 +1885,6 @@ const AttendancePage: React.FC = () => {
         .employee-attendance-header h5 {
           margin: 0;
           font-size: 15px;
-          line-height: 20px;
           font-weight: 600;
           color: #10264c;
         }
@@ -1355,6 +1908,11 @@ const AttendancePage: React.FC = () => {
           outline: none;
         }
 
+        .attendance-filter-control:disabled {
+          background: #f7f8fa;
+          cursor: not-allowed;
+        }
+
         .date-filter {
           min-width: 195px;
         }
@@ -1362,8 +1920,6 @@ const AttendancePage: React.FC = () => {
         .sort-filter {
           min-width: 177px;
         }
-
-        /* TABLE TOP */
 
         .table-top-controls {
           min-height: 55px;
@@ -1406,8 +1962,6 @@ const AttendancePage: React.FC = () => {
         .attendance-search::placeholder {
           color: #98a1b1;
         }
-
-        /* TABLE */
 
         .attendance-table {
           width: 100%;
@@ -1454,7 +2008,6 @@ const AttendancePage: React.FC = () => {
           align-items: center;
           gap: 5px;
           min-width: 69px;
-          justify-content: flex-start;
           height: 19px;
           padding: 1px 8px;
           border-radius: 4px;
@@ -1505,7 +2058,7 @@ const AttendancePage: React.FC = () => {
           font-size: 10px;
         }
 
-        /* LOADING / EMPTY */
+        /* EMPTY / LOADING */
 
         .attendance-loading,
         .attendance-empty {
@@ -1532,7 +2085,7 @@ const AttendancePage: React.FC = () => {
           color: #b3bbc7;
         }
 
-        /* TABLE FOOTER */
+        /* FOOTER */
 
         .attendance-table-footer {
           min-height: 55px;
@@ -1560,6 +2113,12 @@ const AttendancePage: React.FC = () => {
           justify-content: center;
           color: #99a3b1;
           font-size: 13px;
+          cursor: pointer;
+        }
+
+        .pagination-box button:disabled {
+          opacity: 0.4;
+          cursor: not-allowed;
         }
 
         .pagination-box .active-page {
@@ -1636,7 +2195,9 @@ interface SummaryCardProps {
   direction: "up" | "down";
 }
 
-const SummaryCard: React.FC<SummaryCardProps> = ({
+const SummaryCard: React.FC<
+  SummaryCardProps
+> = ({
   icon,
   iconClass,
   value,
@@ -1653,12 +2214,16 @@ const SummaryCard: React.FC<SummaryCardProps> = ({
             <span
               className={`summary-icon ${iconClass}`}
             >
-              <i className={icon}></i>
+              <i
+                className={icon}
+              ></i>
             </span>
 
             <h2 className="summary-number">
               {value} /{" "}
-              <span>{total}</span>
+              <span>
+                {total}
+              </span>
             </h2>
 
             <p className="summary-title">
@@ -1675,7 +2240,9 @@ const SummaryCard: React.FC<SummaryCardProps> = ({
                 : "↓"}
             </span>
 
-            <span>{percentage}</span>
+            <span>
+              {percentage}
+            </span>
           </div>
         </div>
       </div>
@@ -1693,7 +2260,9 @@ interface TimelineInfoProps {
   value: string;
 }
 
-const TimelineInfo: React.FC<TimelineInfoProps> = ({
+const TimelineInfo: React.FC<
+  TimelineInfoProps
+> = ({
   dotClass,
   title,
   value,
@@ -1706,7 +2275,9 @@ const TimelineInfo: React.FC<TimelineInfoProps> = ({
             className={`timeline-dot ${dotClass}`}
           ></span>
 
-          <span>{title}</span>
+          <span>
+            {title}
+          </span>
         </div>
 
         <h3 className="timeline-info-value">
@@ -1718,7 +2289,7 @@ const TimelineInfo: React.FC<TimelineInfoProps> = ({
 };
 
 /* =====================================================
-   SORTABLE TABLE HEADER
+   SORTABLE HEADER
 ===================================================== */
 
 const SortableHeader = ({
@@ -1729,7 +2300,10 @@ const SortableHeader = ({
   return (
     <th>
       <div className="sortable-title">
-        <span>{title}</span>
+        <span>
+          {title}
+        </span>
+
         <span className="sort-arrows">
           ↕
         </span>
@@ -1739,4 +2313,3 @@ const SortableHeader = ({
 };
 
 export default AttendancePage;
-

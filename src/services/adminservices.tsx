@@ -8,9 +8,8 @@ const BASE_URL =
 const LEAVE_BASE_URL =
   "http://jupiterapi.adequateshop.com";
 
-  const LEAVE_TYPE_BASE_URL =
-  "http://jupiterapi.adequateshop.com/api/Leave";
-
+ const LEAVE_TYPE_BASE_URL =
+  "http://jupiterapi.adequateshop.com";
 /* =====================================================
    TOKEN
 ===================================================== */

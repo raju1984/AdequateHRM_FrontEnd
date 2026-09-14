@@ -716,11 +716,11 @@
 }
 
 .status-dot {
-  width: 12px;
-  height: 12px;
+  width: 5px;
+  height: 5px;
+  min-width: 5px;
   border-radius: 50%;
 }
-
 .status-dot.present {
   background: #00c853;
 }

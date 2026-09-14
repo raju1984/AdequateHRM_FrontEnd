@@ -29,9 +29,17 @@ import {
   getLeaveById,
   updateLeave,
   updateLeaveStatus,
+
+  // LEAVE CHAT APIs
+  getLeaveChat,
+  sendLeaveChatMessage,
+  deleteLeaveChatMessage,
 } from "../../services/adminservices";
 
-type LeaveStatus = "Approved" | "Declined" | "New";
+type LeaveStatus =
+  | "Approved"
+  | "Declined"
+  | "New";
 
 type LeaveTypeOption =
   | "Full Day"
@@ -80,6 +88,22 @@ interface LeaveForm {
   reason: string;
 }
 
+/* =========================================================
+   CHAT TYPES
+========================================================= */
+
+interface LeaveChatMessage {
+  id: string;
+  leaveId: string;
+  userId: string;
+  senderId: string;
+  senderName: string;
+  message: string;
+  createdAt: string;
+  profilePicture: string;
+  raw: any;
+}
+
 const AVAIL_TYPE_MAP: Record<
   LeaveTypeOption,
   number
@@ -117,6 +141,10 @@ const emptyForm: LeaveForm = {
   reason: "",
 };
 
+/* =========================================================
+   CURRENT USER
+========================================================= */
+
 const getCurrentUserId = (): string => {
   const keys = [
     "userId",
@@ -128,7 +156,8 @@ const getCurrentUserId = (): string => {
   ];
 
   for (const key of keys) {
-    const value = localStorage.getItem(key);
+    const value =
+      localStorage.getItem(key);
 
     if (value?.trim()) {
       return value.trim();
@@ -142,8 +171,13 @@ const getCurrentUserId = (): string => {
    RESPONSE HELPERS
 ========================================================= */
 
-const unwrapObject = (value: any): any => {
-  if (!value || typeof value !== "object") {
+const unwrapObject = (
+  value: any
+): any => {
+  if (
+    !value ||
+    typeof value !== "object"
+  ) {
     return value;
   }
 
@@ -155,19 +189,29 @@ const unwrapObject = (value: any): any => {
     return unwrapObject(value.result);
   }
 
-  if (value.response !== undefined) {
-    return unwrapObject(value.response);
+  if (
+    value.response !== undefined
+  ) {
+    return unwrapObject(
+      value.response
+    );
   }
 
   return value;
 };
 
 const firstValue = <T = any>(
-  obj: Record<string, any> | null | undefined,
+  obj:
+    | Record<string, any>
+    | null
+    | undefined,
   keys: string[],
   fallback?: T
 ): T => {
-  if (!obj || typeof obj !== "object") {
+  if (
+    !obj ||
+    typeof obj !== "object"
+  ) {
     return fallback as T;
   }
 
@@ -228,7 +272,9 @@ const findArray = (
   }
 
   if (typeof value === "object") {
-    for (const key of Object.keys(value)) {
+    for (const key of Object.keys(
+      value
+    )) {
       const found = findArray(
         value[key],
         requiredKeys,
@@ -245,22 +291,297 @@ const findArray = (
 };
 
 /* =========================================================
+   CHAT RESPONSE HELPERS
+========================================================= */
+
+const extractChatMessages = (
+  response: any
+): any[] => {
+  if (!response) {
+    return [];
+  }
+
+  if (Array.isArray(response)) {
+    return response;
+  }
+
+  const directKeys = [
+    "data",
+    "Data",
+    "items",
+    "Items",
+    "result",
+    "Result",
+    "records",
+    "Records",
+    "messages",
+    "Messages",
+    "chat",
+    "Chat",
+  ];
+
+  for (const key of directKeys) {
+    const value =
+      response?.[key];
+
+    if (Array.isArray(value)) {
+      return value;
+    }
+  }
+
+  for (const key of directKeys) {
+    const value =
+      response?.[key];
+
+    if (
+      value &&
+      typeof value === "object" &&
+      !Array.isArray(value)
+    ) {
+      const nested =
+        extractChatMessages(
+          value
+        );
+
+      if (nested.length) {
+        return nested;
+      }
+    }
+  }
+
+  return findArray(
+    response,
+    [
+      "message",
+      "Message",
+      "messageId",
+      "MessageId",
+      "senderId",
+      "SenderId",
+      "createdAt",
+      "CreatedAt",
+    ]
+  );
+};
+
+const getChatMessageId = (
+  item: any
+): string => {
+  return String(
+    firstValue(
+      item,
+      [
+        "id",
+        "Id",
+        "messageId",
+        "MessageId",
+        "chatMessageId",
+        "ChatMessageId",
+      ],
+      ""
+    )
+  );
+};
+
+const getChatMessageText = (
+  item: any
+): string => {
+  return String(
+    firstValue(
+      item,
+      [
+        "message",
+        "Message",
+        "text",
+        "Text",
+        "content",
+        "Content",
+        "messageText",
+        "MessageText",
+      ],
+      ""
+    )
+  );
+};
+
+const getChatSenderId = (
+  item: any
+): string => {
+  return String(
+    firstValue(
+      item,
+      [
+        "senderId",
+        "SenderId",
+        "userId",
+        "UserId",
+        "createdBy",
+        "CreatedBy",
+        "createdByUserId",
+        "CreatedByUserId",
+      ],
+      ""
+    )
+  );
+};
+
+const getChatSenderName = (
+  item: any
+): string => {
+  return String(
+    firstValue(
+      item,
+      [
+        "senderName",
+        "SenderName",
+        "userName",
+        "UserName",
+        "name",
+        "Name",
+        "createdByName",
+        "CreatedByName",
+      ],
+      "User"
+    )
+  );
+};
+
+const getChatDate = (
+  item: any
+): string => {
+  return String(
+    firstValue(
+      item,
+      [
+        "createdAt",
+        "CreatedAt",
+        "createdDate",
+        "CreatedDate",
+        "sentAt",
+        "SentAt",
+        "date",
+        "Date",
+        "timestamp",
+        "Timestamp",
+      ],
+      ""
+    )
+  );
+};
+
+const normalizeChatMessage = (
+  item: any
+): LeaveChatMessage => {
+  return {
+    id: getChatMessageId(item),
+
+    leaveId: String(
+      firstValue(
+        item,
+        [
+          "leaveId",
+          "LeaveId",
+        ],
+        ""
+      )
+    ),
+
+    userId: String(
+      firstValue(
+        item,
+        [
+          "userId",
+          "UserId",
+        ],
+        ""
+      )
+    ),
+
+    senderId:
+      getChatSenderId(item),
+
+    senderName:
+      getChatSenderName(item),
+
+    message:
+      getChatMessageText(item),
+
+    createdAt:
+      getChatDate(item),
+
+    profilePicture: String(
+      firstValue(
+        item,
+        [
+          "profilePicture",
+          "ProfilePicture",
+          "profileImage",
+          "ProfileImage",
+          "image",
+          "Image",
+        ],
+        ""
+      )
+    ),
+
+    raw: item,
+  };
+};
+
+const formatChatTime = (
+  value: string
+): string => {
+  if (!value) {
+    return "";
+  }
+
+  const date = new Date(value);
+
+  if (
+    Number.isNaN(
+      date.getTime()
+    )
+  ) {
+    return value;
+  }
+
+  return date.toLocaleString(
+    "en-GB",
+    {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    }
+  );
+};
+
+/* =========================================================
    EMPLOYEE HELPERS
 ========================================================= */
 
-const getEmployeeId = (item: any): string =>
+const getEmployeeId = (
+  item: any
+): string =>
   String(
-    firstValue(item, [
-      "userId",
-      "UserId",
-      "id",
-      "Id",
-      "employeeId",
-      "EmployeeId",
-    ], "")
+    firstValue(
+      item,
+      [
+        "userId",
+        "UserId",
+        "id",
+        "Id",
+        "employeeId",
+        "EmployeeId",
+      ],
+      ""
+    )
   );
 
-const getEmployeeName = (item: any): string => {
+const getEmployeeName = (
+  item: any
+): string => {
   const direct = firstValue(
     item,
     [
@@ -280,17 +601,25 @@ const getEmployeeName = (item: any): string => {
     return String(direct);
   }
 
-  const firstName = firstValue(
-    item,
-    ["firstName", "FirstName"],
-    ""
-  );
+  const firstName =
+    firstValue(
+      item,
+      [
+        "firstName",
+        "FirstName",
+      ],
+      ""
+    );
 
-  const lastName = firstValue(
-    item,
-    ["lastName", "LastName"],
-    ""
-  );
+  const lastName =
+    firstValue(
+      item,
+      [
+        "lastName",
+        "LastName",
+      ],
+      ""
+    );
 
   return (
     `${firstName} ${lastName}`.trim() ||
@@ -298,7 +627,9 @@ const getEmployeeName = (item: any): string => {
   );
 };
 
-const getRole = (item: any): string =>
+const getRole = (
+  item: any
+): string =>
   String(
     firstValue(
       item,
@@ -318,7 +649,9 @@ const getRole = (item: any): string =>
    LEAVE TYPE HELPERS
 ========================================================= */
 
-const getLeaveTypeId = (item: any): string =>
+const getLeaveTypeId = (
+  item: any
+): string =>
   String(
     firstValue(
       item,
@@ -332,7 +665,9 @@ const getLeaveTypeId = (item: any): string =>
     )
   );
 
-const getLeaveTypeName = (item: any): string =>
+const getLeaveTypeName = (
+  item: any
+): string =>
   String(
     firstValue(
       item,
@@ -354,16 +689,22 @@ const getLeaveTypeName = (item: any): string =>
    STATUS HELPERS
 ========================================================= */
 
-const parseStatus = (value: any): number => {
+const parseStatus = (
+  value: any
+): number => {
   if (typeof value === "number") {
     return value;
   }
 
-  const normalized = String(value ?? "")
+  const normalized = String(
+    value ?? ""
+  )
     .trim()
     .toLowerCase();
 
-  if (normalized === "approved") {
+  if (
+    normalized === "approved"
+  ) {
     return 1;
   }
 
@@ -402,15 +743,21 @@ const parseAvailType = (
     return numeric;
   }
 
-  const normalized = String(value ?? "")
+  const normalized = String(
+    value ?? ""
+  )
     .trim()
     .toLowerCase();
 
-  if (normalized.includes("first")) {
+  if (
+    normalized.includes("first")
+  ) {
     return 2;
   }
 
-  if (normalized.includes("second")) {
+  if (
+    normalized.includes("second")
+  ) {
     return 3;
   }
 
@@ -420,7 +767,8 @@ const parseAvailType = (
 const availTypeToLabel = (
   value: any
 ): LeaveTypeOption => {
-  const numeric = parseAvailType(value);
+  const numeric =
+    parseAvailType(value);
 
   if (numeric === 2) {
     return "First Half";
@@ -436,16 +784,22 @@ const availTypeToLabel = (
 const statusToLabel = (
   value: any
 ): LeaveStatus => {
-  const numeric = parseStatus(value);
+  const numeric =
+    parseStatus(value);
 
-  return STATUS_LABEL[numeric] || "New";
+  return (
+    STATUS_LABEL[numeric] ||
+    "New"
+  );
 };
 
 /* =========================================================
    DATE HELPERS
 ========================================================= */
 
-const toInputDate = (value: any): string => {
+const toInputDate = (
+  value: any
+): string => {
   if (!value) {
     return "";
   }
@@ -462,11 +816,17 @@ const toInputDate = (value: any): string => {
 
   const date = new Date(text);
 
-  if (Number.isNaN(date.getTime())) {
+  if (
+    Number.isNaN(
+      date.getTime()
+    )
+  ) {
     return "";
   }
 
-  return date.toISOString().slice(0, 10);
+  return date
+    .toISOString()
+    .slice(0, 10);
 };
 
 const formatApiDate = (
@@ -476,20 +836,31 @@ const formatApiDate = (
     return "";
   }
 
-  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+  if (
+    /^\d{4}-\d{2}-\d{2}$/.test(
+      value
+    )
+  ) {
     return value;
   }
 
   const date = new Date(value);
 
-  if (Number.isNaN(date.getTime())) {
+  if (
+    Number.isNaN(
+      date.getTime()
+    )
+  ) {
     return "";
   }
 
-  const year = date.getFullYear();
+  const year =
+    date.getFullYear();
+
   const month = String(
     date.getMonth() + 1
   ).padStart(2, "0");
+
   const day = String(
     date.getDate()
   ).padStart(2, "0");
@@ -506,21 +877,30 @@ const formatDisplayDate = (
 
   const date = new Date(value);
 
-  if (Number.isNaN(date.getTime())) {
+  if (
+    Number.isNaN(
+      date.getTime()
+    )
+  ) {
     return String(value);
   }
 
-  return date.toLocaleDateString("en-GB", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  });
+  return date.toLocaleDateString(
+    "en-GB",
+    {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    }
+  );
 };
 
 const calculateDays = (
   from: string,
   to: string,
-  availType: LeaveTypeOption | ""
+  availType:
+    | LeaveTypeOption
+    | ""
 ): string => {
   if (!from || !to) {
     return "";
@@ -535,8 +915,12 @@ const calculateDays = (
   );
 
   if (
-    Number.isNaN(start.getTime()) ||
-    Number.isNaN(end.getTime()) ||
+    Number.isNaN(
+      start.getTime()
+    ) ||
+    Number.isNaN(
+      end.getTime()
+    ) ||
     end < start
   ) {
     return "";
@@ -544,13 +928,19 @@ const calculateDays = (
 
   const difference =
     Math.floor(
-      (end.getTime() - start.getTime()) /
-        (1000 * 60 * 60 * 24)
+      (end.getTime() -
+        start.getTime()) /
+        (1000 *
+          60 *
+          60 *
+          24)
     ) + 1;
 
   if (
-    availType === "First Half" ||
-    availType === "Second Half"
+    availType ===
+      "First Half" ||
+    availType ===
+      "Second Half"
   ) {
     return difference === 1
       ? "0.5"
@@ -570,12 +960,16 @@ const getDaysLabel = (
 ): string => {
   const number = Number(value);
 
-  if (!Number.isFinite(number)) {
+  if (
+    !Number.isFinite(number)
+  ) {
     return "-";
   }
 
   return `${number} ${
-    number === 1 ? "Day" : "Days"
+    number === 1
+      ? "Day"
+      : "Days"
   }`;
 };
 
@@ -588,7 +982,8 @@ const normalizeLeave = (
   employees: EmployeeOption[],
   leaveTypes: LeaveTypeOptionItem[]
 ): LeaveItem => {
-  const item = unwrapObject(raw) || {};
+  const item =
+    unwrapObject(raw) || {};
 
   const id = String(
     firstValue(
@@ -657,7 +1052,9 @@ const normalizeLeave = (
         "Name",
       ],
       employee?.name ||
-        getEmployeeName(employeeObject)
+        getEmployeeName(
+          employeeObject
+        )
     )
   );
 
@@ -672,7 +1069,8 @@ const normalizeLeave = (
         "designationName",
         "DesignationName",
       ],
-      employee?.role || "Employee"
+      employee?.role ||
+        "Employee"
     )
   );
 
@@ -719,72 +1117,79 @@ const normalizeLeave = (
     )
   );
 
-  const fromValue = firstValue(
-    item,
-    [
-      "fromDate",
-      "FromDate",
-      "from",
-      "From",
-    ],
-    ""
-  );
-
-  const toValue = firstValue(
-    item,
-    [
-      "toDate",
-      "ToDate",
-      "to",
-      "To",
-    ],
-    ""
-  );
-
-  const availType = parseAvailType(
+  const fromValue =
     firstValue(
       item,
       [
-        "availType",
-        "AvailType",
-        "leaveType",
-        "LeaveType",
+        "fromDate",
+        "FromDate",
+        "from",
+        "From",
       ],
-      1
-    )
-  );
+      ""
+    );
 
-  const statusValue = parseStatus(
+  const toValue =
     firstValue(
       item,
       [
-        "status",
-        "Status",
-        "leaveStatus",
-        "LeaveStatus",
+        "toDate",
+        "ToDate",
+        "to",
+        "To",
       ],
-      0
-    )
-  );
+      ""
+    );
 
-  const noOfDays = firstValue(
-    item,
-    [
-      "noOfDays",
-      "NoOfDays",
-      "numberOfDays",
-      "NumberOfDays",
-      "days",
-      "Days",
-    ],
-    undefined
-  );
+  const availType =
+    parseAvailType(
+      firstValue(
+        item,
+        [
+          "availType",
+          "AvailType",
+          "leaveType",
+          "LeaveType",
+        ],
+        1
+      )
+    );
+
+  const statusValue =
+    parseStatus(
+      firstValue(
+        item,
+        [
+          "status",
+          "Status",
+          "leaveStatus",
+          "LeaveStatus",
+        ],
+        0
+      )
+    );
+
+  const noOfDays =
+    firstValue(
+      item,
+      [
+        "noOfDays",
+        "NoOfDays",
+        "numberOfDays",
+        "NumberOfDays",
+        "days",
+        "Days",
+      ],
+      undefined
+    );
 
   const calculatedDays =
     calculateDays(
       toInputDate(fromValue),
       toInputDate(toValue),
-      availTypeToLabel(availType)
+      availTypeToLabel(
+        availType
+      )
     );
 
   const daysNumber =
@@ -813,28 +1218,41 @@ const normalizeLeave = (
     type,
 
     from:
-      formatDisplayDate(fromValue),
+      formatDisplayDate(
+        fromValue
+      ),
 
     to:
-      formatDisplayDate(toValue),
+      formatDisplayDate(
+        toValue
+      ),
 
     days:
-      getDaysLabel(daysNumber),
+      getDaysLabel(
+        daysNumber
+      ),
 
     status:
-      statusToLabel(statusValue),
+      statusToLabel(
+        statusValue
+      ),
 
     statusValue,
 
     leaveType:
-      availTypeToLabel(availType),
+      availTypeToLabel(
+        availType
+      ),
 
     availType,
 
     reason: String(
       firstValue(
         item,
-        ["reason", "Reason"],
+        [
+          "reason",
+          "Reason",
+        ],
         ""
       )
     ),
@@ -850,21 +1268,25 @@ const normalizeLeave = (
       )
     ),
 
-    reviewedByUserId: String(
-      firstValue(
-        item,
-        [
-          "reviewedByUserId",
-          "ReviewedByUserId",
-        ],
-        ""
-      )
-    ),
+    reviewedByUserId:
+      String(
+        firstValue(
+          item,
+          [
+            "reviewedByUserId",
+            "ReviewedByUserId",
+          ],
+          ""
+        )
+      ),
 
     remarks: String(
       firstValue(
         item,
-        ["remarks", "Remarks"],
+        [
+          "remarks",
+          "Remarks",
+        ],
         ""
       )
     ),
@@ -883,7 +1305,9 @@ const extractSingleLeave = (
   const unwrapped =
     unwrapObject(response);
 
-  if (Array.isArray(unwrapped)) {
+  if (
+    Array.isArray(unwrapped)
+  ) {
     return unwrapped[0]
       ? normalizeLeave(
           unwrapped[0],
@@ -895,7 +1319,9 @@ const extractSingleLeave = (
 
   if (
     unwrapped?.data &&
-    !Array.isArray(unwrapped.data)
+    !Array.isArray(
+      unwrapped.data
+    )
   ) {
     return normalizeLeave(
       unwrapped.data,
@@ -905,7 +1331,8 @@ const extractSingleLeave = (
   }
 
   return unwrapped &&
-    typeof unwrapped === "object"
+    typeof unwrapped ===
+      "object"
     ? normalizeLeave(
         unwrapped,
         employees,
@@ -923,16 +1350,22 @@ const Leaves = () => {
     useState<LeaveItem[]>([]);
 
   const [employees, setEmployees] =
-    useState<EmployeeOption[]>([]);
+    useState<EmployeeOption[]>(
+      []
+    );
 
   const [leaveTypes, setLeaveTypes] =
-    useState<LeaveTypeOptionItem[]>([]);
+    useState<
+      LeaveTypeOptionItem[]
+    >([]);
 
   const [selected, setSelected] =
     useState<string[]>([]);
 
-  const [rowsPerPage, setRowsPerPage] =
-    useState(10);
+  const [
+    rowsPerPage,
+    setRowsPerPage,
+  ] = useState(10);
 
   const [search, setSearch] =
     useState("");
@@ -945,8 +1378,10 @@ const Leaves = () => {
   const [sortBy, setSortBy] =
     useState("Last 7 Days");
 
-  const [currentPage, setCurrentPage] =
-    useState(1);
+  const [
+    currentPage,
+    setCurrentPage,
+  ] = useState(1);
 
   const [addOpen, setAddOpen] =
     useState(false);
@@ -960,20 +1395,61 @@ const Leaves = () => {
   const [editOpen, setEditOpen] =
     useState(false);
 
-  const [deleteOpen, setDeleteOpen] =
-    useState(false);
+  const [
+    deleteOpen,
+    setDeleteOpen,
+  ] = useState(false);
 
-  const [activeLeave, setActiveLeave] =
-    useState<LeaveItem | null>(null);
+  const [
+    activeLeave,
+    setActiveLeave,
+  ] =
+    useState<LeaveItem | null>(
+      null
+    );
 
-  const [deleteId, setDeleteId] =
-    useState<string | null>(null);
+  const [
+    deleteId,
+    setDeleteId,
+  ] = useState<string | null>(
+    null
+  );
 
   const [form, setForm] =
-    useState<LeaveForm>(emptyForm);
+    useState<LeaveForm>(
+      emptyForm
+    );
 
   const [chatText, setChatText] =
     useState("");
+
+  /* =====================================================
+     CHAT STATE
+  ===================================================== */
+
+  const [
+    chatMessages,
+    setChatMessages,
+  ] = useState<
+    LeaveChatMessage[]
+  >([]);
+
+  const [
+    chatLoading,
+    setChatLoading,
+  ] = useState(false);
+
+  const [
+    chatSending,
+    setChatSending,
+  ] = useState(false);
+
+  const [
+    chatDeletingId,
+    setChatDeletingId,
+  ] = useState<string | null>(
+    null
+  );
 
   const [loading, setLoading] =
     useState(true);
@@ -981,8 +1457,10 @@ const Leaves = () => {
   const [saving, setSaving] =
     useState(false);
 
-  const [deleting, setDeleting] =
-    useState(false);
+  const [
+    deleting,
+    setDeleting,
+  ] = useState(false);
 
   const [error, setError] =
     useState("");
@@ -991,118 +1469,128 @@ const Leaves = () => {
      LOAD EMPLOYEES
   ===================================================== */
 
-  const loadEmployees = async () => {
-    try {
-      const response =
-        await getAllEmployees({
-          PageNumber: 1,
-          PageSize: 1000,
-        });
+  const loadEmployees =
+    async () => {
+      try {
+        const response =
+          await getAllEmployees({
+            PageNumber: 1,
+            PageSize: 1000,
+          });
 
-      const list = findArray(
-        response,
-        [
-          "id",
-          "Id",
-          "userId",
-          "UserId",
-        ]
-      );
+        const list = findArray(
+          response,
+          [
+            "id",
+            "Id",
+            "userId",
+            "UserId",
+          ]
+        );
 
-      const mapped = list
-        .map((item: any) => {
-          const id =
-            getEmployeeId(item);
+        const mapped = list
+          .map((item: any) => {
+            const id =
+              getEmployeeId(item);
 
-          if (!id) {
-            return null;
-          }
+            if (!id) {
+              return null;
+            }
 
-          return {
-            id,
-            name:
-              getEmployeeName(item),
-            role:
-              getRole(item),
-          };
-        })
-        .filter(Boolean) as EmployeeOption[];
+            return {
+              id,
+              name:
+                getEmployeeName(
+                  item
+                ),
+              role:
+                getRole(item),
+            };
+          })
+          .filter(
+            Boolean
+          ) as EmployeeOption[];
 
-      setEmployees(mapped);
+        setEmployees(mapped);
 
-      return mapped;
-    } catch (err) {
-      console.error(
-        "LOAD EMPLOYEES ERROR:",
-        err
-      );
+        return mapped;
+      } catch (err) {
+        console.error(
+          "LOAD EMPLOYEES ERROR:",
+          err
+        );
 
-      return [];
-    }
-  };
+        return [];
+      }
+    };
 
   /* =====================================================
      LOAD LEAVE TYPES
   ===================================================== */
 
-  const loadLeaveTypes = async () => {
-    try {
-      const response =
-        await getAllLeaveTypes({
-          PageNumber: 1,
-          PageSize: 1000,
-        });
+  const loadLeaveTypes =
+    async () => {
+      try {
+        const response =
+          await getAllLeaveTypes({
+            PageNumber: 1,
+            PageSize: 1000,
+          });
 
-      const list = findArray(
-        response,
-        [
-          "leaveName",
-          "LeaveName",
-          "leaveDays",
-        ]
-      );
+        const list = findArray(
+          response,
+          [
+            "leaveName",
+            "LeaveName",
+            "leaveDays",
+          ]
+        );
 
-      const mapped = list
-        .map((item: any) => {
-          const id =
-            getLeaveTypeId(item);
+        const mapped = list
+          .map((item: any) => {
+            const id =
+              getLeaveTypeId(
+                item
+              );
 
-          if (!id) {
-            return null;
-          }
+            if (!id) {
+              return null;
+            }
 
-          return {
-            id,
-            name:
-              getLeaveTypeName(item),
-            days: Number(
-              firstValue(
-                item,
-                [
-                  "leaveDays",
-                  "LeaveDays",
-                ],
-                0
-              )
-            ),
-          };
-        })
-        .filter(
-          Boolean
-        ) as LeaveTypeOptionItem[];
+            return {
+              id,
+              name:
+                getLeaveTypeName(
+                  item
+                ),
+              days: Number(
+                firstValue(
+                  item,
+                  [
+                    "leaveDays",
+                    "LeaveDays",
+                  ],
+                  0
+                )
+              ),
+            };
+          })
+          .filter(
+            Boolean
+          ) as LeaveTypeOptionItem[];
 
-      setLeaveTypes(mapped);
+        setLeaveTypes(mapped);
 
-      return mapped;
-    } catch (err) {
-      console.error(
-        "LOAD LEAVE TYPES ERROR:",
-        err
-      );
+        return mapped;
+      } catch (err) {
+        console.error(
+          "LOAD LEAVE TYPES ERROR:",
+          err
+        );
 
-      return [];
-    }
-  };
+        return [];
+      }
+    };
 
   /* =====================================================
      LOAD LEAVES
@@ -1133,12 +1621,13 @@ const Leaves = () => {
       const unwrapped =
         unwrapObject(response);
 
-      const source =
-        list.length
-          ? list
-          : Array.isArray(unwrapped)
-            ? unwrapped
-            : [];
+      const source = list.length
+        ? list
+        : Array.isArray(
+              unwrapped
+            )
+          ? unwrapped
+          : [];
 
       const mapped = source
         .map((item: any) =>
@@ -1149,8 +1638,9 @@ const Leaves = () => {
           )
         )
         .filter(
-          (item: LeaveItem) =>
-            Boolean(item.id)
+          (
+            item: LeaveItem
+          ) => Boolean(item.id)
         );
 
       setLeaveData(mapped);
@@ -1161,7 +1651,8 @@ const Leaves = () => {
       );
 
       setError(
-        err?.response?.data?.message ||
+        err?.response?.data
+          ?.message ||
           err?.message ||
           "Unable to load leave records."
       );
@@ -1174,22 +1665,23 @@ const Leaves = () => {
      REFRESH
   ===================================================== */
 
-  const refreshAll = async () => {
-    setLoading(true);
+  const refreshAll =
+    async () => {
+      setLoading(true);
 
-    const [
-      loadedEmployees,
-      loadedLeaveTypes,
-    ] = await Promise.all([
-      loadEmployees(),
-      loadLeaveTypes(),
-    ]);
+      const [
+        loadedEmployees,
+        loadedLeaveTypes,
+      ] = await Promise.all([
+        loadEmployees(),
+        loadLeaveTypes(),
+      ]);
 
-    await loadLeaves(
-      loadedEmployees,
-      loadedLeaveTypes
-    );
-  };
+      await loadLeaves(
+        loadedEmployees,
+        loadedLeaveTypes
+      );
+    };
 
   useEffect(() => {
     refreshAll();
@@ -1209,11 +1701,13 @@ const Leaves = () => {
 
     if (
       calculated &&
-      calculated !== form.noOfDays
+      calculated !==
+        form.noOfDays
     ) {
       setForm((prev) => ({
         ...prev,
-        noOfDays: calculated,
+        noOfDays:
+          calculated,
       }));
     }
   }, [
@@ -1226,74 +1720,89 @@ const Leaves = () => {
      FILTER
   ===================================================== */
 
-  const filteredData = useMemo(() => {
-    let result = [...leaveData];
+  const filteredData =
+    useMemo(() => {
+      let result = [
+        ...leaveData,
+      ];
 
-    if (search.trim()) {
-      const q =
-        search.toLowerCase().trim();
-
-      result = result.filter(
-        (item) =>
-          item.name
+      if (search.trim()) {
+        const q =
+          search
             .toLowerCase()
-            .includes(q) ||
-          item.role
-            .toLowerCase()
-            .includes(q) ||
-          item.type
-            .toLowerCase()
-            .includes(q) ||
-          item.status
-            .toLowerCase()
-            .includes(q)
-      );
-    }
+            .trim();
 
-    if (leaveTypeFilter) {
-      result = result.filter(
-        (item) =>
-          item.type ===
-          leaveTypeFilter
-      );
-    }
+        result =
+          result.filter(
+            (item) =>
+              item.name
+                .toLowerCase()
+                .includes(q) ||
+              item.role
+                .toLowerCase()
+                .includes(q) ||
+              item.type
+                .toLowerCase()
+                .includes(q) ||
+              item.status
+                .toLowerCase()
+                .includes(q)
+          );
+      }
 
-    if (sortBy === "Ascending") {
-      result.sort((a, b) =>
-        a.name.localeCompare(
-          b.name
-        )
-      );
-    }
+      if (leaveTypeFilter) {
+        result =
+          result.filter(
+            (item) =>
+              item.type ===
+              leaveTypeFilter
+          );
+      }
 
-    if (sortBy === "Descending") {
-      result.sort((a, b) =>
-        b.name.localeCompare(
-          a.name
-        )
-      );
-    }
+      if (
+        sortBy ===
+        "Ascending"
+      ) {
+        result.sort((a, b) =>
+          a.name.localeCompare(
+            b.name
+          )
+        );
+      }
 
-    return result;
-  }, [
-    leaveData,
-    search,
-    leaveTypeFilter,
-    sortBy,
-  ]);
+      if (
+        sortBy ===
+        "Descending"
+      ) {
+        result.sort((a, b) =>
+          b.name.localeCompare(
+            a.name
+          )
+        );
+      }
 
-  const totalPages = Math.max(
-    1,
-    Math.ceil(
-      filteredData.length /
-        rowsPerPage
-    )
-  );
+      return result;
+    }, [
+      leaveData,
+      search,
+      leaveTypeFilter,
+      sortBy,
+    ]);
 
-  const safeCurrentPage = Math.min(
-    currentPage,
-    totalPages
-  );
+  const totalPages =
+    Math.max(
+      1,
+      Math.ceil(
+        filteredData.length /
+          rowsPerPage
+      )
+    );
+
+  const safeCurrentPage =
+    Math.min(
+      currentPage,
+      totalPages
+    );
 
   const visibleData =
     filteredData.slice(
@@ -1313,28 +1822,29 @@ const Leaves = () => {
      SELECT
   ===================================================== */
 
-  const handleSelectAll = () => {
-    const ids =
-      visibleData.map(
-        (item) => item.id
-      );
+  const handleSelectAll =
+    () => {
+      const ids =
+        visibleData.map(
+          (item) => item.id
+        );
 
-    if (allVisibleSelected) {
-      setSelected((prev) =>
-        prev.filter(
-          (id) =>
-            !ids.includes(id)
-        )
-      );
-    } else {
-      setSelected((prev) => [
-        ...new Set([
-          ...prev,
-          ...ids,
-        ]),
-      ]);
-    }
-  };
+      if (allVisibleSelected) {
+        setSelected((prev) =>
+          prev.filter(
+            (id) =>
+              !ids.includes(id)
+          )
+        );
+      } else {
+        setSelected((prev) => [
+          ...new Set([
+            ...prev,
+            ...ids,
+          ]),
+        ]);
+      }
+    };
 
   const toggleSelect = (
     id: string
@@ -1355,11 +1865,15 @@ const Leaves = () => {
   const getStatusColor = (
     status: LeaveStatus
   ) => {
-    if (status === "Approved") {
+    if (
+      status === "Approved"
+    ) {
       return "#25c875";
     }
 
-    if (status === "Declined") {
+    if (
+      status === "Declined"
+    ) {
       return "#ff5b5b";
     }
 
@@ -1372,9 +1886,11 @@ const Leaves = () => {
 
   const openAddModal = () => {
     setError("");
+
     setForm({
       ...emptyForm,
     });
+
     setAddOpen(true);
   };
 
@@ -1382,188 +1898,482 @@ const Leaves = () => {
      VIEW
   ===================================================== */
 
-  const openViewModal = async (
-    item: LeaveItem
-  ) => {
-    setError("");
-    setActiveLeave(item);
-    setViewOpen(true);
+  const openViewModal =
+    async (
+      item: LeaveItem
+    ) => {
+      setError("");
+      setActiveLeave(item);
+      setViewOpen(true);
 
-    try {
-      const response =
-        await getLeaveById(item.id);
+      try {
+        const response =
+          await getLeaveById(
+            item.id
+          );
 
-      const fresh =
-        extractSingleLeave(
-          response,
-          employees,
-          leaveTypes
+        const fresh =
+          extractSingleLeave(
+            response,
+            employees,
+            leaveTypes
+          );
+
+        if (fresh) {
+          setActiveLeave(
+            fresh
+          );
+        }
+      } catch (err: any) {
+        console.error(
+          "GET LEAVE BY ID ERROR:",
+          err
         );
 
-      if (fresh) {
-        setActiveLeave(fresh);
+        setError(
+          err?.response?.data
+            ?.message ||
+            err?.message ||
+            "Unable to load leave details."
+        );
       }
-    } catch (err: any) {
-      console.error(
-        "GET LEAVE BY ID ERROR:",
-        err
+    };
+
+  /* =====================================================
+     CHAT - LOAD MESSAGES
+  ===================================================== */
+
+  const loadChatMessages =
+    async (
+      leaveId: string
+    ) => {
+      if (!leaveId?.trim()) {
+        console.error(
+          "LEAVE CHAT: Leave ID missing"
+        );
+        return;
+      }
+
+      setChatLoading(true);
+
+      try {
+        console.log(
+          "GET LEAVE CHAT ID:",
+          leaveId
+        );
+
+        const response =
+          await getLeaveChat(
+            leaveId
+          );
+
+        console.log(
+          "GET LEAVE CHAT RESPONSE:",
+          response
+        );
+
+        const rawMessages =
+          extractChatMessages(
+            response
+          );
+
+        console.log(
+          "EXTRACTED CHAT MESSAGES:",
+          rawMessages
+        );
+
+        const normalized =
+          rawMessages
+            .map(
+              (
+                item: any
+              ) =>
+                normalizeChatMessage(
+                  item
+                )
+            )
+            .filter(
+              (
+                item
+              ) =>
+                Boolean(
+                  item.message
+                )
+            );
+
+        setChatMessages(
+          normalized
+        );
+      } catch (err: any) {
+        console.error(
+          "LOAD LEAVE CHAT ERROR:",
+          err
+        );
+
+        setChatMessages([]);
+
+        setError(
+          err?.message ||
+            err?.response?.data
+              ?.message ||
+            "Unable to load chat messages."
+        );
+      } finally {
+        setChatLoading(false);
+      }
+    };
+
+  /* =====================================================
+     CHAT - OPEN
+  ===================================================== */
+
+  const openChatModal =
+    async (
+      item: LeaveItem
+    ) => {
+      if (!item.id) {
+        setError(
+          "Leave ID not found. Cannot open chat."
+        );
+        return;
+      }
+
+      console.log(
+        "OPEN CHAT FOR LEAVE ID:",
+        item.id
       );
 
-      setError(
-        err?.response?.data?.message ||
-          err?.message ||
-          "Unable to load leave details."
+      setError("");
+      setActiveLeave(item);
+      setChatText("");
+      setChatMessages([]);
+      setChatOpen(true);
+
+      await loadChatMessages(
+        item.id
       );
-    }
+    };
+
+  /* =====================================================
+     CHAT - SEND MESSAGE
+  ===================================================== */
+
+  const handleSendChat =
+    async () => {
+      if (
+        !activeLeave?.id
+      ) {
+        setError(
+          "Leave ID not found."
+        );
+        return;
+      }
+
+      const message =
+        chatText.trim();
+
+      if (!message) {
+        return;
+      }
+
+      if (chatSending) {
+        return;
+      }
+
+      setChatSending(true);
+      setError("");
+
+      try {
+        console.log(
+          "SEND CHAT LEAVE ID:",
+          activeLeave.id
+        );
+
+        console.log(
+          "SEND CHAT MESSAGE:",
+          message
+        );
+
+        await sendLeaveChatMessage(
+          activeLeave.id,
+          {
+            message,
+          }
+        );
+
+        setChatText("");
+
+        await loadChatMessages(
+          activeLeave.id
+        );
+      } catch (err: any) {
+        console.error(
+          "SEND LEAVE CHAT ERROR:",
+          err
+        );
+
+        setError(
+          err?.message ||
+            err?.response?.data
+              ?.message ||
+            "Unable to send chat message."
+        );
+      } finally {
+        setChatSending(false);
+      }
+    };
+
+  /* =====================================================
+     CHAT - DELETE MESSAGE
+  ===================================================== */
+
+  const handleDeleteChat =
+    async (
+      messageId: string
+    ) => {
+      if (!messageId) {
+        return;
+      }
+
+      if (!activeLeave?.id) {
+        return;
+      }
+
+      const confirmed =
+        window.confirm(
+          "Are you sure you want to delete this message?"
+        );
+
+      if (!confirmed) {
+        return;
+      }
+
+      setChatDeletingId(
+        messageId
+      );
+      setError("");
+
+      try {
+        console.log(
+          "DELETE CHAT MESSAGE ID:",
+          messageId
+        );
+
+        await deleteLeaveChatMessage(
+          messageId
+        );
+
+        await loadChatMessages(
+          activeLeave.id
+        );
+      } catch (err: any) {
+        console.error(
+          "DELETE CHAT MESSAGE ERROR:",
+          err
+        );
+
+        setError(
+          err?.message ||
+            err?.response?.data
+              ?.message ||
+            "Unable to delete chat message."
+        );
+      } finally {
+        setChatDeletingId(
+          null
+        );
+      }
+    };
+
+  /* =====================================================
+     CHAT - CLOSE
+  ===================================================== */
+
+  const closeChatModal = () => {
+    setChatOpen(false);
+    setChatMessages([]);
+    setChatText("");
+    setActiveLeave(null);
   };
 
   /* =====================================================
-     CHAT
+     CHAT - OWN MESSAGE
   ===================================================== */
 
-  const openChatModal = (
-    item: LeaveItem
+  const isOwnChatMessage = (
+    message: LeaveChatMessage
   ) => {
-    setActiveLeave(item);
-    setChatText("");
-    setChatOpen(true);
+    const currentUserId =
+      getCurrentUserId();
+
+    if (
+      currentUserId &&
+      message.senderId
+    ) {
+      return (
+        message.senderId
+          .toLowerCase() ===
+        currentUserId.toLowerCase()
+      );
+    }
+
+    return false;
   };
 
   /* =====================================================
      EDIT
   ===================================================== */
 
-  const openEditModal = async (
-    item: LeaveItem
-  ) => {
-    setError("");
-    setActiveLeave(item);
+  const openEditModal =
+    async (
+      item: LeaveItem
+    ) => {
+      setError("");
+      setActiveLeave(item);
 
-    setForm({
-      employeeId:
-        item.userId,
+      setForm({
+        employeeId:
+          item.userId,
 
-      leaveReasonId:
-        item.leaveTypeMasterId,
+        leaveReasonId:
+          item.leaveTypeMasterId,
 
-      from:
-        toInputDate(item.from),
+        from:
+          toInputDate(
+            item.from
+          ),
 
-      to:
-        toInputDate(item.to),
+        to:
+          toInputDate(
+            item.to
+          ),
 
-      leaveType:
-        item.leaveType,
+        leaveType:
+          item.leaveType,
 
-      noOfDays:
-        item.days.replace(
-          /[^0-9.]/g,
-          ""
-        ),
+        noOfDays:
+          item.days.replace(
+            /[^0-9.]/g,
+            ""
+          ),
 
-      reason:
-        item.reason,
-    });
+        reason:
+          item.reason,
+      });
 
-    setEditOpen(true);
+      setEditOpen(true);
 
-    try {
-      const response =
-        await getLeaveById(item.id);
+      try {
+        const response =
+          await getLeaveById(
+            item.id
+          );
 
-      const fresh =
-        extractSingleLeave(
-          response,
-          employees,
-          leaveTypes
+        const fresh =
+          extractSingleLeave(
+            response,
+            employees,
+            leaveTypes
+          );
+
+        if (fresh) {
+          setActiveLeave(
+            fresh
+          );
+
+          setForm({
+            employeeId:
+              fresh.userId,
+
+            leaveReasonId:
+              fresh.leaveTypeMasterId,
+
+            from:
+              toInputDate(
+                fresh.from
+              ),
+
+            to:
+              toInputDate(
+                fresh.to
+              ),
+
+            leaveType:
+              fresh.leaveType,
+
+            noOfDays:
+              fresh.days.replace(
+                /[^0-9.]/g,
+                ""
+              ),
+
+            reason:
+              fresh.reason,
+          });
+        }
+      } catch (err) {
+        console.error(
+          "GET LEAVE FOR EDIT ERROR:",
+          err
         );
-
-      if (fresh) {
-        setActiveLeave(fresh);
-
-        setForm({
-          employeeId:
-            fresh.userId,
-
-          leaveReasonId:
-            fresh.leaveTypeMasterId,
-
-          from:
-            toInputDate(
-              fresh.from
-            ),
-
-          to:
-            toInputDate(
-              fresh.to
-            ),
-
-          leaveType:
-            fresh.leaveType,
-
-          noOfDays:
-            fresh.days.replace(
-              /[^0-9.]/g,
-              ""
-            ),
-
-          reason:
-            fresh.reason,
-        });
       }
-    } catch (err) {
-      console.error(
-        "GET LEAVE FOR EDIT ERROR:",
-        err
-      );
-    }
-  };
+    };
 
   /* =====================================================
      DELETE MODAL
   ===================================================== */
 
-  const openDeleteModal = (
-    id: string
-  ) => {
-    setDeleteId(id);
-    setDeleteOpen(true);
-  };
+  const openDeleteModal =
+    (id: string) => {
+      setDeleteId(id);
+      setDeleteOpen(true);
+    };
 
   /* =====================================================
      BUILD PAYLOAD
   ===================================================== */
 
-  const buildLeavePayload = (): UpdateLeavePayload => {
-    if (
-      !form.employeeId ||
-      !form.leaveReasonId ||
-      !form.from ||
-      !form.to ||
-      !form.leaveType ||
-      !form.reason.trim()
-    ) {
-      throw new Error(
-        "Please fill all required leave fields."
-      );
-    }
+  const buildLeavePayload =
+    (): UpdateLeavePayload => {
+      if (
+        !form.employeeId ||
+        !form.leaveReasonId ||
+        !form.from ||
+        !form.to ||
+        !form.leaveType ||
+        !form.reason.trim()
+      ) {
+        throw new Error(
+          "Please fill all required leave fields."
+        );
+      }
 
-    return {
-      userId: form.employeeId.trim(),
+      return {
+        userId:
+          form.employeeId.trim(),
 
-      leaveTypeMasterId:
-        form.leaveReasonId.trim(),
+        leaveTypeMasterId:
+          form.leaveReasonId.trim(),
 
-      fromDate: formatApiDate(form.from),
+        fromDate:
+          formatApiDate(
+            form.from
+          ),
 
-      toDate: formatApiDate(form.to),
+        toDate:
+          formatApiDate(
+            form.to
+          ),
 
-      availType:
-        AVAIL_TYPE_MAP[form.leaveType],
+        availType:
+          AVAIL_TYPE_MAP[
+            form.leaveType
+          ],
 
-      reason: form.reason.trim(),
+        reason:
+          form.reason.trim(),
+      };
     };
-  };
 
   /* =====================================================
      VALIDATE
@@ -1625,207 +2435,229 @@ const Leaves = () => {
      ADD LEAVE
   ===================================================== */
 
-  const handleAddLeave = async (
-    e: FormEvent
-  ) => {
-    e.preventDefault();
+  const handleAddLeave =
+    async (
+      e: FormEvent
+    ) => {
+      e.preventDefault();
 
-    if (!validateForm()) {
-      return;
-    }
+      if (!validateForm()) {
+        return;
+      }
 
-    setSaving(true);
-    setError("");
+      setSaving(true);
+      setError("");
 
-    try {
-      const payload = buildLeavePayload() as AddLeavePayload;
+      try {
+        const payload =
+          buildLeavePayload() as AddLeavePayload;
 
-      console.log(
-        "FINAL ADD LEAVE PAYLOAD:",
-        payload
-      );
+        console.log(
+          "FINAL ADD LEAVE PAYLOAD:",
+          payload
+        );
 
-      await addLeave(payload);
+        await addLeave(
+          payload
+        );
 
-      setAddOpen(false);
-      setForm({
-        ...emptyForm,
-      });
+        setAddOpen(false);
 
-      await loadLeaves(
-        employees,
-        leaveTypes
-      );
-    } catch (err: any) {
-      console.error(
-        "ADD LEAVE ERROR:",
-        err
-      );
+        setForm({
+          ...emptyForm,
+        });
 
-      setError(
-        err?.message ||
-          err?.response?.data?.message ||
-          "Unable to add leave."
-      );
-    } finally {
-      setSaving(false);
-    }
-  };
+        await loadLeaves(
+          employees,
+          leaveTypes
+        );
+      } catch (err: any) {
+        console.error(
+          "ADD LEAVE ERROR:",
+          err
+        );
+
+        setError(
+          err?.message ||
+            err?.response?.data
+              ?.message ||
+            "Unable to add leave."
+        );
+      } finally {
+        setSaving(false);
+      }
+    };
 
   /* =====================================================
      UPDATE LEAVE
   ===================================================== */
 
-  const handleEditLeave = async (
-    e: FormEvent
-  ) => {
-    e.preventDefault();
+  const handleEditLeave =
+    async (
+      e: FormEvent
+    ) => {
+      e.preventDefault();
 
-    if (!activeLeave) {
-      setError(
-        "Selected leave record not found."
-      );
-      return;
-    }
+      if (!activeLeave) {
+        setError(
+          "Selected leave record not found."
+        );
+        return;
+      }
 
-    if (!validateForm()) {
-      return;
-    }
+      if (!validateForm()) {
+        return;
+      }
 
-    setSaving(true);
-    setError("");
+      setSaving(true);
+      setError("");
 
-    try {
-      const payload = buildLeavePayload();
+      try {
+        const payload =
+          buildLeavePayload();
 
-      console.log(
-        "FINAL UPDATE LEAVE ID:",
-        activeLeave.id
-      );
+        console.log(
+          "FINAL UPDATE LEAVE ID:",
+          activeLeave.id
+        );
 
-      console.log(
-        "FINAL UPDATE LEAVE PAYLOAD:",
-        payload
-      );
+        console.log(
+          "FINAL UPDATE LEAVE PAYLOAD:",
+          payload
+        );
 
-      await updateLeave(
-        activeLeave.id,
-        payload
-      );
+        await updateLeave(
+          activeLeave.id,
+          payload
+        );
 
-      setEditOpen(false);
-      setActiveLeave(null);
+        setEditOpen(false);
+        setActiveLeave(null);
 
-      setForm({
-        ...emptyForm,
-      });
+        setForm({
+          ...emptyForm,
+        });
 
-      await loadLeaves(
-        employees,
-        leaveTypes
-      );
-    } catch (err: any) {
-      console.error(
-        "UPDATE LEAVE ERROR:",
-        err
-      );
+        await loadLeaves(
+          employees,
+          leaveTypes
+        );
+      } catch (err: any) {
+        console.error(
+          "UPDATE LEAVE ERROR:",
+          err
+        );
 
-      setError(
-        err?.message ||
-          err?.response?.data?.message ||
-          "Unable to update leave."
-      );
-    } finally {
-      setSaving(false);
-    }
-  };
+        setError(
+          err?.message ||
+            err?.response?.data
+              ?.message ||
+            "Unable to update leave."
+        );
+      } finally {
+        setSaving(false);
+      }
+    };
 
   /* =====================================================
      STATUS UPDATE
   ===================================================== */
 
-  const handleStatusChange = async (
-    item: LeaveItem,
-    nextStatus: LeaveStatus
-  ) => {
-    const reviewedByUserId =
-      getCurrentUserId();
+  const handleStatusChange =
+    async (
+      item: LeaveItem,
+      nextStatus: LeaveStatus
+    ) => {
+      const reviewedByUserId =
+        getCurrentUserId();
 
-    if (!reviewedByUserId) {
-      setError(
-        "ReviewedByUserId was not found in localStorage. Please login again."
+      if (
+        !reviewedByUserId
+      ) {
+        setError(
+          "ReviewedByUserId was not found in localStorage. Please login again."
+        );
+
+        return;
+      }
+
+      const previousStatus =
+        item.status;
+
+      const previousStatusValue =
+        item.statusValue;
+
+      const nextStatusValue =
+        STATUS_MAP[
+          nextStatus
+        ];
+
+      setLeaveData(
+        (prev) =>
+          prev.map(
+            (leave) =>
+              leave.id ===
+              item.id
+                ? {
+                    ...leave,
+                    status:
+                      nextStatus,
+                    statusValue:
+                      nextStatusValue,
+                  }
+                : leave
+          )
       );
 
-      return;
-    }
+      try {
+        await updateLeaveStatus(
+          item.id,
+          reviewedByUserId,
+          {
+            status:
+              nextStatusValue,
 
-    const previousStatus =
-      item.status;
+            remarks:
+              item.remarks ||
+              "",
+          }
+        );
 
-    const previousStatusValue =
-      item.statusValue;
+        await loadLeaves(
+          employees,
+          leaveTypes
+        );
+      } catch (err: any) {
+        console.error(
+          "UPDATE LEAVE STATUS ERROR:",
+          err
+        );
 
-    const nextStatusValue =
-      STATUS_MAP[nextStatus];
+        setLeaveData(
+          (prev) =>
+            prev.map(
+              (leave) =>
+                leave.id ===
+                item.id
+                  ? {
+                      ...leave,
+                      status:
+                        previousStatus,
+                      statusValue:
+                        previousStatusValue,
+                    }
+                  : leave
+            )
+        );
 
-    setLeaveData((prev) =>
-      prev.map((leave) =>
-        leave.id === item.id
-          ? {
-              ...leave,
-              status:
-                nextStatus,
-              statusValue:
-                nextStatusValue,
-            }
-          : leave
-      )
-    );
-
-    try {
-      await updateLeaveStatus(
-        item.id,
-        reviewedByUserId,
-        {
-          status:
-            nextStatusValue,
-
-          remarks:
-            item.remarks || "",
-        }
-      );
-
-      await loadLeaves(
-        employees,
-        leaveTypes
-      );
-    } catch (err: any) {
-      console.error(
-        "UPDATE LEAVE STATUS ERROR:",
-        err
-      );
-
-      setLeaveData((prev) =>
-        prev.map((leave) =>
-          leave.id === item.id
-            ? {
-                ...leave,
-                status:
-                  previousStatus,
-                statusValue:
-                  previousStatusValue,
-              }
-            : leave
-        )
-      );
-
-      setError(
-        err?.response?.data?.message ||
-          err?.message ||
-          "Unable to update leave status."
-      );
-    }
-  };
+        setError(
+          err?.response?.data
+            ?.message ||
+            err?.message ||
+            "Unable to update leave status."
+        );
+      }
+    };
 
   /* =====================================================
      DELETE
@@ -1845,19 +2677,21 @@ const Leaves = () => {
           deleteId
         );
 
-        setLeaveData((prev) =>
-          prev.filter(
-            (item) =>
-              item.id !==
-              deleteId
-          )
+        setLeaveData(
+          (prev) =>
+            prev.filter(
+              (item) =>
+                item.id !==
+                deleteId
+            )
         );
 
-        setSelected((prev) =>
-          prev.filter(
-            (id) =>
-              id !== deleteId
-          )
+        setSelected(
+          (prev) =>
+            prev.filter(
+              (id) =>
+                id !== deleteId
+            )
         );
 
         setDeleteId(null);
@@ -1874,7 +2708,8 @@ const Leaves = () => {
         );
 
         setError(
-          err?.response?.data?.message ||
+          err?.response?.data
+            ?.message ||
             err?.message ||
             "Unable to delete leave."
         );
@@ -2503,6 +3338,25 @@ const Leaves = () => {
           padding: 17px 75px;
         }
 
+        .chat-loading {
+          min-height: 200px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          color: #697386;
+          font-size: 13px;
+        }
+
+        .chat-empty {
+          min-height: 200px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          color: #697386;
+          font-size: 13px;
+          text-align: center;
+        }
+
         .chat-row {
           display: flex;
           margin-bottom: 16px;
@@ -2510,6 +3364,11 @@ const Leaves = () => {
 
         .chat-row.right {
           justify-content: flex-end;
+        }
+
+        .chat-bubble-wrap {
+          position: relative;
+          max-width: 440px;
         }
 
         .chat-bubble {
@@ -2520,16 +3379,46 @@ const Leaves = () => {
           color: #111827;
           font-size: 13px;
           line-height: 1.5;
+          white-space: pre-wrap;
+          word-break: break-word;
         }
 
         .chat-row.right .chat-bubble {
           border-radius: 17px 17px 0 17px;
+          background: #fff4d9;
         }
 
         .chat-meta {
           margin-top: 4px;
           color: #697386;
           font-size: 12px;
+        }
+
+        .chat-delete-btn {
+          width: 24px;
+          height: 24px;
+          position: absolute;
+          right: -31px;
+          top: 5px;
+          padding: 0;
+          border: 0;
+          border-radius: 4px;
+          background: transparent;
+          color: #9aa2ae;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+        }
+
+        .chat-delete-btn:hover {
+          color: #f10d18;
+          background: #fff0f0;
+        }
+
+        .chat-delete-btn:disabled {
+          opacity: .5;
+          cursor: not-allowed;
         }
 
         .chat-input-bar {
@@ -2552,6 +3441,11 @@ const Leaves = () => {
           font-size: 13px;
         }
 
+        .chat-input:focus {
+          border-color: #c39237;
+          background: #fff;
+        }
+
         .chat-send {
           width: 34px;
           height: 34px;
@@ -2562,6 +3456,12 @@ const Leaves = () => {
           display: flex;
           align-items: center;
           justify-content: center;
+          cursor: pointer;
+        }
+
+        .chat-send:disabled {
+          opacity: .55;
+          cursor: not-allowed;
         }
 
         /* DELETE */
@@ -2692,6 +3592,10 @@ const Leaves = () => {
           .leave-sort-filter {
             width: 100%;
           }
+
+          .chat-body {
+            padding: 17px 20px;
+          }
         }
 
         `}
@@ -2699,32 +3603,45 @@ const Leaves = () => {
 
       <div className="leave-page">
 
+        {/* =====================================================
+            PAGE HEADER
+        ===================================================== */}
+
         <div className="leave-page-header">
 
           <div>
+
             <h1 className="leave-page-title">
               Leaves
             </h1>
 
             <div className="leave-breadcrumb">
+
               <Link to="/admin/dashboard">
                 <i className="ti ti-home" />
               </Link>
 
               <span>/</span>
 
-              <span>Leaves</span>
+              <span>
+                Leaves
+              </span>
+
             </div>
+
           </div>
 
           <button
             type="button"
             className="leave-add-btn"
-            onClick={openAddModal}
+            onClick={
+              openAddModal
+            }
           >
             <i className="ti ti-circle-plus" />
             Add Leave
           </button>
+
         </div>
 
         {error && (
@@ -2732,6 +3649,10 @@ const Leaves = () => {
             {error}
           </div>
         )}
+
+        {/* =====================================================
+            SUMMARY
+        ===================================================== */}
 
         <div className="leave-summary-grid">
 
@@ -2786,52 +3707,62 @@ const Leaves = () => {
               color:
                 "#20bdd9",
             },
-          ].map((item) => (
-            <div
-              key={item.title}
-              className="leave-summary-card"
-            >
-              <div className="leave-summary-left">
+          ].map(
+            (item) => (
+              <div
+                key={
+                  item.title
+                }
+                className="leave-summary-card"
+              >
 
-                <div
-                  className="leave-summary-shape"
-                  style={{
-                    background:
-                      item.color,
-                  }}
-                />
+                <div className="leave-summary-left">
 
-                <div className="leave-summary-light" />
-
-                <div
-                  className="leave-summary-icon"
-                  style={{
-                    color:
-                      item.color,
-                  }}
-                >
-                  <UserRoundCheck
-                    size={18}
+                  <div
+                    className="leave-summary-shape"
+                    style={{
+                      background:
+                        item.color,
+                    }}
                   />
+
+                  <div className="leave-summary-light" />
+
+                  <div
+                    className="leave-summary-icon"
+                    style={{
+                      color:
+                        item.color,
+                    }}
+                  >
+                    <UserRoundCheck
+                      size={18}
+                    />
+                  </div>
+
+                </div>
+
+                <div className="leave-summary-content">
+
+                  <div className="leave-summary-title">
+                    {item.title}
+                  </div>
+
+                  <div className="leave-summary-value">
+                    {item.value}
+                  </div>
+
                 </div>
 
               </div>
-
-              <div className="leave-summary-content">
-
-                <div className="leave-summary-title">
-                  {item.title}
-                </div>
-
-                <div className="leave-summary-value">
-                  {item.value}
-                </div>
-
-              </div>
-            </div>
-          ))}
+            )
+          )}
 
         </div>
+
+        {/* =====================================================
+            LEAVE LIST
+        ===================================================== */}
 
         <div className="leave-list-card">
 
@@ -2870,7 +3801,9 @@ const Leaves = () => {
                     e.target.value
                   );
 
-                  setCurrentPage(1);
+                  setCurrentPage(
+                    1
+                  );
                 }}
               >
                 <option value="">
@@ -2880,15 +3813,20 @@ const Leaves = () => {
                 {leaveTypes.map(
                   (type) => (
                     <option
-                      key={type.id}
+                      key={
+                        type.id
+                      }
                       value={
                         type.name
                       }
                     >
-                      {type.name}
+                      {
+                        type.name
+                      }
                     </option>
                   )
                 )}
+
               </select>
 
               <select
@@ -2900,6 +3838,7 @@ const Leaves = () => {
                   )
                 }
               >
+
                 <option value="Last 7 Days">
                   Sort By : Last 7 Days
                 </option>
@@ -2911,9 +3850,11 @@ const Leaves = () => {
                 <option value="Descending">
                   Descending
                 </option>
+
               </select>
 
             </div>
+
           </div>
 
           <div className="leave-toolbar">
@@ -2940,6 +3881,7 @@ const Leaves = () => {
                   );
                 }}
               >
+
                 <option value={10}>
                   10
                 </option>
@@ -2951,6 +3893,7 @@ const Leaves = () => {
                 <option value={30}>
                   30
                 </option>
+
               </select>
 
               <span>
@@ -2986,6 +3929,7 @@ const Leaves = () => {
               <table className="leave-table">
 
                 <thead>
+
                   <tr>
 
                     <th className="leave-check-col">
@@ -3050,6 +3994,7 @@ const Leaves = () => {
                     </th>
 
                   </tr>
+
                 </thead>
 
                 <tbody>
@@ -3057,12 +4002,14 @@ const Leaves = () => {
                   {visibleData.length ===
                   0 ? (
                     <tr>
+
                       <td
                         colSpan={8}
                         className="leave-empty"
                       >
                         No leave records found.
                       </td>
+
                     </tr>
                   ) : (
                     visibleData.map(
@@ -3099,11 +4046,15 @@ const Leaves = () => {
                               <div>
 
                                 <div className="leave-employee-name">
-                                  {item.name}
+                                  {
+                                    item.name
+                                  }
                                 </div>
 
                                 <div className="leave-employee-role">
-                                  {item.role}
+                                  {
+                                    item.role
+                                  }
                                 </div>
 
                               </div>
@@ -3116,7 +4067,9 @@ const Leaves = () => {
 
                             <div className="leave-type-cell">
 
-                              {item.type}
+                              {
+                                item.type
+                              }
 
                               <Info
                                 size={13}
@@ -3128,15 +4081,21 @@ const Leaves = () => {
                           </td>
 
                           <td>
-                            {item.from}
+                            {
+                              item.from
+                            }
                           </td>
 
                           <td>
-                            {item.to}
+                            {
+                              item.to
+                            }
                           </td>
 
                           <td>
-                            {item.days}
+                            {
+                              item.days
+                            }
                           </td>
 
                           <td>
@@ -3197,6 +4156,7 @@ const Leaves = () => {
                                     item
                                   )
                                 }
+                                title="View"
                               >
                                 <Eye
                                   size={15}
@@ -3211,6 +4171,7 @@ const Leaves = () => {
                                     item
                                   )
                                 }
+                                title="Chat"
                               >
                                 <MessageSquareMore
                                   size={15}
@@ -3225,6 +4186,7 @@ const Leaves = () => {
                                     item
                                   )
                                 }
+                                title="Edit"
                               >
                                 <Pencil
                                   size={15}
@@ -3239,6 +4201,7 @@ const Leaves = () => {
                                     item.id
                                   )
                                 }
+                                title="Delete"
                               >
                                 <Trash2
                                   size={15}
@@ -3284,7 +4247,11 @@ const Leaves = () => {
               )}{" "}
 
               of{" "}
-              {filteredData.length}{" "}
+
+              {
+                filteredData.length
+              }{" "}
+
               entries
 
             </div>
@@ -3310,7 +4277,9 @@ const Leaves = () => {
               </button>
 
               <button className="leave-current-page">
-                {safeCurrentPage}
+                {
+                  safeCurrentPage
+                }
               </button>
 
               <button
@@ -3338,6 +4307,10 @@ const Leaves = () => {
         </div>
       </div>
 
+      {/* =====================================================
+          ADD LEAVE MODAL
+      ===================================================== */}
+
       {addOpen && (
         <div className="leave-modal-overlay">
 
@@ -3353,7 +4326,9 @@ const Leaves = () => {
                 className="leave-modal-close"
                 type="button"
                 onClick={() =>
-                  setAddOpen(false)
+                  setAddOpen(
+                    false
+                  )
                 }
               >
                 ×
@@ -3398,7 +4373,9 @@ const Leaves = () => {
                       </option>
 
                       {employees.map(
-                        (employee) => (
+                        (
+                          employee
+                        ) => (
                           <option
                             key={
                               employee.id
@@ -3445,7 +4422,9 @@ const Leaves = () => {
                       </option>
 
                       {leaveTypes.map(
-                        (type) => (
+                        (
+                          type
+                        ) => (
                           <option
                             key={
                               type.id
@@ -3607,7 +4586,9 @@ const Leaves = () => {
                   type="button"
                   className="leave-modal-cancel"
                   onClick={() =>
-                    setAddOpen(false)
+                    setAddOpen(
+                      false
+                    )
                   }
                 >
                   Cancel
@@ -3616,7 +4597,9 @@ const Leaves = () => {
                 <button
                   type="submit"
                   className="leave-modal-save"
-                  disabled={saving}
+                  disabled={
+                    saving
+                  }
                 >
                   {saving
                     ? "Saving..."
@@ -3631,6 +4614,10 @@ const Leaves = () => {
 
         </div>
       )}
+
+      {/* =====================================================
+          VIEW LEAVE MODAL
+      ===================================================== */}
 
       {viewOpen &&
         activeLeave && (
@@ -3651,6 +4638,7 @@ const Leaves = () => {
                     setViewOpen(
                       false
                     );
+
                     setActiveLeave(
                       null
                     );
@@ -3771,6 +4759,10 @@ const Leaves = () => {
           </div>
         )}
 
+      {/* =====================================================
+          CHAT MODAL - API CONNECTED
+      ===================================================== */}
+
       {chatOpen &&
         activeLeave && (
           <div className="leave-modal-overlay">
@@ -3794,7 +4786,7 @@ const Leaves = () => {
                     </div>
 
                     <div className="chat-status">
-                      Online
+                      Leave Chat
                     </div>
 
                   </div>
@@ -3804,15 +4796,9 @@ const Leaves = () => {
                 <button
                   className="leave-modal-close"
                   type="button"
-                  onClick={() => {
-                    setChatOpen(
-                      false
-                    );
-
-                    setActiveLeave(
-                      null
-                    );
-                  }}
+                  onClick={
+                    closeChatModal
+                  }
                 >
                   ×
                 </button>
@@ -3821,92 +4807,105 @@ const Leaves = () => {
 
               <div className="chat-body">
 
-                <div className="chat-row">
-
-                  <div>
-
-                    <div className="chat-bubble">
-
-                      Leave request:{" "}
-                      {
-                        activeLeave.type
-                      }
-
-                      <br />
-
-                      {
-                        activeLeave.from
-                      }{" "}
-                      -{" "}
-                      {
-                        activeLeave.to
-                      }
-
-                    </div>
-
-                    <div className="chat-meta">
-
-                      {
-                        activeLeave.name
-                      }{" "}
-                      &nbsp; •
-                      &nbsp; Leave Request
-
-                    </div>
-
+                {chatLoading ? (
+                  <div className="chat-loading">
+                    Loading messages...
                   </div>
-
-                </div>
-
-                <div className="chat-row right">
-
-                  <div>
-
-                    <div className="chat-bubble">
-                      {
-                        activeLeave.reason ||
-                        "No reason provided."
-                      }
-                    </div>
-
-                    <div
-                      className="chat-meta"
-                      style={{
-                        textAlign:
-                          "right",
-                      }}
-                    >
-                      ✓✓ &nbsp; You
-                    </div>
-
+                ) : chatMessages.length ===
+                  0 ? (
+                  <div className="chat-empty">
+                    No messages yet.
+                    <br />
+                    Start the conversation.
                   </div>
+                ) : (
+                  chatMessages.map(
+                    (
+                      message,
+                      index
+                    ) => {
+                      const own =
+                        isOwnChatMessage(
+                          message
+                        );
 
-                </div>
+                      const messageKey =
+                        message.id ||
+                        `${message.createdAt}-${index}`;
 
-                {chatText && (
-                  <div className="chat-row right">
+                      return (
+                        <div
+                          key={
+                            messageKey
+                          }
+                          className={`chat-row ${
+                            own
+                              ? "right"
+                              : ""
+                          }`}
+                        >
 
-                    <div>
+                          <div>
 
-                      <div className="chat-bubble">
-                        {
-                          chatText
-                        }
-                      </div>
+                            <div className="chat-bubble-wrap">
 
-                      <div
-                        className="chat-meta"
-                        style={{
-                          textAlign:
-                            "right",
-                        }}
-                      >
-                        ✓✓ &nbsp; You
-                      </div>
+                              <div className="chat-bubble">
+                                {
+                                  message.message
+                                }
+                              </div>
 
-                    </div>
+                              {own &&
+                                message.id && (
+                                  <button
+                                    type="button"
+                                    className="chat-delete-btn"
+                                    title="Delete message"
+                                    disabled={
+                                      chatDeletingId ===
+                                      message.id
+                                    }
+                                    onClick={() =>
+                                      handleDeleteChat(
+                                        message.id
+                                      )
+                                    }
+                                  >
+                                    <Trash2
+                                      size={
+                                        13
+                                      }
+                                    />
+                                  </button>
+                                )}
 
-                  </div>
+                            </div>
+
+                            <div
+                              className="chat-meta"
+                              style={{
+                                textAlign:
+                                  own
+                                    ? "right"
+                                    : "left",
+                              }}
+                            >
+                              {own
+                                ? "You"
+                                : message.senderName}
+
+                              {message.createdAt &&
+                                ` • ${formatChatTime(
+                                  message.createdAt
+                                )}`}
+                            </div>
+
+                          </div>
+
+                        </div>
+                      );
+                    }
+                  )
                 )}
 
               </div>
@@ -3919,29 +4918,40 @@ const Leaves = () => {
                   value={
                     chatText
                   }
+                  disabled={
+                    chatSending
+                  }
                   onChange={(e) =>
                     setChatText(
                       e.target.value
                     )
                   }
+                  onKeyDown={(e) => {
+                    if (
+                      e.key ===
+                      "Enter"
+                    ) {
+                      e.preventDefault();
+
+                      handleSendChat();
+                    }
+                  }}
                 />
 
                 <button
                   type="button"
                   className="chat-send"
-                  onClick={() => {
-                    if (
-                      !chatText.trim()
-                    ) {
-                      return;
-                    }
-
-                    setChatText(
-                      chatText.trim()
-                    );
-                  }}
+                  disabled={
+                    chatSending ||
+                    !chatText.trim()
+                  }
+                  onClick={
+                    handleSendChat
+                  }
                 >
-                  <Send size={17} />
+                  <Send
+                    size={17}
+                  />
                 </button>
 
               </div>
@@ -3950,6 +4960,10 @@ const Leaves = () => {
 
           </div>
         )}
+
+      {/* =====================================================
+          EDIT LEAVE MODAL
+      ===================================================== */}
 
       {editOpen &&
         activeLeave && (
@@ -4067,7 +5081,9 @@ const Leaves = () => {
                         </option>
 
                         {leaveTypes.map(
-                          (type) => (
+                          (
+                            type
+                          ) => (
                             <option
                               key={
                                 type.id
@@ -4261,6 +5277,10 @@ const Leaves = () => {
 
           </div>
         )}
+
+      {/* =====================================================
+          DELETE LEAVE MODAL
+      ===================================================== */}
 
       {deleteOpen && (
         <div className="leave-modal-overlay">

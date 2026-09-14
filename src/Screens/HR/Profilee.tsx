@@ -1,3 +1,4 @@
+
 import React, {
   useEffect,
   useRef,
@@ -16,7 +17,7 @@ import {
 import { NavLink } from "react-router-dom";
 
 import {
-  getAllEmployees,
+  getProfile,
   updateEmployeeProfile,
 } from "../../services/hrservices";
 
@@ -53,9 +54,6 @@ const BORDER = "#e1e5eb";
 const Profilee: React.FC = () => {
   const token =
     localStorage.getItem("token") || "";
-
-  const userId =
-    localStorage.getItem("userId") || "";
 
   const fileInputRef =
     useRef<HTMLInputElement | null>(null);
@@ -134,84 +132,89 @@ const Profilee: React.FC = () => {
     });
 
   /* =====================================================
-     FIND EMPLOYEE BY ID
+     HELPER
+     Extract profile object from API response
   ===================================================== */
 
-  const findEmployeeById = (
-    obj: any,
-    targetId: string
+  const extractProfileData = (
+    response: any
   ): any => {
-    if (!obj || typeof obj !== "object") {
+    if (!response) {
       return null;
     }
 
-    /* -----------------------------------------------
-       If object is array
-    ------------------------------------------------ */
+    /*
+      Possible response structures:
 
-    if (Array.isArray(obj)) {
-      for (const item of obj) {
-        const found = findEmployeeById(
-          item,
-          targetId
-        );
-
-        if (found) {
-          return found;
+      {
+        data: {
+          Id: "...",
+          FirstName: "..."
         }
       }
 
-      return null;
-    }
+      OR
 
-    /* -----------------------------------------------
-       Possible employee ID fields
-    ------------------------------------------------ */
-
-    const possibleIds = [
-      obj?.id,
-      obj?.Id,
-      obj?.userId,
-      obj?.UserId,
-      obj?.employeeId,
-      obj?.EmployeeId,
-      obj?.userID,
-      obj?.UserID,
-    ];
-
-    const matched = possibleIds.some(
-      (value) =>
-        value !== undefined &&
-        value !== null &&
-        String(value).toLowerCase() ===
-          String(targetId).toLowerCase()
-    );
-
-    if (matched) {
-      return obj;
-    }
-
-    /* -----------------------------------------------
-       Search nested objects
-    ------------------------------------------------ */
-
-    for (const key of Object.keys(obj)) {
-      const value = obj[key];
-
-      if (
-        value &&
-        typeof value === "object"
-      ) {
-        const found =
-          findEmployeeById(
-            value,
-            targetId
-          );
-
-        if (found) {
-          return found;
+      {
+        data: {
+          data: {
+            Id: "..."
+          }
         }
       }
+
+      OR
+
+      {
+        Id: "...",
+        FirstName: "..."
+      }
+    */
+
+    if (
+      response?.Id ||
+      response?.id ||
+      response?.FirstName ||
+      response?.firstName ||
+      response?.Email ||
+      response?.email
+    ) {
+      return response;
+    }
+
+    if (
+      response?.data?.Id ||
+      response?.data?.id ||
+      response?.data?.FirstName ||
+      response?.data?.firstName ||
+      response?.data?.Email ||
+      response?.data?.email
+    ) {
+      return response.data;
+    }
+
+    if (
+      response?.data?.data?.Id ||
+      response?.data?.data?.id ||
+      response?.data?.data?.FirstName ||
+      response?.data?.data?.firstName ||
+      response?.data?.data?.Email ||
+      response?.data?.data?.email
+    ) {
+      return response.data.data;
+    }
+
+    /*
+      Some APIs return result instead of data.
+    */
+
+    if (
+      response?.result?.Id ||
+      response?.result?.id ||
+      response?.result?.FirstName ||
+      response?.result?.firstName
+    ) {
+      return response.result;
     }
 
     return null;
@@ -220,18 +223,15 @@ const Profilee: React.FC = () => {
   /* =====================================================
      GET PROFILE
      
-     IMPORTANT:
-     We are NOT using /Profile/Get-Employee
-     because that API was returning 404.
-
-     Instead:
-     GET /Employee/page-data
+     GET:
+     /api/Profile/Get-Profile
   ===================================================== */
 
   const fetchProfile = async () => {
     try {
       setLoadingProfile(true);
       setError("");
+      setMessage("");
 
       if (!token) {
         setError(
@@ -241,131 +241,106 @@ const Profilee: React.FC = () => {
         return;
       }
 
-      if (!userId) {
-        setError(
-          "User ID not found. Please login again."
-        );
-
-        return;
-      }
-
       console.log(
-        "Logged In User ID =>",
-        userId
+        "Calling Profile/Get-Profile..."
       );
 
       const response =
-        await getAllEmployees({
-          PageNumber: 1,
-          PageSize: 100,
-        });
+        await getProfile(token);
 
       console.log(
-        "Employee API Response =>",
+        "Profile API Response =>",
         response
       );
 
-      /*
-        Find employee anywhere inside response.
-      */
-
-      const employee =
-        findEmployeeById(
-          response?.data,
-          userId
-        ) ||
-        findEmployeeById(
-          response,
-          userId
-        );
+      const profile =
+        extractProfileData(response);
 
       console.log(
-        "Logged In Employee =>",
-        employee
+        "Profile Data =>",
+        profile
       );
 
-      if (!employee) {
+      if (!profile) {
         setError(
-          "Employee profile not found for the logged-in user."
+          "Profile data not found in API response."
         );
 
         return;
       }
 
       /* =================================================
-         EMPLOYEE ID
+         PROFILE ID
       ================================================= */
 
-      const employeeId =
-        employee?.id ||
-        employee?.Id ||
-        employee?.userId ||
-        employee?.UserId ||
-        employee?.employeeId ||
-        employee?.EmployeeId ||
-        userId;
+      const profileId =
+        profile?.Id ||
+        profile?.id ||
+        profile?.userId ||
+        profile?.UserId ||
+        "";
 
       /* =================================================
          SET FORM
       ================================================= */
 
       setForm({
-        id: String(employeeId),
+        id: String(profileId),
 
         firstName:
-          employee?.firstName ||
-          employee?.FirstName ||
-          employee?.first_name ||
-          employee?.firstname ||
+          profile?.FirstName ??
+          profile?.firstName ??
+          profile?.first_name ??
+          profile?.firstname ??
           "",
 
         lastName:
-          employee?.lastName ||
-          employee?.LastName ||
-          employee?.last_name ||
-          employee?.lastname ||
+          profile?.LastName ??
+          profile?.lastName ??
+          profile?.last_name ??
+          profile?.lastname ??
           "",
 
         email:
-          employee?.email ||
-          employee?.Email ||
+          profile?.Email ??
+          profile?.email ??
           "",
 
         phone:
-          employee?.phone ||
-          employee?.Phone ||
-          employee?.mobile ||
-          employee?.Mobile ||
-          employee?.phoneNumber ||
-          employee?.PhoneNumber ||
+          profile?.Phone ??
+          profile?.phone ??
+          profile?.Mobile ??
+          profile?.mobile ??
+          profile?.PhoneNumber ??
+          profile?.phoneNumber ??
           "",
 
         address:
-          employee?.address ||
-          employee?.Address ||
+          profile?.Address ??
+          profile?.address ??
           "",
 
         country:
-          employee?.country ||
-          employee?.Country ||
+          profile?.Country ??
+          profile?.country ??
           "",
 
         state:
-          employee?.state ||
-          employee?.State ||
+          profile?.State ??
+          profile?.state ??
           "",
 
         city:
-          employee?.city ||
-          employee?.City ||
+          profile?.City ??
+          profile?.city ??
           "",
 
         postalCode:
-          employee?.postalCode ||
-          employee?.PostalCode ||
-          employee?.postal_code ||
-          employee?.zipCode ||
-          employee?.ZipCode ||
+          profile?.PostalCode ??
+          profile?.postalCode ??
+          profile?.postal_code ??
+          profile?.ZipCode ??
+          profile?.zipCode ??
           "",
       });
 
@@ -374,14 +349,14 @@ const Profilee: React.FC = () => {
       ================================================= */
 
       const picture =
-        employee?.profilePicture ||
-        employee?.ProfilePicture ||
-        employee?.profilePictureUrl ||
-        employee?.ProfilePictureUrl ||
-        employee?.profileImage ||
-        employee?.ProfileImage ||
-        employee?.image ||
-        employee?.Image ||
+        profile?.ProfilePictureUrl ||
+        profile?.profilePictureUrl ||
+        profile?.ProfilePicture ||
+        profile?.profilePicture ||
+        profile?.ProfileImage ||
+        profile?.profileImage ||
+        profile?.Image ||
+        profile?.image ||
         "";
 
       if (
@@ -393,19 +368,27 @@ const Profilee: React.FC = () => {
       }
     } catch (error: any) {
       console.error(
-        "Profile fetch error =>",
+        "Get Profile Error =>",
         error
       );
 
       console.error(
-        "Profile API Error Response =>",
+        "Get Profile Backend Error =>",
         error?.response?.data
       );
 
+      const backendError =
+        error?.response?.data;
+
       const errorMessage =
-        error?.response?.data?.message ||
-        error?.response?.data?.title ||
-        error?.response?.data?.error ||
+        backendError?.message ||
+        backendError?.Message ||
+        backendError?.title ||
+        backendError?.error ||
+        (typeof backendError === "string"
+          ? backendError
+          : "") ||
+        error?.message ||
         "Failed to load profile.";
 
       setError(errorMessage);
@@ -462,7 +445,7 @@ const Profilee: React.FC = () => {
     }
 
     /* -----------------------------------------------
-       Image validation
+       Validate image
     ------------------------------------------------ */
 
     if (
@@ -471,6 +454,22 @@ const Profilee: React.FC = () => {
       setError(
         "Please select a valid image file."
       );
+
+      e.target.value = "";
+
+      return;
+    }
+
+    /*
+      Optional 4 MB validation.
+    */
+
+    if (file.size > 4 * 1024 * 1024) {
+      setError(
+        "Profile image size must be less than 4 MB."
+      );
+
+      e.target.value = "";
 
       return;
     }
@@ -490,7 +489,7 @@ const Profilee: React.FC = () => {
      CANCEL IMAGE
   ===================================================== */
 
-  const handleImageCancel = () => {
+  const handleImageCancel = async () => {
     setProfileImageFile(null);
 
     if (fileInputRef.current) {
@@ -498,11 +497,10 @@ const Profilee: React.FC = () => {
     }
 
     /*
-      Reload server image instead of
-      permanently removing the existing image.
+      Reload original image from server.
     */
 
-    fetchProfile();
+    await fetchProfile();
 
     setMessage("");
     setError("");
@@ -510,6 +508,9 @@ const Profilee: React.FC = () => {
 
   /* =====================================================
      SAVE PROFILE
+     
+     PUT:
+     /api/Profile/Update-Profile
   ===================================================== */
 
   const handleSave = async () => {
@@ -517,12 +518,24 @@ const Profilee: React.FC = () => {
     setError("");
 
     /* -----------------------------------------------
-       Validate User ID
+       Token validation
     ------------------------------------------------ */
 
-    if (!form.id && !userId) {
+    if (!token) {
       setError(
-        "User ID is missing. Please login again."
+        "Authentication token not found. Please login again."
+      );
+
+      return;
+    }
+
+    /* -----------------------------------------------
+       Profile ID validation
+    ------------------------------------------------ */
+
+    if (!form.id) {
+      setError(
+        "Profile ID is missing. Please reload the page and try again."
       );
 
       return;
@@ -569,11 +582,12 @@ const Profilee: React.FC = () => {
       setSavingProfile(true);
 
       /* =================================================
-         UPDATE PAYLOAD
+         PAYLOAD
       ================================================= */
 
       const payload = {
-        Id: form.id || userId,
+        Id:
+          form.id || "",
 
         FirstName:
           form.firstName.trim(),
@@ -639,9 +653,15 @@ const Profilee: React.FC = () => {
          SUCCESS
       ================================================= */
 
-      setMessage(
+      const successMessage =
         response?.message ||
-          "Profile updated successfully."
+        response?.Message ||
+        response?.data?.message ||
+        response?.data?.Message ||
+        "Profile updated successfully.";
+
+      setMessage(
+        successMessage
       );
 
       /* -----------------------------------------------
@@ -652,8 +672,12 @@ const Profilee: React.FC = () => {
       setNewPassword("");
       setConfirmPassword("");
 
+      setShowCurrent(false);
+      setShowNew(false);
+      setShowConfirm(false);
+
       /* -----------------------------------------------
-         Clear selected file
+         Clear selected image
       ------------------------------------------------ */
 
       setProfileImageFile(null);
@@ -663,7 +687,7 @@ const Profilee: React.FC = () => {
       }
 
       /* -----------------------------------------------
-         Reload profile
+         Reload profile from server
       ------------------------------------------------ */
 
       await fetchProfile();
@@ -674,14 +698,22 @@ const Profilee: React.FC = () => {
       );
 
       console.error(
-        "Backend Error =>",
+        "Profile Update Backend Error =>",
         error?.response?.data
       );
 
+      const backendError =
+        error?.response?.data;
+
       const errorMessage =
-        error?.response?.data?.message ||
-        error?.response?.data?.title ||
-        error?.response?.data?.error ||
+        backendError?.message ||
+        backendError?.Message ||
+        backendError?.title ||
+        backendError?.error ||
+        (typeof backendError === "string"
+          ? backendError
+          : "") ||
+        error?.message ||
         "Failed to update profile.";
 
       setError(errorMessage);
@@ -698,6 +730,10 @@ const Profilee: React.FC = () => {
     setCurrentPassword("");
     setNewPassword("");
     setConfirmPassword("");
+
+    setShowCurrent(false);
+    setShowNew(false);
+    setShowConfirm(false);
 
     setProfileImageFile(null);
 
@@ -1902,5 +1938,5 @@ const inputStyle: React.CSSProperties =
       "'Inter', 'Nunito Sans', 'Segoe UI', Arial, sans-serif",
   };
 
-
 export default Profilee;
+

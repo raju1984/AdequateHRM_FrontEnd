@@ -105,6 +105,9 @@ interface ApiAttendance {
   departmentName?: string;
   DepartmentName?: string;
 
+  department?: string;
+  Department?: string;
+
   team?: string;
   Team?: string;
 
@@ -114,11 +117,21 @@ interface ApiAttendance {
   status?: number | string | boolean;
   Status?: number | string | boolean;
 
+  // API actual fields
+  checkInTime?: string;
+  CheckInTime?: string;
+
+  checkOutTime?: string;
+  CheckOutTime?: string;
+
   checkIn?: string;
   CheckIn?: string;
 
   checkOut?: string;
   CheckOut?: string;
+
+  breakMinutes?: number | string;
+  BreakMinutes?: number | string;
 
   breakTime?: string;
   BreakTime?: string;
@@ -126,14 +139,20 @@ interface ApiAttendance {
   break?: string;
   Break?: string;
 
+  lateMinutes?: number | string;
+  LateMinutes?: number | string;
+
   late?: string;
   Late?: string;
 
-  productionHours?: string;
-  ProductionHours?: string;
+  productionHours?: number | string;
+  ProductionHours?: number | string;
 
-  hours?: string;
-  Hours?: string;
+  workingHours?: number | string;
+  WorkingHours?: number | string;
+
+  hours?: number | string;
+  Hours?: number | string;
 
   attendanceDate?: string;
   AttendanceDate?: string;
@@ -141,13 +160,12 @@ interface ApiAttendance {
   date?: string;
   Date?: string;
 
-  profilePicture?: string;
-  ProfilePicture?: string;
+  profilePicture?: string | null;
+  ProfilePicture?: string | null;
 
   image?: string;
   Image?: string;
 }
-
 /* =====================================================
    HELPERS
 ===================================================== */
@@ -172,52 +190,53 @@ const getArrayFromResponse = (
     return [];
   }
 
+  // Direct array
   if (Array.isArray(response)) {
     return response;
   }
 
-  if (Array.isArray(response.data)) {
-    return response.data;
-  }
+  // Common direct array properties
+  const directKeys = [
+    "data",
+    "Data",
+    "items",
+    "Items",
+    "result",
+    "Result",
+    "records",
+    "Records",
+    "rows",
+    "Rows",
+    "attendance",
+    "Attendance",
+  ];
 
-  if (Array.isArray(response.Data)) {
-    return response.Data;
-  }
+  for (const key of directKeys) {
+    const value = response?.[key];
 
-  if (Array.isArray(response.items)) {
-    return response.items;
-  }
-
-  if (Array.isArray(response.Items)) {
-    return response.Items;
-  }
-
-  if (Array.isArray(response.result)) {
-    return response.result;
-  }
-
-  if (Array.isArray(response.Result)) {
-    return response.Result;
-  }
-
-  if (
-    response.data &&
-    typeof response.data === "object"
-  ) {
-    if (Array.isArray(response.data.items)) {
-      return response.data.items;
+    if (Array.isArray(value)) {
+      return value;
     }
+  }
 
-    if (Array.isArray(response.data.Items)) {
-      return response.data.Items;
-    }
+  // Nested response:
+  // { data: { data: [...] } }
+  // { result: { items: [...] } }
+  // { Data: { Records: [...] } }
+  for (const key of directKeys) {
+    const value = response?.[key];
 
-    if (Array.isArray(response.data.result)) {
-      return response.data.result;
-    }
+    if (
+      value &&
+      typeof value === "object" &&
+      !Array.isArray(value)
+    ) {
+      const nestedResult =
+        getArrayFromResponse(value);
 
-    if (Array.isArray(response.data.Result)) {
-      return response.data.Result;
+      if (nestedResult.length > 0) {
+        return nestedResult;
+      }
     }
   }
 
@@ -286,6 +305,51 @@ const formatDisplayValue = (
   }
 
   return String(value);
+};
+
+const formatTime = (
+  value: any,
+  fallback = "-"
+) => {
+  if (
+    value === undefined ||
+    value === null ||
+    value === ""
+  ) {
+    return fallback;
+  }
+
+  const date = new Date(String(value));
+
+  if (Number.isNaN(date.getTime())) {
+    return String(value);
+  }
+
+  return date.toLocaleTimeString([], {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+};
+
+const formatMinutes = (
+  value: any,
+  fallback = "-"
+) => {
+  if (
+    value === undefined ||
+    value === null ||
+    value === ""
+  ) {
+    return fallback;
+  }
+
+  const minutes = Number(value);
+
+  if (Number.isNaN(minutes)) {
+    return String(value);
+  }
+
+  return `${minutes} Min`;
 };
 
 const normalizeStatus = (
@@ -359,12 +423,16 @@ const normalizeAttendance = (
   item: ApiAttendance,
   index: number
 ): Employee => {
+  /* =================================================
+     ATTENDANCE ID
+  ================================================= */
+
   const id = String(
     getValue(item, [
-      "id",
-      "Id",
       "attendanceId",
       "AttendanceId",
+      "id",
+      "Id",
     ]) ??
       getValue(item, [
         "employeeId",
@@ -374,6 +442,10 @@ const normalizeAttendance = (
       ]) ??
       index
   );
+
+  /* =================================================
+     EMPLOYEE NAME
+  ================================================= */
 
   const employeeName =
     getValue(item, [
@@ -395,6 +467,10 @@ const normalizeAttendance = (
       .filter(Boolean)
       .join(" ");
 
+  /* =================================================
+     STATUS
+  ================================================= */
+
   const status = normalizeStatus(
     getValue(item, [
       "status",
@@ -402,24 +478,132 @@ const normalizeAttendance = (
     ])
   );
 
-  const hours =
+  /* =================================================
+     CHECK IN
+     
+     API:
+     checkInTime
+  ================================================= */
+
+  const checkInValue =
     getValue(item, [
+      "checkInTime",
+      "CheckInTime",
+      "checkIn",
+      "CheckIn",
+    ]);
+
+  /* =================================================
+     CHECK OUT
+     
+     API:
+     checkOutTime
+  ================================================= */
+
+  const checkOutValue =
+    getValue(item, [
+      "checkOutTime",
+      "CheckOutTime",
+      "checkOut",
+      "CheckOut",
+    ]);
+
+  /* =================================================
+     BREAK
+     
+     API:
+     breakMinutes
+  ================================================= */
+
+  const breakValue =
+    getValue(item, [
+      "breakMinutes",
+      "BreakMinutes",
+      "breakTime",
+      "BreakTime",
+      "break",
+      "Break",
+    ]);
+
+  /* =================================================
+     LATE
+     
+     API:
+     lateMinutes
+  ================================================= */
+
+  const lateValue =
+    getValue(item, [
+      "lateMinutes",
+      "LateMinutes",
+      "late",
+      "Late",
+    ]);
+
+  /* =================================================
+     WORKING / PRODUCTION HOURS
+     
+     API has BOTH:
+     
+     productionHours: 0
+     workingHours: 1.36
+
+     User wants working hours displayed,
+     so workingHours gets priority.
+  ================================================= */
+
+  const hoursValue =
+    getValue(item, [
+      "workingHours",
+      "WorkingHours",
       "productionHours",
       "ProductionHours",
       "hours",
       "Hours",
     ]);
 
-  const image =
+  /* =================================================
+     PROFILE IMAGE
+  ================================================= */
+
+  const imageValue =
     getValue(item, [
       "profilePicture",
       "ProfilePicture",
       "image",
       "Image",
-    ]) ||
-    avatarFallbacks[
-      index % avatarFallbacks.length
-    ];
+    ]);
+
+  const image =
+    imageValue &&
+    String(imageValue).trim() !== ""
+      ? String(imageValue)
+      : avatarFallbacks[
+          index % avatarFallbacks.length
+        ];
+
+  /* =================================================
+     DEPARTMENT
+     
+     API:
+     department: "DEV"
+     
+     department can also be null.
+  ================================================= */
+
+  const departmentName =
+    getValue(item, [
+      "department",
+      "Department",
+      "departmentName",
+      "DepartmentName",
+      "team",
+      "Team",
+    ]);
+
+  /* =================================================
+     RETURN NORMALIZED EMPLOYEE
+  ================================================= */
 
   return {
     id,
@@ -429,12 +613,7 @@ const normalizeAttendance = (
       "Unknown Employee",
 
     team:
-      getValue(item, [
-        "departmentName",
-        "DepartmentName",
-        "team",
-        "Team",
-      ]) ||
+      departmentName ||
       "Department",
 
     departmentId: String(
@@ -446,60 +625,74 @@ const normalizeAttendance = (
 
     status,
 
-    checkIn: formatDisplayValue(
-      getValue(item, [
-        "checkIn",
-        "CheckIn",
-      ])
-    ),
+    /* CHECK IN */
 
-    checkOut: formatDisplayValue(
-      getValue(item, [
-        "checkOut",
-        "CheckOut",
-      ])
-    ),
+    checkIn:
+      checkInValue
+        ? formatTime(checkInValue)
+        : "-",
 
-    breakTime: formatDisplayValue(
-      getValue(item, [
-        "breakTime",
-        "BreakTime",
-        "break",
-        "Break",
-      ])
-    ),
+    /* CHECK OUT */
 
-    late: formatDisplayValue(
-      getValue(item, [
-        "late",
-        "Late",
-      ])
-    ),
+    checkOut:
+      checkOutValue
+        ? formatTime(checkOutValue)
+        : "-",
 
-    hours: formatDisplayValue(
-      hours,
-      "0.00 Hrs"
-    ),
+    /* BREAK */
+
+    breakTime:
+      breakValue !== undefined &&
+      breakValue !== null
+        ? formatMinutes(
+            breakValue,
+            "0 Min"
+          )
+        : "0 Min",
+
+    /* LATE */
+
+    late:
+      lateValue !== undefined &&
+      lateValue !== null
+        ? formatMinutes(
+            lateValue,
+            "0 Min"
+          )
+        : "0 Min",
+
+    /* WORKING HOURS */
+
+    hours:
+      hoursValue !== undefined &&
+      hoursValue !== null
+        ? `${Number(
+            hoursValue
+          ).toFixed(2)} Hrs`
+        : "0.00 Hrs",
 
     badge:
       status === "Absent"
         ? "danger"
-        : index % 4 === 0
+        : lateValue !== undefined &&
+          lateValue !== null &&
+          Number(lateValue) > 0
         ? "primary"
         : "success",
 
     image,
 
-    attendanceDate: formatDateForInput(
-      String(
-        getValue(item, [
-          "attendanceDate",
-          "AttendanceDate",
-          "date",
-          "Date",
-        ]) || ""
-      )
-    ),
+    attendanceDate:
+      formatDateForInput(
+        String(
+          getValue(item, [
+            "attendanceDate",
+            "AttendanceDate",
+            "date",
+            "Date",
+          ]) || ""
+        )
+      ),
   };
 };
 
@@ -561,10 +754,10 @@ const Attendance = () => {
     useState("");
 
   const [fromDate, setFromDate] =
-    useState("2026-08-28");
+    useState("");
 
   const [toDate, setToDate] =
-    useState("2026-09-03");
+    useState("");
 
   const [sortBy, setSortBy] =
     useState("");
@@ -851,51 +1044,45 @@ const Attendance = () => {
      EDIT MODAL
   =================================================== */
 
-  const openEditModal = (
-    employee: Employee
-  ) => {
-    setSelectedEmployeeId(
-      employee.id
-    );
+  const openEditModal = (employee: Employee) => {
+  console.log("EDIT CLICKED EMPLOYEE:", employee);
+  console.log("EDIT ATTENDANCE ID:", employee.id);
 
-    setEditForm({
-      date:
-        employee.attendanceDate ||
-        fromDate,
+  setSelectedEmployeeId(employee.id);
 
-      checkIn:
-        employee.checkIn === "-"
-          ? ""
-          : employee.checkIn,
+  setEditForm({
+    date: employee.attendanceDate || fromDate,
 
-      checkOut:
-        employee.checkOut === "-"
-          ? ""
-          : employee.checkOut,
+    checkIn:
+      employee.checkIn === "-"
+        ? ""
+        : employee.checkIn,
 
-      breakTime:
-        employee.breakTime === "-"
-          ? ""
-          : employee.breakTime,
+    checkOut:
+      employee.checkOut === "-"
+        ? ""
+        : employee.checkOut,
 
-      late:
-        employee.late === "-"
-          ? ""
-          : employee.late,
+    breakTime:
+      employee.breakTime === "-"
+        ? ""
+        : employee.breakTime.replace(" Min", ""),
 
-      hours:
-        employee.hours ===
-        "0.00 Hrs"
-          ? ""
-          : employee.hours,
+    late:
+      employee.late === "-"
+        ? ""
+        : employee.late.replace(" Min", ""),
 
-      status:
-        employee.status,
-    });
+    hours:
+      employee.hours === "0.00 Hrs"
+        ? ""
+        : employee.hours.replace(" Hrs", ""),
 
-    setShowEditModal(true);
-  };
+    status: employee.status,
+  });
 
+  setShowEditModal(true);
+};
   const closeEditModal = () => {
     if (saving) {
       return;
@@ -925,94 +1112,95 @@ const Attendance = () => {
      SAVE ATTENDANCE
   =================================================== */
 
-  const handleSaveChanges =
-    async () => {
-      if (
-        selectedEmployeeId ===
-        null
-      ) {
-        return;
-      }
+ const handleSaveChanges = async () => {
+  if (!selectedEmployeeId) {
+    setError("Attendance ID not found.");
+    return;
+  }
 
-      try {
-        setSaving(true);
-        setError("");
+  try {
+    setSaving(true);
+    setError("");
 
-        const absent =
-          editForm.status ===
-          "Absent";
+    const isAbsent =
+      editForm.status === "Absent";
 
-        /*
-        PUT body
+    const payload = {
+      attendanceDate: editForm.date
+        ? new Date(
+            `${editForm.date}T00:00:00`
+          ).toISOString()
+        : undefined,
 
-        NOTE:
-        Agar Swagger ke PUT body mein exact
-        property names different hain to yahi
-        payload modify karna hoga.
-        */
+      checkIn: isAbsent
+        ? ""
+        : editForm.checkIn || "",
 
-       const payload = {
-  attendanceDate: editForm.date
-    ? new Date(
-        `${editForm.date}T00:00:00`
-      ).toISOString()
-    : undefined,
+      checkOut: isAbsent
+        ? ""
+        : editForm.checkOut || "",
 
-  checkIn: absent
-    ? ""
-    : editForm.checkIn || "",
+      breakTime: isAbsent
+        ? 0
+        : Number(editForm.breakTime) || 0,
 
-  checkOut: absent
-    ? ""
-    : editForm.checkOut || "",
+      late: isAbsent
+        ? 0
+        : Number(editForm.late) || 0,
 
-  breakTime: absent
-    ? ""
-    : editForm.breakTime || "",
+      productionHours: isAbsent
+        ? 0
+        : Number(editForm.hours) || 0,
 
-  late: absent
-    ? ""
-    : editForm.late || "",
-
-  productionHours: absent
-    ? "0.00 Hrs"
-    : editForm.hours || "0.00 Hrs",
-
-  status: statusToApiValue(
-    editForm.status
-  ),
-};
-
-        console.log(
-          "PUT ATTENDANCE PAYLOAD:",
-          payload
-        );
-
-        await updateAdminAttendance(
-          selectedEmployeeId,
-          payload
-        );
-
-        setShowEditModal(false);
-        setSelectedEmployeeId(null);
-
-        await loadAttendance();
-      } catch (err: any) {
-        console.error(
-          "UPDATE ATTENDANCE ERROR:",
-          err
-        );
-
-        setError(
-          err?.response?.data?.message ||
-            err?.response?.data?.Message ||
-            err?.message ||
-            "Unable to update attendance."
-        );
-      } finally {
-        setSaving(false);
-      }
+      status: statusToApiValue(
+        editForm.status
+      ),
     };
+
+    console.log(
+      "================================"
+    );
+    console.log(
+      "UPDATE ATTENDANCE ID:",
+      selectedEmployeeId
+    );
+    console.log(
+      "UPDATE ATTENDANCE PAYLOAD:",
+      payload
+    );
+    console.log(
+      "================================"
+    );
+
+    await updateAdminAttendance(
+      selectedEmployeeId,
+      payload
+    );
+
+    setShowEditModal(false);
+    setSelectedEmployeeId(null);
+
+    await loadAttendance();
+
+  } catch (err: any) {
+    console.error(
+      "UPDATE ATTENDANCE ERROR:",
+      err
+    );
+
+    const apiMessage =
+      err?.response?.data?.message ||
+      err?.response?.data?.Message ||
+      err?.response?.data?.error ||
+      err?.response?.data?.Error ||
+      err?.message ||
+      "Unable to update attendance.";
+
+    setError(apiMessage);
+  } finally {
+    setSaving(false);
+  }
+};
 
   /* ===================================================
      PAGINATION
@@ -2362,35 +2550,32 @@ const Attendance = () => {
                               "center",
                           }}
                         >
-                          <button
-                            type="button"
-                            onClick={() =>
-                              openEditModal(
-                                employee
-                              )
-                            }
-                            className="btn"
-                            style={{
-                              border:
-                                "none",
-                              background:
-                                "transparent",
-                              padding:
-                                "4px 6px",
-                              color:
-                                "#41627d",
-                              boxShadow:
-                                "none",
-                            }}
-                          >
-                            <i
-                              className="ti ti-edit"
-                              style={{
-                                fontSize:
-                                  "16px",
-                              }}
-                            />
-                          </button>
+<button
+  type="button"
+  onClick={() => {
+    console.log(
+      "EDIT BUTTON CLICK:",
+      employee
+    );
+
+    openEditModal(employee);
+  }}
+  className="btn"
+  style={{
+    border: "none",
+    background: "transparent",
+    padding: "4px 6px",
+    color: "#41627d",
+    boxShadow: "none",
+  }}
+>
+  <i
+    className="ti ti-edit"
+    style={{
+      fontSize: "16px",
+    }}
+  />
+</button>
                         </td>
                       </tr>
                     )

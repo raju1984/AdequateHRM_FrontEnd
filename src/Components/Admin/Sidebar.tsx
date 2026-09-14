@@ -1,3 +1,4 @@
+
 // Sidebar.tsx
 
 import React from "react";
@@ -10,12 +11,18 @@ const Sidebar = () => {
     <>
       <style>
         {`
+          /* =========================================================
+             SIDEBAR
+          ========================================================= */
+
           .sidebar {
             width: 250px;
             height: 100vh;
+
             position: fixed;
             top: 0;
             left: 0;
+
             z-index: 1000;
 
             display: flex;
@@ -23,51 +30,74 @@ const Sidebar = () => {
 
             background: #ffffff;
             border-right: 1px solid #e5e7eb;
+
             overflow: hidden;
           }
 
-          /* =========================
-             LOGO
-          ========================= */
+          /* =========================================================
+             LOGO - FIXED / NON SCROLLING
+          ========================================================= */
 
           .sidebar-logo {
+            width: 100%;
             height: 65px;
             min-height: 65px;
+
+            flex: 0 0 65px;
 
             display: flex;
             align-items: center;
 
             padding: 0 16px;
 
-            background: #fff;
+            background: #ffffff;
+
+            border-bottom: 1px solid #f0f0f0;
+
+            position: relative;
+            z-index: 10;
+
+            box-sizing: border-box;
           }
 
           .sidebar-logo .logo-normal {
+            width: 100%;
+
             display: flex;
             align-items: center;
           }
 
           .sidebar-logo .logo-normal img {
+            display: block;
+
             width: 155px;
+            max-width: 100%;
             height: auto;
+
             object-fit: contain;
           }
 
+          /* Small logo hidden for now */
           .sidebar-logo .logo-small {
             display: none;
           }
 
-          /* =========================
-             SCROLL
-          ========================= */
+          /* =========================================================
+             SIDEBAR SCROLL AREA
+             ONLY THIS AREA WILL SCROLL
+          ========================================================= */
 
           .sidebar-inner {
-            flex: 1;
+            flex: 1 1 auto;
 
-            padding: 0 15px 18px;
+            min-height: 0;
+
+            padding: 8px 15px 18px;
 
             overflow-y: auto;
             overflow-x: hidden;
+
+            box-sizing: border-box;
 
             scrollbar-width: thin;
             scrollbar-color: #dedede transparent;
@@ -86,12 +116,21 @@ const Sidebar = () => {
             border-radius: 20px;
           }
 
-          /* =========================
-             LIST
-          ========================= */
+          .sidebar-inner::-webkit-scrollbar-thumb:hover {
+            background: #c8c8c8;
+          }
+
+          /* =========================================================
+             SIDEBAR MENU
+          ========================================================= */
+
+          .sidebar-menu {
+            width: 100%;
+          }
 
           .sidebar-menu ul {
             list-style: none;
+
             padding: 0;
             margin: 0;
           }
@@ -101,9 +140,9 @@ const Sidebar = () => {
             padding: 0;
           }
 
-          /* =========================
+          /* =========================================================
              LINKS
-          ========================= */
+          ========================================================= */
 
           .sidebar-menu li > a {
             width: 100%;
@@ -118,7 +157,10 @@ const Sidebar = () => {
 
             border-radius: 5px;
 
+            box-sizing: border-box;
+
             color: #536174;
+
             text-decoration: none;
 
             font-size: 15px;
@@ -131,6 +173,7 @@ const Sidebar = () => {
 
           .sidebar-menu li > a i {
             width: 16px;
+            min-width: 16px;
 
             color: #31738a;
 
@@ -146,24 +189,28 @@ const Sidebar = () => {
 
           .sidebar-menu li > a span {
             white-space: nowrap;
+
+            overflow: hidden;
+            text-overflow: ellipsis;
           }
 
-          /* =========================
+          /* =========================================================
              HOVER
-          ========================= */
+          ========================================================= */
 
           .sidebar-menu li > a:hover {
             background: #f6f6f6;
             color: #334155;
           }
 
-          /* =========================
+          /* =========================================================
              ACTIVE
-          ========================= */
+          ========================================================= */
 
           .sidebar-menu li > a.active {
             background: #c39339;
             color: #ffffff;
+
             font-weight: 600;
           }
 
@@ -171,48 +218,56 @@ const Sidebar = () => {
             color: #ffffff;
           }
 
-          /* =========================
-             SECTION TITLES
-          ========================= */
+          /* =========================================================
+             MENU TITLES
+          ========================================================= */
 
           .sidebar-menu .menu-title {
             height: auto;
 
             margin: 18px 0 7px;
-
-            padding: 0;
+            padding: 0 16px;
 
             color: #929eaf;
 
             font-size: 10px;
             font-weight: 600;
 
+            line-height: 1.4;
+
             text-transform: uppercase;
           }
 
           .sidebar-menu .menu-title span {
             display: block;
+
+            white-space: nowrap;
           }
 
-          /* =========================
+          /* =========================================================
              MOBILE
-          ========================= */
+          ========================================================= */
 
           @media (max-width: 991px) {
             .sidebar {
               width: 250px;
             }
+
+            .sidebar-logo {
+              height: 65px;
+              min-height: 65px;
+              flex-basis: 65px;
+            }
           }
         `}
       </style>
 
-      <div
-        className="sidebar"
-        id="sidebar"
-      >
-        {/* =============================
-            LOGO
-        ============================= */}
+      <div className="sidebar" id="sidebar">
+
+        {/* =====================================================
+            FIXED LOGO AREA
+            This section will NEVER scroll.
+        ===================================================== */}
 
         <div className="sidebar-logo">
           <NavLink
@@ -236,9 +291,10 @@ const Sidebar = () => {
           </NavLink>
         </div>
 
-        {/* =============================
-            SIDEBAR MENU
-        ============================= */}
+        {/* =====================================================
+            SCROLLABLE MENU AREA
+            Only this section scrolls.
+        ===================================================== */}
 
         <div className="sidebar-inner">
           <div
@@ -246,9 +302,10 @@ const Sidebar = () => {
             className="sidebar-menu"
           >
             <ul>
-              {/* =========================
+
+              {/* =================================================
                   DASHBOARD
-              ========================= */}
+              ================================================= */}
 
               <li>
                 <NavLink
@@ -265,9 +322,9 @@ const Sidebar = () => {
                 </NavLink>
               </li>
 
-              {/* =========================
-                  EMPLOYEES TITLE
-              ========================= */}
+              {/* =================================================
+                  EMPLOYEES
+              ================================================= */}
 
               <li className="menu-title">
                 <span>
@@ -343,9 +400,9 @@ const Sidebar = () => {
                 </NavLink>
               </li>
 
-              {/* =========================
-                  LEAVES TITLE
-              ========================= */}
+              {/* =================================================
+                  LEAVES
+              ================================================= */}
 
               <li className="menu-title">
                 <span>
@@ -421,9 +478,9 @@ const Sidebar = () => {
                 </NavLink>
               </li>
 
-              {/* =========================
-                  USER MANAGEMENT TITLE
-              ========================= */}
+              {/* =================================================
+                  USER MANAGEMENT
+              ================================================= */}
 
               <li className="menu-title">
                 <span>
@@ -498,6 +555,7 @@ const Sidebar = () => {
                   </span>
                 </NavLink>
               </li>
+
             </ul>
           </div>
         </div>
@@ -507,3 +565,4 @@ const Sidebar = () => {
 };
 
 export default Sidebar;
+

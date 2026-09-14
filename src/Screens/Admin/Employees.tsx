@@ -2586,19 +2586,17 @@ const Employee = () => {
                         <input type="checkbox" />
                       </td>
 
-                      <td className="employee-id">
-                        <Link
-                          to={`/Hr/EmployeeDetails/${encodeURIComponent(
-                            emp.id
-                          )}`}
-                          state={{
-                            employee:
-                              emp,
-                          }}
-                        >
-                          {emp.id}
-                        </Link>
-                      </td>
+                     <td className="employee-id">
+  <Link
+    to={`/Admin/EmployeeDetails/${encodeURIComponent(emp.id)}`}
+    state={{
+      employee: emp,
+    }}
+    style={{ fontSize: "15px" }}
+  >
+    {emp.id}
+  </Link>
+</td>
 
                       <td>
                         <div className="employee-name-cell">

@@ -8,8 +8,9 @@ const BASE_URL =
 const LEAVE_BASE_URL =
   "http://jupiterapi.adequateshop.com";
 
- const LEAVE_TYPE_BASE_URL =
+const LEAVE_TYPE_BASE_URL =
   "http://jupiterapi.adequateshop.com";
+
 /* =====================================================
    TOKEN
 ===================================================== */
@@ -41,7 +42,8 @@ const getAuthHeaders = (
 const getApiErrorMessage = (
   error: unknown
 ): string => {
-  const axiosError = error as AxiosError<any>;
+  const axiosError =
+    error as AxiosError<any>;
 
   const responseData =
     axiosError?.response?.data;
@@ -100,6 +102,7 @@ const getJsonConfig = (
     },
   };
 };
+
 /* =====================================================
    ROLE
 ===================================================== */
@@ -139,7 +142,8 @@ export const getRoles = async (
     {
       params: {
         Search:
-          params?.Search?.trim() || undefined,
+          params?.Search?.trim() ||
+          undefined,
 
         IsActive:
           params?.IsActive,
@@ -241,6 +245,7 @@ export const deleteRole = async (
         Accept: "*/*",
         "Content-Type": "application/json",
       },
+
       data: {
         id,
       },
@@ -259,192 +264,122 @@ export const deleteRole = async (
    EMPLOYEE PROFILE
 ===================================================== */
 
-const findEmployeeById = (
-  obj: any,
-  targetId: string
+
+
+const extractProfileData = (
+  responseData: any
 ): any => {
-  if (!obj || typeof obj !== "object") {
+  if (
+    !responseData ||
+    typeof responseData !== "object"
+  ) {
     return null;
   }
 
-  if (Array.isArray(obj)) {
-    for (const item of obj) {
-      const found = findEmployeeById(
-        item,
-        targetId
-      );
-
-      if (found) {
-        return found;
-      }
-    }
-
-    return null;
-  }
-
-  const possibleIds = [
-    obj?.id,
-    obj?.Id,
-    obj?.userId,
-    obj?.UserId,
-    obj?.employeeId,
-    obj?.EmployeeId,
-    obj?.userID,
-    obj?.UserID,
+  const candidates = [
+    responseData?.data,
+    responseData?.Data,
+    responseData?.result,
+    responseData?.Result,
+    responseData?.profile,
+    responseData?.Profile,
+    responseData,
   ];
 
-  const matched = possibleIds.some(
-    (value) =>
-      value !== undefined &&
-      value !== null &&
-      String(value).toLowerCase() ===
-        String(targetId).toLowerCase()
-  );
+  /*
+    First try to find an object that actually
+    looks like a profile object.
+  */
 
-  if (matched) {
-    return obj;
-  }
-
-  for (const key of Object.keys(obj)) {
-    const value = obj[key];
-
-    if (
-      value &&
-      typeof value === "object"
-    ) {
-      const found = findEmployeeById(
-        value,
-        targetId
-      );
-
-      if (found) {
-        return found;
-      }
-    }
-  }
-
-  return null;
-};
-
-const findEmployeeByEmail = (
-  obj: any,
-  targetEmail: string
-): any => {
-  if (!obj || typeof obj !== "object") {
-    return null;
-  }
-
-  if (Array.isArray(obj)) {
-    for (const item of obj) {
-      const found = findEmployeeByEmail(
-        item,
-        targetEmail
-      );
-
-      if (found) {
-        return found;
-      }
-    }
-
-    return null;
-  }
-
-  const possibleEmails = [
-    obj?.email,
-    obj?.Email,
-    obj?.emailAddress,
-    obj?.EmailAddress,
-  ];
-
-  const matched = possibleEmails.some(
-    (value) =>
-      value &&
-      String(value).toLowerCase() ===
-        String(targetEmail).toLowerCase()
-  );
-
-  if (matched) {
-    return obj;
-  }
-
-  for (const key of Object.keys(obj)) {
-    const value = obj[key];
-
-    if (
-      value &&
-      typeof value === "object"
-    ) {
-      const found = findEmployeeByEmail(
-        value,
-        targetEmail
-      );
-
-      if (found) {
-        return found;
-      }
-    }
-  }
-
-  return null;
-};
-
-export const getEmployeeProfile = async (
-  id: string,
-  token: string
-) => {
-  const response = await axios.get(
-    `${BASE_URL}/Employee/page-data`,
-    {
-      params: {
-        PageNumber: 1,
-        PageSize: 100,
-      },
-
-      headers: getAuthHeaders(token),
-    }
-  );
-
-  console.log(
-    "EMPLOYEE PROFILE RESPONSE:",
-    response.data
-  );
-
-  const targetId = String(id || "").trim();
-
-  const employeeById =
-    findEmployeeById(
-      response.data?.data,
-      targetId
-    ) ||
-    findEmployeeById(
-      response.data,
-      targetId
+  const profileObject =
+    candidates.find(
+      (item) =>
+        item &&
+        typeof item === "object" &&
+        !Array.isArray(item) &&
+        (
+          "id" in item ||
+          "Id" in item ||
+          "firstName" in item ||
+          "FirstName" in item ||
+          "lastName" in item ||
+          "LastName" in item ||
+          "email" in item ||
+          "Email" in item ||
+          "phone" in item ||
+          "Phone" in item
+        )
     );
 
-  if (employeeById) {
-    return employeeById;
+  if (profileObject) {
+    return profileObject;
   }
 
-  const email =
-    localStorage.getItem("email") || "";
+  /*
+    Fallback to first object wrapper.
+  */
 
-  if (email) {
-    const employeeByEmail =
-      findEmployeeByEmail(
-        response.data?.data,
-        email
-      ) ||
-      findEmployeeByEmail(
-        response.data,
-        email
+  const objectWrapper =
+    candidates.find(
+      (item) =>
+        item &&
+        typeof item === "object" &&
+        !Array.isArray(item)
+    );
+
+  return objectWrapper || null;
+};
+
+
+
+export const getEmployeeProfile = async (
+  idOrToken?: string,
+  maybeToken?: string
+) => {
+  const token =
+    maybeToken ||
+    idOrToken ||
+    getToken();
+
+  try {
+    const response = await axios.get(
+      `${BASE_URL}/Profile/Get-Profile`,
+      {
+        headers: getAuthHeaders(token),
+      }
+    );
+
+    console.log(
+      "GET PROFILE RESPONSE:",
+      response.data
+    );
+
+    const profile =
+      extractProfileData(
+        response.data
       );
 
-    if (employeeByEmail) {
-      return employeeByEmail;
-    }
-  }
+    console.log(
+      "EXTRACTED PROFILE DATA:",
+      profile
+    );
 
-  return null;
+    return profile;
+  } catch (error) {
+    console.error(
+      "GET PROFILE ERROR:",
+      error
+    );
+
+    console.error(
+      "GET PROFILE ERROR RESPONSE:",
+      (error as AxiosError)?.response?.data
+    );
+
+    throw new Error(
+      getApiErrorMessage(error)
+    );
+  }
 };
 
 /* =====================================================
@@ -468,88 +403,190 @@ export interface UpdateProfilePayload {
   ProfilePicture?: File | null;
 }
 
+/*
+  PUT
+  /api/Profile/Update-Profile
+
+  Content-Type:
+  multipart/form-data
+
+  IMPORTANT:
+  We intentionally do NOT manually set
+  Content-Type: multipart/form-data.
+
+  Axios/browser will automatically add the
+  correct multipart boundary.
+*/
+
 export const updateEmployeeProfile =
   async (
     data: UpdateProfilePayload,
     token: string
   ) => {
+    if (!token) {
+      throw new Error(
+        "Authentication token not found. Please login again."
+      );
+    }
+
+    if (!data.Id?.trim()) {
+      throw new Error(
+        "Profile ID is required."
+      );
+    }
+
     const formData = new FormData();
 
-    formData.append("Id", data.Id);
+    /*
+      Exact Swagger/API field names
+    */
+
+    formData.append(
+      "Id",
+      data.Id
+    );
+
     formData.append(
       "FirstName",
-      data.FirstName
+      data.FirstName || ""
     );
+
     formData.append(
       "LastName",
-      data.LastName
+      data.LastName || ""
     );
+
     formData.append(
       "Email",
-      data.Email
+      data.Email || ""
     );
+
     formData.append(
       "Phone",
-      data.Phone
+      data.Phone || ""
     );
+
     formData.append(
       "Address",
-      data.Address
+      data.Address || ""
     );
+
     formData.append(
       "Country",
-      data.Country
+      data.Country || ""
     );
+
     formData.append(
       "State",
-      data.State
+      data.State || ""
     );
+
     formData.append(
       "City",
-      data.City
+      data.City || ""
     );
+
     formData.append(
       "PostalCode",
-      data.PostalCode
+      data.PostalCode || ""
     );
+
     formData.append(
       "CurrentPassword",
       data.CurrentPassword || ""
     );
+
     formData.append(
       "NewPassword",
       data.NewPassword || ""
     );
+
     formData.append(
       "ConfirmPassword",
       data.ConfirmPassword || ""
     );
 
-    if (data.ProfilePicture) {
+    /*
+      ProfilePicture is binary.
+
+      Only append it when user actually
+      selects a new image.
+    */
+
+    if (
+      data.ProfilePicture instanceof File
+    ) {
       formData.append(
         "ProfilePicture",
         data.ProfilePicture
       );
     }
 
-    const response =
-      await axios.put(
-        `${BASE_URL}/Profile/Update-Profile`,
-        formData,
-        {
-          headers: {
-            ...getAuthHeaders(token),
-            Accept: "*/*",
-          },
-        }
-      );
+    /*
+      Debug FormData before request.
+    */
 
     console.log(
-      "UPDATE PROFILE RESPONSE:",
-      response.data
+      "UPDATE PROFILE FORM DATA:"
     );
 
-    return response.data;
+    for (
+      const [key, value]
+      of formData.entries()
+    ) {
+      console.log(
+        key,
+        value instanceof File
+          ? {
+              name: value.name,
+              type: value.type,
+              size: value.size,
+            }
+          : value
+      );
+    }
+
+    try {
+      const response =
+        await axios.put(
+          `${BASE_URL}/Profile/Update-Profile`,
+          formData,
+          {
+            headers: {
+              ...getAuthHeaders(token),
+              Accept: "*/*",
+            },
+          }
+        );
+
+      console.log(
+        "UPDATE PROFILE RESPONSE:",
+        response.data
+      );
+
+      return response.data;
+    } catch (error) {
+      console.error(
+        "UPDATE PROFILE ERROR:",
+        error
+      );
+
+      console.error(
+        "UPDATE PROFILE STATUS:",
+        (error as AxiosError)?.response
+          ?.status
+      );
+
+      console.error(
+        "UPDATE PROFILE ERROR RESPONSE:",
+        (error as AxiosError)?.response
+          ?.data
+      );
+
+      throw new Error(
+        getApiErrorMessage(error)
+      );
+    }
   };
 
 /* =====================================================
@@ -1232,7 +1269,7 @@ export interface UpdateLeavePayload {
 export interface UpdateLeaveStatusPayload {
   status: LeaveStatusValue;
   remarks?: string;
-}
+};
 
 /* =====================================================
    PAYLOAD VALIDATION
@@ -1647,6 +1684,189 @@ export const deleteLeave = async (
 };
 
 /* =====================================================
+   LEAVE CHAT
+===================================================== */
+
+export interface LeaveChatMessage {
+  id?: string;
+  messageId?: string;
+  leaveId?: string;
+  userId?: string;
+  senderId?: string;
+  senderName?: string;
+  message?: string;
+  createdAt?: string;
+  updatedAt?: string;
+  profilePicture?: string;
+
+  [key: string]: any;
+}
+
+export interface SendLeaveChatMessagePayload {
+  message: string;
+}
+
+/* =====================================================
+   GET LEAVE CHAT
+   GET /api/LeaveChat/{leaveId}
+===================================================== */
+
+export const getLeaveChat = async (
+  leaveId: string
+) => {
+  const token = getToken();
+
+  if (!leaveId?.trim()) {
+    throw new Error(
+      "Leave ID is required."
+    );
+  }
+
+  try {
+    const response = await axios.get(
+      `${BASE_URL}/LeaveChat/${encodeURIComponent(
+        leaveId.trim()
+      )}`,
+      {
+        headers: {
+          ...getAuthHeaders(token),
+          Accept: "application/json",
+        },
+      }
+    );
+
+    console.log(
+      "GET LEAVE CHAT RESPONSE:",
+      response.data
+    );
+
+    return response.data;
+  } catch (error) {
+    console.error(
+      "GET LEAVE CHAT ERROR:",
+      error
+    );
+
+    throw new Error(
+      getApiErrorMessage(error)
+    );
+  }
+};
+
+/* =====================================================
+   SEND LEAVE CHAT MESSAGE
+   POST /api/LeaveChat/{leaveId}/send
+===================================================== */
+
+export const sendLeaveChatMessage = async (
+  leaveId: string,
+  data: SendLeaveChatMessagePayload
+) => {
+  const token = getToken();
+
+  if (!leaveId?.trim()) {
+    throw new Error(
+      "Leave ID is required."
+    );
+  }
+
+  if (!data?.message?.trim()) {
+    throw new Error(
+      "Message is required."
+    );
+  }
+
+  const payload = {
+    message: data.message.trim(),
+  };
+
+  console.log(
+    "SEND LEAVE CHAT LEAVE ID:",
+    leaveId
+  );
+
+  console.log(
+    "SEND LEAVE CHAT PAYLOAD:",
+    payload
+  );
+
+  try {
+    const response = await axios.post(
+      `${BASE_URL}/LeaveChat/${encodeURIComponent(
+        leaveId.trim()
+      )}/send`,
+      payload,
+      getJsonConfig(token)
+    );
+
+    console.log(
+      "SEND LEAVE CHAT RESPONSE:",
+      response.data
+    );
+
+    return response.data;
+  } catch (error) {
+    console.error(
+      "SEND LEAVE CHAT ERROR:",
+      error
+    );
+
+    throw new Error(
+      getApiErrorMessage(error)
+    );
+  }
+};
+
+/* =====================================================
+   DELETE LEAVE CHAT MESSAGE
+   DELETE /api/LeaveChat/message/{messageId}
+===================================================== */
+
+export const deleteLeaveChatMessage =
+  async (
+    messageId: string
+  ) => {
+    const token = getToken();
+
+    if (!messageId?.trim()) {
+      throw new Error(
+        "Message ID is required."
+      );
+    }
+
+    try {
+      const response =
+        await axios.delete(
+          `${BASE_URL}/LeaveChat/message/${encodeURIComponent(
+            messageId.trim()
+          )}`,
+          {
+            headers: {
+              ...getAuthHeaders(token),
+              Accept: "application/json",
+            },
+          }
+        );
+
+      console.log(
+        "DELETE LEAVE CHAT MESSAGE RESPONSE:",
+        response.data
+      );
+
+      return response.data;
+    } catch (error) {
+      console.error(
+        "DELETE LEAVE CHAT MESSAGE ERROR:",
+        error
+      );
+
+      throw new Error(
+        getApiErrorMessage(error)
+      );
+    }
+  };
+
+/* =====================================================
    ADMIN ATTENDANCE
 ===================================================== */
 
@@ -1665,11 +1885,16 @@ export interface UpdateAdminAttendancePayload {
   attendanceDate?: string;
   checkIn?: string;
   checkOut?: string;
-  breakTime?: string;
-  late?: string;
-  productionHours?: string;
+  breakTime?: number;
+  late?: number;
+  productionHours?: number;
   status?: number;
 }
+
+/* =====================================================
+   GET ADMIN ATTENDANCE
+   GET /api/AdminAttendance/page-data
+===================================================== */
 
 export const getAdminAttendance =
   async (
@@ -1677,53 +1902,76 @@ export const getAdminAttendance =
   ) => {
     const token = getToken();
 
-    const response =
-      await axios.get(
-        `${BASE_URL}/AdminAttendance/page-data`,
-        {
-          params: {
-            FromDate:
-              params?.FromDate ||
-              undefined,
+    try {
+      const response =
+        await axios.get(
+          `${BASE_URL}/AdminAttendance/page-data`,
+          {
+            params: {
+              FromDate:
+                params?.FromDate ||
+                undefined,
 
-            ToDate:
-              params?.ToDate ||
-              undefined,
+              ToDate:
+                params?.ToDate ||
+                undefined,
 
-            DepartmentId:
-              params?.DepartmentId ||
-              undefined,
+              DepartmentId:
+                params?.DepartmentId ||
+                undefined,
 
-            Status:
-              params?.Status,
+              Status:
+                params?.Status !== undefined
+                  ? params.Status
+                  : undefined,
 
-            Search:
-              params?.Search?.trim() ||
-              undefined,
+              Search:
+                params?.Search?.trim() ||
+                undefined,
 
-            SortBy:
-              params?.SortBy ||
-              undefined,
+              SortBy:
+                params?.SortBy ||
+                undefined,
 
-            PageNumber:
-              params?.PageNumber ?? 1,
+              PageNumber:
+                params?.PageNumber ?? 1,
 
-            PageSize:
-              params?.PageSize ?? 10,
-          },
+              PageSize:
+                params?.PageSize ?? 10,
+            },
 
-          headers:
-            getAuthHeaders(token),
-        }
+            headers:
+              getAuthHeaders(token),
+          }
+        );
+
+      console.log(
+        "GET ADMIN ATTENDANCE RESPONSE:",
+        response.data
       );
 
-    console.log(
-      "ADMIN ATTENDANCE RESPONSE:",
-      response.data
-    );
+      return response.data;
+    } catch (error) {
+      console.error(
+        "GET ADMIN ATTENDANCE ERROR:",
+        error
+      );
 
-    return response.data;
+      console.error(
+        "GET ADMIN ATTENDANCE ERROR RESPONSE:",
+        (error as AxiosError)?.response?.data
+      );
+
+      throw new Error(
+        getApiErrorMessage(error)
+      );
+    }
   };
+
+/* =====================================================
+   UPDATE ADMIN ATTENDANCE
+   PUT /api/AdminAttendance/{attendanceId}
+===================================================== */
 
 export const updateAdminAttendance =
   async (
@@ -1732,11 +1980,38 @@ export const updateAdminAttendance =
   ) => {
     const token = getToken();
 
-    if (!attendanceId) {
+    if (!attendanceId?.trim()) {
       throw new Error(
         "Attendance ID is required."
       );
     }
+
+    const payload = {
+      attendanceDate:
+        data.attendanceDate,
+
+      checkIn:
+        data.checkIn || "",
+
+      checkOut:
+        data.checkOut || "",
+
+      breakTime:
+        Number(data.breakTime ?? 0),
+
+      late:
+        Number(data.late ?? 0),
+
+      productionHours:
+        Number(data.productionHours ?? 0),
+
+      status:
+        Number(data.status),
+    };
+
+    console.log(
+      "========================================"
+    );
 
     console.log(
       "UPDATE ATTENDANCE ID:",
@@ -1744,30 +2019,65 @@ export const updateAdminAttendance =
     );
 
     console.log(
-      "UPDATE ATTENDANCE DATA:",
-      data
+      "UPDATE ATTENDANCE URL:",
+      `${BASE_URL}/AdminAttendance/${attendanceId}`
     );
-
-    const response =
-      await axios.put(
-        `${BASE_URL}/AdminAttendance/${attendanceId}`,
-        data,
-        {
-          headers: {
-            ...getAuthHeaders(token),
-            "Content-Type":
-              "application/json",
-            Accept: "*/*",
-          },
-        }
-      );
 
     console.log(
-      "UPDATE ATTENDANCE RESPONSE:",
-      response.data
+      "UPDATE ATTENDANCE PAYLOAD:",
+      payload
     );
 
-    return response.data;
+    console.log(
+      "========================================"
+    );
+
+    try {
+      const response =
+        await axios.put(
+          `${BASE_URL}/AdminAttendance/${encodeURIComponent(
+            attendanceId.trim()
+          )}`,
+          payload,
+          {
+            headers: {
+              ...getAuthHeaders(token),
+              "Content-Type":
+                "application/json",
+              Accept:
+                "application/json",
+            },
+          }
+        );
+
+      console.log(
+        "UPDATE ATTENDANCE RESPONSE:",
+        response.data
+      );
+
+      return response.data;
+    } catch (error) {
+      console.error(
+        "UPDATE ATTENDANCE ERROR:",
+        error
+      );
+
+      console.error(
+        "UPDATE ATTENDANCE STATUS:",
+        (error as AxiosError)?.response
+          ?.status
+      );
+
+      console.error(
+        "UPDATE ATTENDANCE ERROR RESPONSE:",
+        (error as AxiosError)?.response
+          ?.data
+      );
+
+      throw new Error(
+        getApiErrorMessage(error)
+      );
+    }
   };
 
 /* =====================================================
@@ -1822,6 +2132,11 @@ export default {
   updateLeave,
   updateLeaveStatus,
   deleteLeave,
+
+  /* LEAVE CHAT */
+  getLeaveChat,
+  sendLeaveChatMessage,
+  deleteLeaveChatMessage,
 
   /* ADMIN ATTENDANCE */
   getAdminAttendance,

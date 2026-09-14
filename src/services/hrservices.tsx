@@ -6,12 +6,18 @@ const BASE_URL = "http://jupiterapi.adequateshop.com/api";
    COMMON TOKEN
 ===================================================== */
 
-const getToken = () => {
+const getToken = (): string | null => {
   return localStorage.getItem("token");
 };
 
 const getAuthHeaders = (token?: string | null) => {
   const authToken = token || getToken();
+
+  if (!authToken) {
+    throw new Error(
+      "Authentication token not found. Please login again."
+    );
+  }
 
   return {
     Authorization: `Bearer ${authToken}`,
@@ -19,8 +25,7 @@ const getAuthHeaders = (token?: string | null) => {
 };
 
 /* =====================================================
-   ROLE - GET
-   GET /Role/get-roles
+   ROLE
 ===================================================== */
 
 export interface GetRolesParams {
@@ -38,11 +43,15 @@ export interface AddRolePayload {
   isActive: boolean;
 }
 
+export interface UpdateRolePayload {
+  id: string | number;
+  roleName: string;
+  isActive: boolean;
+}
+
 export const getRoles = async (
   params?: GetRolesParams
 ) => {
-  const token = getToken();
-
   const response = await axios.get(
     `${BASE_URL}/Role/get-roles`,
     {
@@ -58,28 +67,22 @@ export const getRoles = async (
         PageNumber: params?.PageNumber ?? 1,
         PageSize: params?.PageSize ?? 10,
       },
-      headers: getAuthHeaders(token),
+      headers: getAuthHeaders(),
     }
   );
 
   return response.data;
 };
 
-/* =====================================================
-   ROLE - ADD
-===================================================== */
-
 export const addRole = async (
   data: AddRolePayload
 ) => {
-  const token = getToken();
-
   const response = await axios.post(
     `${BASE_URL}/Role/add-role`,
     data,
     {
       headers: {
-        ...getAuthHeaders(token),
+        ...getAuthHeaders(),
         "Content-Type": "application/json",
         Accept: "*/*",
       },
@@ -89,28 +92,15 @@ export const addRole = async (
   return response.data;
 };
 
-/* =====================================================
-   ROLE - UPDATE
-   PUT /Role/update-role
-===================================================== */
-
-export interface UpdateRolePayload {
-  id: string | number;
-  roleName: string;
-  isActive: boolean;
-}
-
 export const updateRole = async (
   data: UpdateRolePayload
 ) => {
-  const token = getToken();
-
   const response = await axios.put(
     `${BASE_URL}/Role/update-role`,
     data,
     {
       headers: {
-        ...getAuthHeaders(token),
+        ...getAuthHeaders(),
         "Content-Type": "application/json",
         Accept: "*/*",
       },
@@ -120,27 +110,18 @@ export const updateRole = async (
   return response.data;
 };
 
-/* =====================================================
-   ROLE - DELETE
-   DELETE /Role/delete-role
-===================================================== */
-
 export const deleteRole = async (
   id: string | number
 ) => {
-  const token = getToken();
-
   const response = await axios.delete(
     `${BASE_URL}/Role/delete-role`,
     {
       headers: {
-        ...getAuthHeaders(token),
+        ...getAuthHeaders(),
         "Content-Type": "application/json",
         Accept: "*/*",
       },
-      data: {
-        id,
-      },
+      data: { id },
     }
   );
 
@@ -149,7 +130,6 @@ export const deleteRole = async (
 
 /* =====================================================
    EMPLOYEE - GET
-   GET /Employee/page-data
 ===================================================== */
 
 export interface GetEmployeesParams {
@@ -166,8 +146,6 @@ export interface GetEmployeesParams {
 export const getAllEmployees = async (
   params?: GetEmployeesParams
 ) => {
-  const token = getToken();
-
   const response = await axios.get(
     `${BASE_URL}/Employee/page-data`,
     {
@@ -182,7 +160,7 @@ export const getAllEmployees = async (
         PageSize: params?.PageSize ?? 100,
         SortBy: params?.SortBy || undefined,
       },
-      headers: getAuthHeaders(token),
+      headers: getAuthHeaders(),
     }
   );
 
@@ -190,9 +168,40 @@ export const getAllEmployees = async (
 };
 
 /* =====================================================
-   EMPLOYEE PROFILE - UPDATE
-   PUT /Profile/Update-Profile
+   PROFILE
 ===================================================== */
+
+export interface ProfileData {
+  Id: string;
+  FirstName: string;
+  LastName: string;
+  Email: string;
+  Phone: string;
+  Address: string;
+  Country: string;
+  State: string;
+  City: string;
+  PostalCode: string;
+  ProfilePicture?: string;
+  ProfilePictureUrl?: string;
+  [key: string]: any;
+}
+
+export const getProfile = async (
+  token?: string | null
+) => {
+  const response = await axios.get(
+    `${BASE_URL}/Profile/Get-Profile`,
+    {
+      headers: {
+        ...getAuthHeaders(token),
+        Accept: "application/json",
+      },
+    }
+  );
+
+  return response.data;
+};
 
 export interface UpdateProfilePayload {
   Id: string;
@@ -213,46 +222,57 @@ export interface UpdateProfilePayload {
 
 export const updateEmployeeProfile = async (
   data: UpdateProfilePayload,
-  token: string
+  token?: string | null
 ) => {
   const formData = new FormData();
 
-  formData.append("Id", data.Id);
-  formData.append("FirstName", data.FirstName);
-  formData.append("LastName", data.LastName);
-  formData.append("Email", data.Email);
-  formData.append("Phone", data.Phone);
-  formData.append("Address", data.Address);
-  formData.append("Country", data.Country);
-  formData.append("State", data.State);
-  formData.append("City", data.City);
-  formData.append("PostalCode", data.PostalCode);
-
+  formData.append("Id", data.Id || "");
+  formData.append(
+    "FirstName",
+    data.FirstName || ""
+  );
+  formData.append(
+    "LastName",
+    data.LastName || ""
+  );
+  formData.append("Email", data.Email || "");
+  formData.append("Phone", data.Phone || "");
+  formData.append(
+    "Address",
+    data.Address || ""
+  );
+  formData.append(
+    "Country",
+    data.Country || ""
+  );
+  formData.append(
+    "State",
+    data.State || ""
+  );
+  formData.append("City", data.City || "");
+  formData.append(
+    "PostalCode",
+    data.PostalCode || ""
+  );
   formData.append(
     "CurrentPassword",
     data.CurrentPassword || ""
   );
-
   formData.append(
     "NewPassword",
     data.NewPassword || ""
   );
-
   formData.append(
     "ConfirmPassword",
     data.ConfirmPassword || ""
   );
 
-  if (data.ProfilePicture) {
+  if (data.ProfilePicture instanceof File) {
     formData.append(
       "ProfilePicture",
       data.ProfilePicture
     );
   } else {
-    /*
-      Swagger says ProfilePicture can be empty.
-      Sending an empty string keeps the multipart field present.
-    */
     formData.append("ProfilePicture", "");
   }
 
@@ -302,8 +322,6 @@ export interface UpdateHolidayPayload {
 export const getHolidays = async (
   params?: GetHolidaysParams
 ) => {
-  const token = getToken();
-
   const response = await axios.get(
     `${BASE_URL}/Holiday/get-holiday`,
     {
@@ -314,7 +332,7 @@ export const getHolidays = async (
         PageSize: params?.PageSize ?? 10,
         SortBy: params?.SortBy || undefined,
       },
-      headers: getAuthHeaders(token),
+      headers: getAuthHeaders(),
     }
   );
 
@@ -324,15 +342,11 @@ export const getHolidays = async (
 export const getHolidayById = async (
   id: string
 ) => {
-  const token = getToken();
-
   const response = await axios.get(
     `${BASE_URL}/Holiday/get-holiday-by-id`,
     {
-      params: {
-        id,
-      },
-      headers: getAuthHeaders(token),
+      params: { id },
+      headers: getAuthHeaders(),
     }
   );
 
@@ -342,14 +356,12 @@ export const getHolidayById = async (
 export const addHoliday = async (
   data: AddHolidayPayload
 ) => {
-  const token = getToken();
-
   const response = await axios.post(
     `${BASE_URL}/Holiday/Add_Holiday`,
     data,
     {
       headers: {
-        ...getAuthHeaders(token),
+        ...getAuthHeaders(),
         "Content-Type": "application/json",
       },
     }
@@ -361,14 +373,12 @@ export const addHoliday = async (
 export const updateHoliday = async (
   data: UpdateHolidayPayload
 ) => {
-  const token = getToken();
-
   const response = await axios.put(
     `${BASE_URL}/Holiday/Update-Holiday`,
     data,
     {
       headers: {
-        ...getAuthHeaders(token),
+        ...getAuthHeaders(),
         "Content-Type": "application/json",
       },
     }
@@ -380,18 +390,14 @@ export const updateHoliday = async (
 export const deleteHoliday = async (
   id: string
 ) => {
-  const token = getToken();
-
   const response = await axios.delete(
     `${BASE_URL}/Holiday/Delete-Holiday`,
     {
       headers: {
-        ...getAuthHeaders(token),
+        ...getAuthHeaders(),
         "Content-Type": "application/json",
       },
-      data: {
-        id,
-      },
+      data: { id },
     }
   );
 
@@ -427,14 +433,12 @@ export interface UpdateLeaveTypePayload {
 export const addLeaveType = async (
   data: AddLeaveTypePayload
 ) => {
-  const token = getToken();
-
   const response = await axios.post(
     `${LEAVE_TYPE_BASE_URL}/add-leave-type`,
     data,
     {
       headers: {
-        ...getAuthHeaders(token),
+        ...getAuthHeaders(),
         "Content-Type": "application/json",
       },
     }
@@ -446,13 +450,11 @@ export const addLeaveType = async (
 export const getLeaveTypeById = async (
   id: string
 ) => {
-  const token = getToken();
-
   const response = await axios.get(
     `${LEAVE_TYPE_BASE_URL}/get-leave-type/${id}`,
     {
       headers: {
-        ...getAuthHeaders(token),
+        ...getAuthHeaders(),
         Accept: "*/*",
       },
     }
@@ -464,14 +466,12 @@ export const getLeaveTypeById = async (
 export const updateLeaveType = async (
   data: UpdateLeaveTypePayload
 ) => {
-  const token = getToken();
-
   const response = await axios.put(
     `${LEAVE_TYPE_BASE_URL}/update-leave-type`,
     data,
     {
       headers: {
-        ...getAuthHeaders(token),
+        ...getAuthHeaders(),
         "Content-Type": "application/json",
       },
     }
@@ -483,26 +483,24 @@ export const updateLeaveType = async (
 export const getAllLeaveTypes = async (
   data?: GetAllLeaveTypePayload
 ) => {
-  const token = getToken();
-
-  const payload = {
-    search: data?.search ?? "",
-    pageNumber: data?.pageNumber ?? 1,
-    pageSize: data?.pageSize ?? 10,
-    sortBy: data?.sortBy ?? "",
-  };
-
-  const response = await axios.request({
-    method: "GET",
-    url: `${LEAVE_TYPE_BASE_URL}/get-all-leave-type`,
-    params: payload,
-    data: payload,
-    headers: {
-      ...getAuthHeaders(token),
-      Accept: "*/*",
-      "Content-Type": "application/json",
-    },
-  });
+  const response = await axios.get(
+    `${LEAVE_TYPE_BASE_URL}/get-all-leave-type`,
+    {
+      params: {
+        search: data?.search ?? "",
+        pageNumber:
+          data?.pageNumber ?? 1,
+        pageSize:
+          data?.pageSize ?? 100,
+        sortBy:
+          data?.sortBy ?? "",
+      },
+      headers: {
+        ...getAuthHeaders(),
+        Accept: "*/*",
+      },
+    }
+  );
 
   return response.data;
 };
@@ -510,17 +508,95 @@ export const getAllLeaveTypes = async (
 export const deleteLeaveType = async (
   id: string
 ) => {
-  const token = getToken();
-
   const response = await axios.delete(
     `${LEAVE_TYPE_BASE_URL}/delete-leave-type`,
     {
       headers: {
-        ...getAuthHeaders(token),
+        ...getAuthHeaders(),
         "Content-Type": "application/json",
       },
-      data: {
-        id,
+      data: { id },
+    }
+  );
+
+  return response.data;
+};
+
+/* =====================================================
+   EMPLOYEE LEAVE
+===================================================== */
+
+const EMPLOYEE_LEAVE_BASE_URL =
+  "http://jupiterapi.adequateshop.com";
+
+/* =====================================================
+   GET ALL LEAVES
+   GET /get-all-leave
+===================================================== */
+
+export interface GetAllLeavesParams {
+  UserId?: string;
+  LeaveTypeMasterId?: string;
+  Status?: number;
+  FromDate?: string;
+  ToDate?: string;
+  Search?: string;
+  SortBy?: string;
+  SortDirection?: string;
+  PageNumber?: number;
+  PageSize?: number;
+  ReviewedByUserId?: string;
+}
+
+export const getAllLeaves = async (
+  params?: GetAllLeavesParams
+) => {
+  const response = await axios.get(
+    `${EMPLOYEE_LEAVE_BASE_URL}/get-all-leave`,
+    {
+      params: {
+        UserId:
+          params?.UserId || undefined,
+
+        LeaveTypeMasterId:
+          params?.LeaveTypeMasterId ||
+          undefined,
+
+        Status:
+          params?.Status !== undefined
+            ? params.Status
+            : undefined,
+
+        FromDate:
+          params?.FromDate || undefined,
+
+        ToDate:
+          params?.ToDate || undefined,
+
+        Search:
+          params?.Search || undefined,
+
+        SortBy:
+          params?.SortBy || undefined,
+
+        SortDirection:
+          params?.SortDirection ||
+          undefined,
+
+        PageNumber:
+          params?.PageNumber ?? 1,
+
+        PageSize:
+          params?.PageSize ?? 10,
+
+        ReviewedByUserId:
+          params?.ReviewedByUserId ||
+          undefined,
+      },
+
+      headers: {
+        ...getAuthHeaders(),
+        Accept: "application/json",
       },
     }
   );
@@ -529,7 +605,232 @@ export const deleteLeaveType = async (
 };
 
 /* =====================================================
-   DEPARTMENT - GET
+   GET LEAVE BY ID
+   GET /get-leave-by-id/{id}
+===================================================== */
+
+export const getLeaveById = async (
+  id: string
+) => {
+  const response = await axios.get(
+    `${EMPLOYEE_LEAVE_BASE_URL}/get-leave-by-id/${id}`,
+    {
+      headers: {
+        ...getAuthHeaders(),
+        Accept: "application/json",
+      },
+    }
+  );
+
+  return response.data;
+};
+
+/* =====================================================
+   ADD LEAVE
+   POST /add-leave
+===================================================== */
+
+export interface AddLeavePayload {
+  UserId?: string;
+  LeaveTypeMasterId: string;
+  FromDate: string;
+  ToDate: string;
+  AvailType: number;
+  Reason: string;
+  Attachment?: File | null;
+}
+
+export const addLeave = async (
+  data: AddLeavePayload
+) => {
+  const formData = new FormData();
+
+  formData.append(
+    "UserId",
+    data.UserId || ""
+  );
+
+  formData.append(
+    "LeaveTypeMasterId",
+    data.LeaveTypeMasterId || ""
+  );
+
+  formData.append(
+    "FromDate",
+    data.FromDate || ""
+  );
+
+  formData.append(
+    "ToDate",
+    data.ToDate || ""
+  );
+
+  formData.append(
+    "AvailType",
+    String(data.AvailType)
+  );
+
+  formData.append(
+    "Reason",
+    data.Reason || ""
+  );
+
+  if (data.Attachment instanceof File) {
+    formData.append(
+      "Attachment",
+      data.Attachment
+    );
+  } else {
+    formData.append(
+      "Attachment",
+      ""
+    );
+  }
+
+  const response = await axios.post(
+    `${EMPLOYEE_LEAVE_BASE_URL}/add-leave`,
+    formData,
+    {
+      headers: {
+        ...getAuthHeaders(),
+        Accept: "*/*",
+      },
+    }
+  );
+
+  return response.data;
+};
+
+/* =====================================================
+   UPDATE LEAVE
+   PUT /update-leave/{leaveId}
+===================================================== */
+
+export interface UpdateLeavePayload {
+  UserId?: string;
+  LeaveTypeMasterId: string;
+  FromDate: string;
+  ToDate: string;
+  AvailType: number;
+  Reason: string;
+  Attachment?: File | null;
+}
+
+export const updateLeave = async (
+  leaveId: string,
+  data: UpdateLeavePayload
+) => {
+  const formData = new FormData();
+
+  formData.append(
+    "UserId",
+    data.UserId || ""
+  );
+
+  formData.append(
+    "LeaveTypeMasterId",
+    data.LeaveTypeMasterId || ""
+  );
+
+  formData.append(
+    "FromDate",
+    data.FromDate || ""
+  );
+
+  formData.append(
+    "ToDate",
+    data.ToDate || ""
+  );
+
+  formData.append(
+    "AvailType",
+    String(data.AvailType)
+  );
+
+  formData.append(
+    "Reason",
+    data.Reason || ""
+  );
+
+  if (data.Attachment instanceof File) {
+    formData.append(
+      "Attachment",
+      data.Attachment
+    );
+  } else {
+    formData.append(
+      "Attachment",
+      ""
+    );
+  }
+
+  const response = await axios.put(
+    `${EMPLOYEE_LEAVE_BASE_URL}/update-leave/${leaveId}`,
+    formData,
+    {
+      headers: {
+        ...getAuthHeaders(),
+        Accept: "*/*",
+      },
+    }
+  );
+
+  return response.data;
+};
+
+/* =====================================================
+   UPDATE LEAVE STATUS
+   PUT /update-leave-status/{leaveId}/{reviewedByUserId}
+===================================================== */
+
+export interface UpdateLeaveStatusPayload {
+  status: number;
+  remarks: string;
+}
+
+export const updateLeaveStatus = async (
+  leaveId: string,
+  reviewedByUserId: string,
+  data: UpdateLeaveStatusPayload
+) => {
+  const response = await axios.put(
+    `${EMPLOYEE_LEAVE_BASE_URL}/update-leave-status/${leaveId}/${reviewedByUserId}`,
+    data,
+    {
+      headers: {
+        ...getAuthHeaders(),
+        "Content-Type": "application/json",
+        Accept: "*/*",
+      },
+    }
+  );
+
+  return response.data;
+};
+
+/* =====================================================
+   DELETE LEAVE
+   DELETE /delete-leave/{leaveId}
+===================================================== */
+
+export const deleteLeave = async (
+  leaveId: string
+) => {
+  const response = await axios.delete(
+    `${EMPLOYEE_LEAVE_BASE_URL}/delete-leave/${leaveId}`,
+    {
+      headers: {
+        ...getAuthHeaders(),
+        Accept: "*/*",
+      },
+    }
+  );
+
+  return response.data;
+};
+
+/* =====================================================
+   DEPARTMENT
 ===================================================== */
 
 export interface GetDepartmentsParams {
@@ -544,29 +845,29 @@ export interface GetDepartmentsParams {
 export const getDepartments = async (
   params?: GetDepartmentsParams
 ) => {
-  const token = getToken();
-
   const response = await axios.get(
     `${BASE_URL}/Department/Get-Department`,
     {
       params: {
-        Search: params?.Search || undefined,
-        UserStatus: params?.UserStatus,
-        PerpageEntry: params?.PerpageEntry,
-        PageNumber: params?.PageNumber ?? 1,
-        PageSize: params?.PageSize ?? 100,
-        SortBy: params?.SortBy || undefined,
+        Search:
+          params?.Search || undefined,
+        UserStatus:
+          params?.UserStatus,
+        PerpageEntry:
+          params?.PerpageEntry,
+        PageNumber:
+          params?.PageNumber ?? 1,
+        PageSize:
+          params?.PageSize ?? 100,
+        SortBy:
+          params?.SortBy || undefined,
       },
-      headers: getAuthHeaders(token),
+      headers: getAuthHeaders(),
     }
   );
 
   return response.data;
 };
-
-/* =====================================================
-   DEPARTMENT - ADD
-===================================================== */
 
 export interface AddDepartmentPayload {
   departmentName: string;
@@ -576,14 +877,12 @@ export interface AddDepartmentPayload {
 export const addDepartment = async (
   data: AddDepartmentPayload
 ) => {
-  const token = getToken();
-
   const response = await axios.post(
     `${BASE_URL}/Department/Add-department`,
     data,
     {
       headers: {
-        ...getAuthHeaders(token),
+        ...getAuthHeaders(),
         "Content-Type": "application/json",
       },
     }
@@ -591,10 +890,6 @@ export const addDepartment = async (
 
   return response.data;
 };
-
-/* =====================================================
-   DEPARTMENT - UPDATE
-===================================================== */
 
 export interface UpdateDepartmentPayload {
   id: string;
@@ -605,14 +900,12 @@ export interface UpdateDepartmentPayload {
 export const updateDepartment = async (
   data: UpdateDepartmentPayload
 ) => {
-  const token = getToken();
-
   const response = await axios.put(
     `${BASE_URL}/Department/Update-Department`,
     data,
     {
       headers: {
-        ...getAuthHeaders(token),
+        ...getAuthHeaders(),
         "Content-Type": "application/json",
       },
     }
@@ -620,26 +913,18 @@ export const updateDepartment = async (
 
   return response.data;
 };
-
-/* =====================================================
-   DEPARTMENT - DELETE
-===================================================== */
 
 export const deleteDepartment = async (
   id: string
 ) => {
-  const token = getToken();
-
   const response = await axios.delete(
     `${BASE_URL}/Department/Delete-Department`,
     {
       headers: {
-        ...getAuthHeaders(token),
+        ...getAuthHeaders(),
         "Content-Type": "application/json",
       },
-      data: {
-        id,
-      },
+      data: { id },
     }
   );
 
@@ -647,7 +932,7 @@ export const deleteDepartment = async (
 };
 
 /* =====================================================
-   DESIGNATION - GET
+   DESIGNATION
 ===================================================== */
 
 export interface GetDesignationsParams {
@@ -662,30 +947,30 @@ export interface GetDesignationsParams {
 export const getDesignations = async (
   params?: GetDesignationsParams
 ) => {
-  const token = getToken();
-
   const response = await axios.get(
     `${BASE_URL}/Designation/Get-Designation`,
     {
       params: {
-        Search: params?.Search || undefined,
+        Search:
+          params?.Search || undefined,
         DepartmentId:
-          params?.DepartmentId || undefined,
-        UserStatus: params?.UserStatus,
-        PageNumber: params?.PageNumber ?? 1,
-        PageSize: params?.PageSize ?? 100,
-        SortBy: params?.SortBy || undefined,
+          params?.DepartmentId ||
+          undefined,
+        UserStatus:
+          params?.UserStatus,
+        PageNumber:
+          params?.PageNumber ?? 1,
+        PageSize:
+          params?.PageSize ?? 100,
+        SortBy:
+          params?.SortBy || undefined,
       },
-      headers: getAuthHeaders(token),
+      headers: getAuthHeaders(),
     }
   );
 
   return response.data;
 };
-
-/* =====================================================
-   DESIGNATION - ADD
-===================================================== */
 
 export interface AddDesignationPayload {
   designationName: string;
@@ -696,14 +981,12 @@ export interface AddDesignationPayload {
 export const addDesignation = async (
   data: AddDesignationPayload
 ) => {
-  const token = getToken();
-
   const response = await axios.post(
     `${BASE_URL}/Designation/Add-designation`,
     data,
     {
       headers: {
-        ...getAuthHeaders(token),
+        ...getAuthHeaders(),
         "Content-Type": "application/json",
       },
     }
@@ -711,10 +994,6 @@ export const addDesignation = async (
 
   return response.data;
 };
-
-/* =====================================================
-   DESIGNATION - UPDATE
-===================================================== */
 
 export interface UpdateDesignationPayload {
   id: string;
@@ -726,14 +1005,12 @@ export interface UpdateDesignationPayload {
 export const updateDesignation = async (
   data: UpdateDesignationPayload
 ) => {
-  const token = getToken();
-
   const response = await axios.put(
     `${BASE_URL}/Designation/Update-Designation`,
     data,
     {
       headers: {
-        ...getAuthHeaders(token),
+        ...getAuthHeaders(),
         "Content-Type": "application/json",
       },
     }
@@ -742,25 +1019,17 @@ export const updateDesignation = async (
   return response.data;
 };
 
-/* =====================================================
-   DESIGNATION - DELETE
-===================================================== */
-
 export const deleteDesignation = async (
   id: string
 ) => {
-  const token = getToken();
-
   const response = await axios.delete(
     `${BASE_URL}/Designation/Delete-Designation`,
     {
       headers: {
-        ...getAuthHeaders(token),
+        ...getAuthHeaders(),
         "Content-Type": "application/json",
       },
-      data: {
-        id,
-      },
+      data: { id },
     }
   );
 
@@ -769,20 +1038,17 @@ export const deleteDesignation = async (
 
 /* =====================================================
    EMPLOYEE - ADD
-   POST /Employee
 ===================================================== */
 
 export const addEmployee = async (
   data: FormData
 ) => {
-  const token = getToken();
-
   const response = await axios.post(
     `${BASE_URL}/Employee`,
     data,
     {
       headers: {
-        ...getAuthHeaders(token),
+        ...getAuthHeaders(),
       },
     }
   );
@@ -798,14 +1064,12 @@ export const updateEmployee = async (
   employeeId: string,
   data: FormData
 ) => {
-  const token = getToken();
-
   const response = await axios.put(
     `${BASE_URL}/Employee/${employeeId}`,
     data,
     {
       headers: {
-        ...getAuthHeaders(token),
+        ...getAuthHeaders(),
         Accept: "*/*",
       },
     }
@@ -821,13 +1085,11 @@ export const updateEmployee = async (
 export const deleteEmployee = async (
   employeeId: string
 ) => {
-  const token = getToken();
-
   const response = await axios.delete(
     `${BASE_URL}/Employee/${employeeId}`,
     {
       headers: {
-        ...getAuthHeaders(token),
+        ...getAuthHeaders(),
         Accept: "*/*",
       },
     }
@@ -847,6 +1109,8 @@ export default {
   deleteRole,
 
   getAllEmployees,
+
+  getProfile,
   updateEmployeeProfile,
 
   getHolidays,
@@ -860,6 +1124,13 @@ export default {
   updateLeaveType,
   getAllLeaveTypes,
   deleteLeaveType,
+
+  addLeave,
+  getAllLeaves,
+  getLeaveById,
+  updateLeave,
+  updateLeaveStatus,
+  deleteLeave,
 
   getDepartments,
   addDepartment,

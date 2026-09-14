@@ -32,8 +32,15 @@ const getToken = (): string => {
 // EMPLOYEE PROFILE
 // =====================================================
 
+/**
+ * GET EMPLOYEE PROFILE
+ *
+ * API:
+ * GET /api/Profile/Get-Profile
+ *
+ * No ID parameter required.
+ */
 export const getEmployeeProfile = async (
-  id: string,
   token: string
 ) => {
   if (!token) {
@@ -43,24 +50,91 @@ export const getEmployeeProfile = async (
   }
 
   const response = await axios.get(
-    `${BASE_URL}/Profile/Get-Employee`,
+    `${BASE_URL}/Profile/Get-Profile`,
     {
-      params: {
-        Id: id,
-      },
       headers: getAuthHeaders(token),
     }
   );
 
-  return response.data.data;
+  console.log(
+    "PROFILE GET API RESPONSE:",
+    response.data
+  );
+
+  /*
+   * Supports both:
+   *
+   * {
+   *   data: {...}
+   * }
+   *
+   * and:
+   *
+   * {
+   *   data: {
+   *      profile: {...}
+   *   }
+   * }
+   */
+
+  const responseData = response.data;
+
+  if (responseData?.data?.profile) {
+    return responseData.data.profile;
+  }
+
+  if (responseData?.data?.Profile) {
+    return responseData.data.Profile;
+  }
+
+  if (responseData?.data?.user) {
+    return responseData.data.user;
+  }
+
+  if (responseData?.data?.User) {
+    return responseData.data.User;
+  }
+
+  if (responseData?.data !== undefined) {
+    return responseData.data;
+  }
+
+  return responseData;
 };
 
 // =====================================================
 // UPDATE EMPLOYEE PROFILE
 // =====================================================
 
+export interface UpdateEmployeeProfileData {
+  id?: string;
+  firstName?: string;
+  lastName?: string;
+  email?: string;
+  phone?: string;
+  address?: string;
+  country?: string;
+  state?: string;
+  city?: string;
+  postalCode?: string;
+
+  currentPassword?: string;
+  newPassword?: string;
+  confirmPassword?: string;
+
+  profilePicture?: File | null;
+}
+
+/**
+ * UPDATE EMPLOYEE PROFILE
+ *
+ * API:
+ * PUT /api/Profile/Update-Profile
+ *
+ * Uses multipart/form-data.
+ */
 export const updateEmployeeProfile = async (
-  data: any,
+  data: UpdateEmployeeProfileData,
   token: string
 ) => {
   if (!token) {
@@ -69,16 +143,116 @@ export const updateEmployeeProfile = async (
     );
   }
 
-  return axios.put(
-    `${BASE_URL}/Profile/Profile-Update`,
-    data,
+  const formData = new FormData();
+
+  formData.append(
+    "Id",
+    data.id || ""
+  );
+
+  formData.append(
+    "FirstName",
+    data.firstName || ""
+  );
+
+  formData.append(
+    "LastName",
+    data.lastName || ""
+  );
+
+  formData.append(
+    "Email",
+    data.email || ""
+  );
+
+  formData.append(
+    "Phone",
+    data.phone || ""
+  );
+
+  formData.append(
+    "Address",
+    data.address || ""
+  );
+
+  formData.append(
+    "Country",
+    data.country || ""
+  );
+
+  formData.append(
+    "State",
+    data.state || ""
+  );
+
+  formData.append(
+    "City",
+    data.city || ""
+  );
+
+  formData.append(
+    "PostalCode",
+    data.postalCode || ""
+  );
+
+  formData.append(
+    "CurrentPassword",
+    data.currentPassword || ""
+  );
+
+  formData.append(
+    "NewPassword",
+    data.newPassword || ""
+  );
+
+  formData.append(
+    "ConfirmPassword",
+    data.confirmPassword || ""
+  );
+
+  /*
+   * ProfilePicture is binary.
+   *
+   * Only append a File when the user has
+   * selected a new profile picture.
+   */
+  if (
+    data.profilePicture &&
+    data.profilePicture instanceof File
+  ) {
+    formData.append(
+      "ProfilePicture",
+      data.profilePicture
+    );
+  } else {
+    formData.append(
+      "ProfilePicture",
+      ""
+    );
+  }
+
+  const response = await axios.put(
+    `${BASE_URL}/Profile/Update-Profile`,
+    formData,
     {
       headers: {
         ...getAuthHeaders(token),
-        "Content-Type": "application/json",
+
+        /*
+         * IMPORTANT:
+         * Do NOT manually set Content-Type for FormData.
+         * Axios/browser will automatically add the boundary.
+         */
       },
     }
   );
+
+  console.log(
+    "PROFILE UPDATE API RESPONSE:",
+    response.data
+  );
+
+  return response.data;
 };
 
 // =====================================================
@@ -135,7 +309,9 @@ export const getHolidayById = async (
   }
 
   if (!holidayId) {
-    throw new Error("Holiday ID is missing.");
+    throw new Error(
+      "Holiday ID is missing."
+    );
   }
 
   const response = await axios.get(
@@ -412,7 +588,9 @@ export const getLeaveById = async (
   }
 
   if (!leaveId) {
-    throw new Error("Leave ID is missing.");
+    throw new Error(
+      "Leave ID is missing."
+    );
   }
 
   const response = await axios.get(
@@ -513,8 +691,11 @@ export const addLeave = async (
     {
       headers: {
         ...getAuthHeaders(token),
-        "Content-Type":
-          "multipart/form-data",
+
+        /*
+         * Do not manually set multipart/form-data.
+         * Axios will automatically add the boundary.
+         */
       },
     }
   );
@@ -538,7 +719,9 @@ export const updateLeave = async (
   }
 
   if (!leaveId) {
-    throw new Error("Leave ID is missing.");
+    throw new Error(
+      "Leave ID is missing."
+    );
   }
 
   const formData =
@@ -550,8 +733,11 @@ export const updateLeave = async (
     {
       headers: {
         ...getAuthHeaders(token),
-        "Content-Type":
-          "multipart/form-data",
+
+        /*
+         * Do not manually set multipart/form-data.
+         * Axios will automatically add the boundary.
+         */
       },
     }
   );
@@ -574,7 +760,9 @@ export const deleteLeave = async (
   }
 
   if (!leaveId) {
-    throw new Error("Leave ID is missing.");
+    throw new Error(
+      "Leave ID is missing."
+    );
   }
 
   const response = await axios.delete(
@@ -582,6 +770,96 @@ export const deleteLeave = async (
     {
       headers: getAuthHeaders(token),
     }
+  );
+
+  return response.data;
+};
+
+
+// =====================================================
+// EMPLOYEE LEAVES
+// =====================================================
+
+export type EmployeeLeavesParams = {
+  FromDate?: string;
+  ToDate?: string;
+  LeaveTypeId?: string;
+  ApprovedById?: string;
+  Status?: number;
+  SortBy?: string;
+  PageNumber?: number;
+  PageSize?: number;
+};
+
+export const getEmployeeLeaves = async (
+  token: string,
+  params: EmployeeLeavesParams = {}
+) => {
+  if (!token) {
+    throw new Error(
+      "Authentication token is missing. Please login again."
+    );
+  }
+
+  const response = await axios.get(
+    `${BASE_URL}/EmployeeLeave/employee-leaves`,
+    {
+      params,
+      headers: getAuthHeaders(token),
+    }
+  );
+
+  console.log(
+    "EMPLOYEE LEAVES API RESPONSE:",
+    response.data
+  );
+
+  return response.data;
+};
+
+// =====================================================
+// REVIEW LEAVE
+// =====================================================
+
+export interface ReviewLeavePayload {
+  status: number;
+  remarks: string;
+}
+
+export const reviewLeave = async (
+  leaveId: string,
+  payload: ReviewLeavePayload,
+  token: string
+) => {
+  if (!token) {
+    throw new Error(
+      "Authentication token is missing. Please login again."
+    );
+  }
+
+  if (!leaveId) {
+    throw new Error(
+      "Leave ID is missing."
+    );
+  }
+
+  const response = await axios.put(
+    `${BASE_URL}/EmployeeLeave/${leaveId}/review`,
+    {
+      status: payload.status,
+      remarks: payload.remarks,
+    },
+    {
+      headers: {
+        ...getAuthHeaders(token),
+        "Content-Type": "application/json",
+      },
+    }
+  );
+
+  console.log(
+    "REVIEW LEAVE API RESPONSE:",
+    response.data
   );
 
   return response.data;

@@ -2337,13 +2337,13 @@ const Leave: React.FC = () => {
           </button>
         </div>
 
-        {activeTab ===
+        {/* {activeTab ===
           "employeeLeaves" && (
           <div className="leave-tab-note">
             Showing data from the "my-leaves" endpoint — wire in a
             dedicated all-employees endpoint here once it's available.
           </div>
-        )}
+        )} */}
 
         {error && (
           <div className="leave-error-banner">

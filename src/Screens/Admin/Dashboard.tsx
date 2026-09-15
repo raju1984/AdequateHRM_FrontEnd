@@ -19,11 +19,11 @@ import avatar14 from "../../assets/img/profiles/avatar-14.jpg";
 
 const departmentData = [
   { name: "UI/UX", employees: 80 },
-  { name: "Development", employees: 110 },
-  { name: "Management", employees: 80 },
+  { name: "Developer", employees: 110 },
+  { name: "IT", employees: 80 },
   { name: "HR", employees: 20 },
   { name: "Testing", employees: 60 },
-  { name: "Marketing", employees: 100 },
+  { name: "Telecaller", employees: 100 },
 ];
 
 const Dashboard = () => {

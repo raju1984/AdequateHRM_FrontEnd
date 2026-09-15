@@ -25,6 +25,31 @@ const getAuthHeaders = (token?: string | null) => {
 };
 
 /* =====================================================
+   UTC DATE HELPER
+===================================================== */
+
+export const toUTCDateTime = (
+  date: string,
+  endOfDay = false
+): string | undefined => {
+  if (!date) {
+    return undefined;
+  }
+
+  const utcDate = new Date(
+    `${date}T${
+      endOfDay ? "23:59:59.999" : "00:00:00.000"
+    }Z`
+  );
+
+  if (Number.isNaN(utcDate.getTime())) {
+    return undefined;
+  }
+
+  return utcDate.toISOString();
+};
+
+/* =====================================================
    ROLE
 ===================================================== */
 
@@ -227,33 +252,15 @@ export const updateEmployeeProfile = async (
   const formData = new FormData();
 
   formData.append("Id", data.Id || "");
-  formData.append(
-    "FirstName",
-    data.FirstName || ""
-  );
-  formData.append(
-    "LastName",
-    data.LastName || ""
-  );
+  formData.append("FirstName", data.FirstName || "");
+  formData.append("LastName", data.LastName || "");
   formData.append("Email", data.Email || "");
   formData.append("Phone", data.Phone || "");
-  formData.append(
-    "Address",
-    data.Address || ""
-  );
-  formData.append(
-    "Country",
-    data.Country || ""
-  );
-  formData.append(
-    "State",
-    data.State || ""
-  );
+  formData.append("Address", data.Address || "");
+  formData.append("Country", data.Country || "");
+  formData.append("State", data.State || "");
   formData.append("City", data.City || "");
-  formData.append(
-    "PostalCode",
-    data.PostalCode || ""
-  );
+  formData.append("PostalCode", data.PostalCode || "");
   formData.append(
     "CurrentPassword",
     data.CurrentPassword || ""
@@ -272,8 +279,6 @@ export const updateEmployeeProfile = async (
       "ProfilePicture",
       data.ProfilePicture
     );
-  } else {
-    formData.append("ProfilePicture", "");
   }
 
   const response = await axios.put(
@@ -488,12 +493,9 @@ export const getAllLeaveTypes = async (
     {
       params: {
         search: data?.search ?? "",
-        pageNumber:
-          data?.pageNumber ?? 1,
-        pageSize:
-          data?.pageSize ?? 100,
-        sortBy:
-          data?.sortBy ?? "",
+        pageNumber: data?.pageNumber ?? 1,
+        pageSize: data?.pageSize ?? 100,
+        sortBy: data?.sortBy ?? "",
       },
       headers: {
         ...getAuthHeaders(),
@@ -529,11 +531,6 @@ export const deleteLeaveType = async (
 const EMPLOYEE_LEAVE_BASE_URL =
   "http://jupiterapi.adequateshop.com";
 
-/* =====================================================
-   GET ALL LEAVES
-   GET /get-all-leave
-===================================================== */
-
 export interface GetAllLeavesParams {
   UserId?: string;
   LeaveTypeMasterId?: string;
@@ -555,45 +552,24 @@ export const getAllLeaves = async (
     `${EMPLOYEE_LEAVE_BASE_URL}/get-all-leave`,
     {
       params: {
-        UserId:
-          params?.UserId || undefined,
-
+        UserId: params?.UserId || undefined,
         LeaveTypeMasterId:
-          params?.LeaveTypeMasterId ||
-          undefined,
-
+          params?.LeaveTypeMasterId || undefined,
         Status:
           params?.Status !== undefined
             ? params.Status
             : undefined,
-
-        FromDate:
-          params?.FromDate || undefined,
-
-        ToDate:
-          params?.ToDate || undefined,
-
-        Search:
-          params?.Search || undefined,
-
-        SortBy:
-          params?.SortBy || undefined,
-
+        FromDate: params?.FromDate || undefined,
+        ToDate: params?.ToDate || undefined,
+        Search: params?.Search || undefined,
+        SortBy: params?.SortBy || undefined,
         SortDirection:
-          params?.SortDirection ||
-          undefined,
-
-        PageNumber:
-          params?.PageNumber ?? 1,
-
-        PageSize:
-          params?.PageSize ?? 10,
-
+          params?.SortDirection || undefined,
+        PageNumber: params?.PageNumber ?? 1,
+        PageSize: params?.PageSize ?? 10,
         ReviewedByUserId:
-          params?.ReviewedByUserId ||
-          undefined,
+          params?.ReviewedByUserId || undefined,
       },
-
       headers: {
         ...getAuthHeaders(),
         Accept: "application/json",
@@ -603,11 +579,6 @@ export const getAllLeaves = async (
 
   return response.data;
 };
-
-/* =====================================================
-   GET LEAVE BY ID
-   GET /get-leave-by-id/{id}
-===================================================== */
 
 export const getLeaveById = async (
   id: string
@@ -625,11 +596,6 @@ export const getLeaveById = async (
   return response.data;
 };
 
-/* =====================================================
-   ADD LEAVE
-   POST /add-leave
-===================================================== */
-
 export interface AddLeavePayload {
   UserId?: string;
   LeaveTypeMasterId: string;
@@ -645,45 +611,23 @@ export const addLeave = async (
 ) => {
   const formData = new FormData();
 
-  formData.append(
-    "UserId",
-    data.UserId || ""
-  );
-
+  formData.append("UserId", data.UserId || "");
   formData.append(
     "LeaveTypeMasterId",
     data.LeaveTypeMasterId || ""
   );
-
-  formData.append(
-    "FromDate",
-    data.FromDate || ""
-  );
-
-  formData.append(
-    "ToDate",
-    data.ToDate || ""
-  );
-
+  formData.append("FromDate", data.FromDate || "");
+  formData.append("ToDate", data.ToDate || "");
   formData.append(
     "AvailType",
     String(data.AvailType)
   );
-
-  formData.append(
-    "Reason",
-    data.Reason || ""
-  );
+  formData.append("Reason", data.Reason || "");
 
   if (data.Attachment instanceof File) {
     formData.append(
       "Attachment",
       data.Attachment
-    );
-  } else {
-    formData.append(
-      "Attachment",
-      ""
     );
   }
 
@@ -701,11 +645,6 @@ export const addLeave = async (
   return response.data;
 };
 
-/* =====================================================
-   UPDATE LEAVE
-   PUT /update-leave/{leaveId}
-===================================================== */
-
 export interface UpdateLeavePayload {
   UserId?: string;
   LeaveTypeMasterId: string;
@@ -722,45 +661,23 @@ export const updateLeave = async (
 ) => {
   const formData = new FormData();
 
-  formData.append(
-    "UserId",
-    data.UserId || ""
-  );
-
+  formData.append("UserId", data.UserId || "");
   formData.append(
     "LeaveTypeMasterId",
     data.LeaveTypeMasterId || ""
   );
-
-  formData.append(
-    "FromDate",
-    data.FromDate || ""
-  );
-
-  formData.append(
-    "ToDate",
-    data.ToDate || ""
-  );
-
+  formData.append("FromDate", data.FromDate || "");
+  formData.append("ToDate", data.ToDate || "");
   formData.append(
     "AvailType",
     String(data.AvailType)
   );
-
-  formData.append(
-    "Reason",
-    data.Reason || ""
-  );
+  formData.append("Reason", data.Reason || "");
 
   if (data.Attachment instanceof File) {
     formData.append(
       "Attachment",
       data.Attachment
-    );
-  } else {
-    formData.append(
-      "Attachment",
-      ""
     );
   }
 
@@ -777,11 +694,6 @@ export const updateLeave = async (
 
   return response.data;
 };
-
-/* =====================================================
-   UPDATE LEAVE STATUS
-   PUT /update-leave-status/{leaveId}/{reviewedByUserId}
-===================================================== */
 
 export interface UpdateLeaveStatusPayload {
   status: number;
@@ -807,11 +719,6 @@ export const updateLeaveStatus = async (
 
   return response.data;
 };
-
-/* =====================================================
-   DELETE LEAVE
-   DELETE /delete-leave/{leaveId}
-===================================================== */
 
 export const deleteLeave = async (
   leaveId: string
@@ -849,18 +756,12 @@ export const getDepartments = async (
     `${BASE_URL}/Department/Get-Department`,
     {
       params: {
-        Search:
-          params?.Search || undefined,
-        UserStatus:
-          params?.UserStatus,
-        PerpageEntry:
-          params?.PerpageEntry,
-        PageNumber:
-          params?.PageNumber ?? 1,
-        PageSize:
-          params?.PageSize ?? 100,
-        SortBy:
-          params?.SortBy || undefined,
+        Search: params?.Search || undefined,
+        UserStatus: params?.UserStatus,
+        PerpageEntry: params?.PerpageEntry,
+        PageNumber: params?.PageNumber ?? 1,
+        PageSize: params?.PageSize ?? 100,
+        SortBy: params?.SortBy || undefined,
       },
       headers: getAuthHeaders(),
     }
@@ -951,19 +852,13 @@ export const getDesignations = async (
     `${BASE_URL}/Designation/Get-Designation`,
     {
       params: {
-        Search:
-          params?.Search || undefined,
+        Search: params?.Search || undefined,
         DepartmentId:
-          params?.DepartmentId ||
-          undefined,
-        UserStatus:
-          params?.UserStatus,
-        PageNumber:
-          params?.PageNumber ?? 1,
-        PageSize:
-          params?.PageSize ?? 100,
-        SortBy:
-          params?.SortBy || undefined,
+          params?.DepartmentId || undefined,
+        UserStatus: params?.UserStatus,
+        PageNumber: params?.PageNumber ?? 1,
+        PageSize: params?.PageSize ?? 100,
+        SortBy: params?.SortBy || undefined,
       },
       headers: getAuthHeaders(),
     }
@@ -1099,6 +994,246 @@ export const deleteEmployee = async (
 };
 
 /* =====================================================
+   LEAVE CHAT
+===================================================== */
+
+export interface SendLeaveChatPayload {
+  message: string;
+}
+
+export const getLeaveChatMessages = async (
+  leaveId: string
+) => {
+  const response = await axios.get(
+    `${BASE_URL}/LeaveChat/${leaveId}`,
+    {
+      headers: {
+        ...getAuthHeaders(),
+        Accept: "application/json",
+      },
+    }
+  );
+
+  return response.data;
+};
+
+export const sendLeaveChatMessage = async (
+  leaveId: string,
+  data: SendLeaveChatPayload
+) => {
+  const response = await axios.post(
+    `${BASE_URL}/LeaveChat/${leaveId}/send`,
+    data,
+    {
+      headers: {
+        ...getAuthHeaders(),
+        "Content-Type": "application/json",
+        Accept: "*/*",
+      },
+    }
+  );
+
+  return response.data;
+};
+
+export const deleteLeaveChatMessage = async (
+  messageId: string
+) => {
+  const response = await axios.delete(
+    `${BASE_URL}/LeaveChat/message/${messageId}`,
+    {
+      headers: {
+        ...getAuthHeaders(),
+        Accept: "*/*",
+      },
+    }
+  );
+
+  return response.data;
+};
+
+/* =====================================================
+   ATTENDANCE
+===================================================== */
+
+export enum AttendanceStatus {
+  Present = 0,
+  Absent = 1,
+  Late = 2,
+}
+
+/* =====================================================
+   ATTENDANCE DASHBOARD
+===================================================== */
+
+export const getAttendanceDashboard =
+  async () => {
+    const response = await axios.get(
+      `${BASE_URL}/Attendance/dashboard`,
+      {
+        headers: {
+          ...getAuthHeaders(),
+          Accept: "application/json",
+        },
+      }
+    );
+
+    return response.data;
+  };
+
+/* =====================================================
+   GET ATTENDANCE
+===================================================== */
+
+export interface GetAttendanceParams {
+  Search?: string;
+  FromDate?: string;
+  ToDate?: string;
+  DepartmentId?: string;
+  Status?: number;
+  SortBy?: string;
+  IsAscending?: boolean;
+  PageNumber?: number;
+  PageSize?: number;
+}
+
+export const getAttendance = async (
+  params?: GetAttendanceParams
+) => {
+  const response = await axios.get(
+    `${BASE_URL}/Attendance/get-attendance`,
+    {
+      params: {
+        Search:
+          params?.Search || undefined,
+
+        FromDate:
+          params?.FromDate || undefined,
+
+        ToDate:
+          params?.ToDate || undefined,
+
+        DepartmentId:
+          params?.DepartmentId || undefined,
+
+        Status:
+          params?.Status !== undefined
+            ? params.Status
+            : undefined,
+
+        SortBy:
+          params?.SortBy || undefined,
+
+        IsAscending:
+          params?.IsAscending !== undefined
+            ? params.IsAscending
+            : undefined,
+
+        PageNumber:
+          params?.PageNumber ?? 1,
+
+        PageSize:
+          params?.PageSize ?? 10,
+      },
+
+      headers: {
+        ...getAuthHeaders(),
+        Accept: "application/json",
+      },
+    }
+  );
+
+  return response.data;
+};
+
+/* =====================================================
+   GET ATTENDANCE BY ID
+===================================================== */
+
+export const getAttendanceById =
+  async (id: string) => {
+    const response = await axios.get(
+      `${BASE_URL}/Attendance/get-attendance-by-id/${id}`,
+      {
+        headers: {
+          ...getAuthHeaders(),
+          Accept: "application/json",
+        },
+      }
+    );
+
+    return response.data;
+  };
+
+/* =====================================================
+   ATTENDANCE LOGOUT
+===================================================== */
+
+export const attendanceLogout =
+  async () => {
+    const response = await axios.post(
+      `${BASE_URL}/Attendance/logout`,
+      {},
+      {
+        headers: {
+          ...getAuthHeaders(),
+          "Content-Type": "application/json",
+          Accept: "*/*",
+        },
+      }
+    );
+
+    return response.data;
+  };
+
+
+  /* =====================================================
+   HR DASHBOARD
+===================================================== */
+
+export interface GetHRDashboardParams {
+  AttendancePeriod?: string;
+  DepartmentId?: string;
+  RecentAttendanceCount?: number;
+  LateEmployeeCount?: number;
+}
+
+export const getHRDashboard = async (
+  params?: GetHRDashboardParams
+) => {
+  const response = await axios.get(
+    `${BASE_URL}/HRDashboard/page-data`,
+    {
+      params: {
+        AttendancePeriod:
+          params?.AttendancePeriod || undefined,
+
+        DepartmentId:
+          params?.DepartmentId || undefined,
+
+        RecentAttendanceCount:
+          params?.RecentAttendanceCount,
+
+        LateEmployeeCount:
+          params?.LateEmployeeCount,
+      },
+
+      headers: {
+        ...getAuthHeaders(),
+        Accept: "application/json",
+      },
+    }
+  );
+
+  console.log(
+    "HR DASHBOARD API RESPONSE:",
+    response.data
+  );
+
+  return response.data;
+};
+
+/* =====================================================
    DEFAULT EXPORT
 ===================================================== */
 
@@ -1145,4 +1280,16 @@ export default {
   addEmployee,
   updateEmployee,
   deleteEmployee,
+
+  getLeaveChatMessages,
+  sendLeaveChatMessage,
+  deleteLeaveChatMessage,
+
+  getAttendanceDashboard,
+  getAttendance,
+  getAttendanceById,
+  attendanceLogout,
+
+  
+  getHRDashboard,
 };

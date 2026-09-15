@@ -864,3 +864,28 @@ export const reviewLeave = async (
 
   return response.data;
 };
+
+// =====================================================
+// EMPLOYEE DASHBOARD
+// =====================================================
+
+export const getEmployeeDashboard = async () => {
+  const token = getToken();
+
+  console.log("Dashboard Token:", token);
+  console.log("Dashboard User ID:", localStorage.getItem("userId"));
+
+  const response = await axios.get(
+    `${BASE_URL}/employee/dashboard`,
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Accept: "*/*",
+      },
+    }
+  );
+
+  console.log("EMPLOYEE DASHBOARD RESPONSE:", response.data);
+
+  return response.data;
+};

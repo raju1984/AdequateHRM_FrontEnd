@@ -1,4 +1,3 @@
-
 import React, {
   FormEvent,
   useCallback,
@@ -15,6 +14,7 @@ import {
   getLeaveById,
   getLeaveTypes,
   getMyLeaves,
+  getEmployeeLeaves,
   updateLeave,
   type LeavePayload,
   type MyLeavesParams,
@@ -25,41 +25,12 @@ import {
 // =====================================================
 
 type LeaveStatus =
+  | "Pending"
   | "Approved"
-  | "Reject"
-  | "New";
-
-/*
- * NOTE: The backend's status enum wasn't visible in the Swagger
- * screenshots (only request query params were shown), so this mapping
- * is a best guess. Confirm the real values against your API and adjust
- * here if needed.
- */
-const STATUS_TO_CODE: Record<LeaveStatus, number> = {
-  New: 0,
-  Approved: 1,
-  Reject: 2,
-};
-
-const STATUS_FROM_CODE: Record<number, LeaveStatus> = {
-  0: "New",
-  1: "Approved",
-  2: "Reject",
-};
-
-/*
- * AvailType enum, also a best guess pending confirmation from the
- * backend team / a real response payload.
- */
-const AVAIL_TYPE_OPTIONS: { label: string; value: number }[] = [
-  { label: "First Half", value: 1 },
-  { label: "Second Half", value: 2 },
-  { label: "Full Day", value: 3 },
-];
-
-const availTypeLabel = (value: number): string =>
-  AVAIL_TYPE_OPTIONS.find((option) => option.value === value)?.label ||
-  "Full Day";
+  | "Rejected"
+  | "Declined"
+  | "New"
+  | string;
 
 interface LeaveTypeOption {
   id: string;
@@ -68,29 +39,56 @@ interface LeaveTypeOption {
 
 interface LeaveItem {
   id: string;
+
   leaveTypeId: string;
   leaveTypeName: string;
+
+  leaveReason: string;
+  reason: string;
+
   requestDate: string;
   from: string;
   fromRaw: string;
   to: string;
   toRaw: string;
+
   approvedBy: string;
   approvedByRole: string;
+
   days: string;
-  availType: number;
+
+  availType: string;
+
   status: LeaveStatus;
+
   employee?: string;
+  employeeRole?: string;
   department?: string;
+
   description: string;
+
+  attachmentPath: string | null;
+  attachmentFileName: string | null;
+
+  canEdit: boolean;
+  canDelete: boolean;
+
   raw: any;
+}
+
+interface LeaveBalance {
+  totalCredit: number;
+  used: number;
+  remaining: number;
+  monthlyAccrual: number;
+  carryForward: boolean;
 }
 
 interface LeaveForm {
   leaveTypeId: string;
   from: string;
   to: string;
-  availType: number;
+  availType: string;
   days: string;
   reasonText: string;
   attachment: File | null;
@@ -100,11 +98,17 @@ const emptyForm: LeaveForm = {
   leaveTypeId: "",
   from: "",
   to: "",
-  availType: 3,
+  availType: "FullDay",
   days: "",
   reasonText: "",
   attachment: null,
 };
+
+const AVAIL_TYPE_OPTIONS = [
+  { label: "First Half", value: "FirstHalf" },
+  { label: "Second Half", value: "SecondHalf" },
+  { label: "Full Day", value: "FullDay" },
+];
 
 // =====================================================
 // HELPERS
@@ -128,6 +132,30 @@ const pickField = (
   return fallback;
 };
 
+const safeText = (value: any, fallback = "-"): string => {
+  if (value === undefined || value === null || value === "") {
+    return fallback;
+  }
+
+  if (typeof value === "object") {
+    const nested =
+      value.name ??
+      value.fullName ??
+      value.displayName ??
+      value.employeeName ??
+      value.departmentName ??
+      value.designationName ??
+      value.title ??
+      value.value;
+
+    return nested !== undefined && nested !== null && nested !== ""
+      ? String(nested)
+      : fallback;
+  }
+
+  return String(value);
+};
+
 const formatDisplayDate = (value?: string) => {
   if (!value) return "-";
 
@@ -148,12 +176,6 @@ const formatDisplayDate = (value?: string) => {
 // DATE HELPERS
 // =====================================================
 
-/*
- * API date -> DD/MM/YYYY
- *
- * Example:
- * 2026-09-12T00:00:00 -> 12/09/2026
- */
 const formatDateForInput = (value?: string) => {
   if (!value) return "";
 
@@ -170,14 +192,6 @@ const formatDateForInput = (value?: string) => {
   return `${day}/${month}/${year}`;
 };
 
-/*
- * Automatically format user typing.
- *
- * Example:
- * 12       -> 12
- * 1209     -> 12/09
- * 12092026 -> 12/09/2026
- */
 const formatDateTyping = (value: string) => {
   const digits = value.replace(/\D/g, "").slice(0, 8);
 
@@ -195,9 +209,6 @@ const formatDateTyping = (value: string) => {
   )}/${digits.slice(4, 8)}`;
 };
 
-/*
- * DD/MM/YYYY -> YYYY-MM-DD
- */
 const parseDDMMYYYY = (value: string): string | null => {
   const match =
     /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(
@@ -218,12 +229,6 @@ const parseDDMMYYYY = (value: string): string | null => {
     day
   );
 
-  /*
-   * This also catches invalid dates like:
-   * 31/02/2026
-   * 32/01/2026
-   * 29/13/2026
-   */
   if (
     date.getFullYear() !== year ||
     date.getMonth() !== month - 1 ||
@@ -238,9 +243,6 @@ const parseDDMMYYYY = (value: string): string | null => {
   )}-${String(day).padStart(2, "0")}`;
 };
 
-/*
- * DD/MM/YYYY -> ISO datetime for API
- */
 const toIsoDateTime = (value: string) => {
   const isoDate = parseDDMMYYYY(value);
 
@@ -263,11 +265,59 @@ const toIsoDateTime = (value: string) => {
   return date.toISOString();
 };
 
+const isoToDDMMYYYY = (value: string) => {
+  if (!value) return "";
+
+  const [year, month, day] =
+    value.split("-");
+
+  if (!year || !month || !day) {
+    return "";
+  }
+
+  return `${day}/${month}/${year}`;
+};
+
+const ddmmyyyyToISO = (value: string) => {
+  return parseDDMMYYYY(value) || "";
+};
+
+const calculateDays = (
+  from: string,
+  to: string
+) => {
+  const fromIso = parseDDMMYYYY(from);
+  const toIso = parseDDMMYYYY(to);
+
+  if (!fromIso || !toIso) {
+    return "";
+  }
+
+  const fromDate = new Date(
+    `${fromIso}T00:00:00`
+  );
+
+  const toDate = new Date(
+    `${toIso}T00:00:00`
+  );
+
+  const diff =
+    Math.round(
+      (toDate.getTime() -
+        fromDate.getTime()) /
+        (1000 * 60 * 60 * 24)
+    ) + 1;
+
+  return diff > 0 ? String(diff) : "";
+};
+
 // =====================================================
 // LEAVE NORMALIZATION
 // =====================================================
 
-const normalizeLeave = (raw: any): LeaveItem => {
+const normalizeLeave = (
+  raw: any
+): LeaveItem => {
   const id = pickField(
     raw,
     ["id", "leaveId", "Id", "LeaveId"],
@@ -280,19 +330,38 @@ const normalizeLeave = (raw: any): LeaveItem => {
       "leaveTypeMasterId",
       "leaveTypeId",
       "LeaveTypeMasterId",
+      "LeaveTypeId",
     ],
     ""
   );
 
-  const leaveTypeName = pickField(
+  const leaveTypeRaw = pickField(
     raw,
     [
       "leaveTypeName",
       "leaveType",
       "LeaveTypeName",
       "leaveTypeMasterName",
+      "LeaveTypeMasterName",
     ],
     "Leave"
+  );
+
+  const leaveTypeName = safeText(leaveTypeRaw, "Leave");
+
+  const leaveReason = pickField(
+    raw,
+    [
+      "leaveReason",
+      "LeaveReason",
+    ],
+    ""
+  );
+
+  const reason = pickField(
+    raw,
+    ["reason", "Reason"],
+    ""
   );
 
   const fromRaw = pickField(
@@ -310,6 +379,7 @@ const normalizeLeave = (raw: any): LeaveItem => {
   const requestDateRaw = pickField(
     raw,
     [
+      "dateOfRequest",
       "requestDate",
       "createdOn",
       "createdDate",
@@ -338,50 +408,85 @@ const normalizeLeave = (raw: any): LeaveItem => {
     ""
   );
 
-  const availType = Number(
+  const availType = String(
     pickField(
       raw,
       ["availType", "AvailType"],
-      3
+      "FullDay"
     )
   );
 
-  const statusRaw = pickField(
-    raw,
-    ["status", "Status"],
-    0
+  const status = String(
+    pickField(
+      raw,
+      ["status", "Status"],
+      "Pending"
+    )
   );
 
-  const description = pickField(
-    raw,
-    ["reason", "description", "Reason"],
-    ""
-  );
-
-  const employee = pickField(
+  const employeeRaw = pickField(
     raw,
     [
       "employeeName",
       "userName",
       "employee",
       "EmployeeName",
+      "UserName",
+      "name",
+      "Name",
     ],
     undefined
   );
 
-  const department = pickField(
+  const employeeObject =
+    employeeRaw &&
+    typeof employeeRaw === "object"
+      ? employeeRaw
+      : null;
+
+  const employee =
+    employeeObject
+      ? safeText(employeeObject.name ?? employeeObject.employeeName, "-")
+      : employeeRaw !== undefined
+      ? safeText(employeeRaw, "-")
+      : undefined;
+
+  const employeeRole = employeeObject
+    ? safeText(
+        employeeObject.designation ??
+          employeeObject.designationName ??
+          employeeObject.role,
+        ""
+      )
+    : safeText(
+        pickField(raw, ["designation", "designationName", "role", "Role"], ""),
+        ""
+      );
+
+  const departmentRaw = pickField(
     raw,
     [
       "department",
       "departmentName",
       "Department",
+      "DepartmentName",
     ],
-    undefined
+    employeeObject?.department
   );
+
+  const department =
+    departmentRaw !== undefined
+      ? safeText(departmentRaw, "")
+      : undefined;
 
   let noOfDays = pickField(
     raw,
-    ["noOfDays", "days", "NoOfDays"],
+    [
+      "numberOfDays",
+      "noOfDays",
+      "days",
+      "NoOfDays",
+    ],
     undefined
   );
 
@@ -395,7 +500,8 @@ const normalizeLeave = (raw: any): LeaveItem => {
 
     const diffDays =
       Math.round(
-        (to.getTime() - from.getTime()) /
+        (to.getTime() -
+          from.getTime()) /
           (1000 * 60 * 60 * 24)
       ) + 1;
 
@@ -405,25 +511,86 @@ const normalizeLeave = (raw: any): LeaveItem => {
 
   return {
     id: String(id),
-    leaveTypeId: String(leaveTypeId),
-    leaveTypeName,
+
+    leaveTypeId: String(
+      leaveTypeId
+    ),
+
+    leaveTypeName: String(
+      leaveTypeName
+    ),
+
+    leaveReason: String(
+      leaveReason
+    ),
+
+    reason: String(reason),
+
     requestDate:
-      formatDisplayDate(requestDateRaw),
-    from: formatDisplayDate(fromRaw),
+      formatDisplayDate(
+        requestDateRaw
+      ),
+
+    from:
+      formatDisplayDate(fromRaw),
+
     fromRaw,
-    to: formatDisplayDate(toRaw),
+
+    to:
+      formatDisplayDate(toRaw),
+
     toRaw,
-    approvedBy,
-    approvedByRole,
+
+    approvedBy: String(
+      approvedBy
+    ),
+
+    approvedByRole: String(
+      approvedByRole
+    ),
+
     days: `${noOfDays ?? 1} Days`,
+
     availType,
-    status:
-      STATUS_FROM_CODE[
-        Number(statusRaw)
-      ] ?? "New",
+
+    status,
+
     employee,
+
     department,
-    description,
+
+    description: String(
+      reason || leaveReason || ""
+    ),
+
+    attachmentPath:
+      pickField(
+        raw,
+        ["attachmentPath"],
+        null
+      ),
+
+    attachmentFileName:
+      pickField(
+        raw,
+        ["attachmentFileName"],
+        null
+      ),
+
+    canEdit:
+      pickField(
+        raw,
+        ["canEdit"],
+        false
+      ) === true,
+
+    canDelete:
+      pickField(
+        raw,
+        ["canDelete"],
+        false
+      ) === true,
+
     raw,
   };
 };
@@ -447,69 +614,19 @@ const normalizeLeaveType = (
     )
   ),
 
-  /*
-   * IMPORTANT:
-   * API response uses "leaveName".
-   */
-  name: pickField(
-    raw,
-    [
-      "name",
-      "leaveName",
-      "leaveTypeName",
-      "Name",
-    ],
-    "Leave"
+  name: String(
+    pickField(
+      raw,
+      [
+        "name",
+        "leaveName",
+        "leaveTypeName",
+        "Name",
+      ],
+      "Leave"
+    )
   ),
 });
-
-// =====================================================
-// RESPONSE HELPERS
-// =====================================================
-
-const extractListAndTotal = (
-  payload: any
-) => {
-  const container =
-    payload?.data ?? payload;
-
-  const items =
-    container?.items ??
-    container?.data ??
-    (Array.isArray(container)
-      ? container
-      : []);
-
-  const total =
-    container?.totalCount ??
-    container?.totalRecords ??
-    container?.total ??
-    (Array.isArray(items)
-      ? items.length
-      : 0);
-
-  return {
-    items: Array.isArray(items)
-      ? items
-      : [],
-    total: Number(total) || 0,
-  };
-};
-
-const extractList = (payload: any) => {
-  const container =
-    payload?.data ?? payload;
-
-  const items =
-    container?.items ??
-    (Array.isArray(container)
-      ? container
-      : []);
-
-  return Array.isArray(items)
-    ? items
-    : [];
-};
 
 // =====================================================
 // COMPONENT
@@ -523,6 +640,9 @@ const Leave: React.FC = () => {
 
   const [totalCount, setTotalCount] =
     useState(0);
+
+  const [totalPagesFromApi, setTotalPagesFromApi] =
+    useState(1);
 
   const [leaveTypes, setLeaveTypes] =
     useState<LeaveTypeOption[]>([]);
@@ -589,6 +709,24 @@ const Leave: React.FC = () => {
   const [chatMessage, setChatMessage] =
     useState("");
 
+  const [earnedLeave, setEarnedLeave] =
+    useState<LeaveBalance>({
+      totalCredit: 0,
+      used: 0,
+      remaining: 0,
+      monthlyAccrual: 0,
+      carryForward: false,
+    });
+
+  const [generalLeave, setGeneralLeave] =
+    useState<LeaveBalance>({
+      totalCredit: 0,
+      used: 0,
+      remaining: 0,
+      monthlyAccrual: 0,
+      carryForward: false,
+    });
+
   // ===================================================
   // LOAD LEAVE TYPES
   // ===================================================
@@ -604,12 +742,24 @@ const Leave: React.FC = () => {
         const response =
           await getLeaveTypes(token);
 
-        const list =
-          extractList(response);
+        const container =
+          response?.data ?? response;
 
-        setLeaveTypes(
-          list.map(normalizeLeaveType)
-        );
+        const list =
+          container?.items ??
+          container?.leaveTypes ??
+          container?.data ??
+          (Array.isArray(container)
+            ? container
+            : []);
+
+        if (Array.isArray(list)) {
+          setLeaveTypes(
+            list.map(
+              normalizeLeaveType
+            )
+          );
+        }
       } catch (err) {
         console.error(
           "Failed to load leave types",
@@ -621,6 +771,10 @@ const Leave: React.FC = () => {
     loadLeaveTypes();
   }, []);
 
+  // ===================================================
+  // LEAVE TYPE MAP
+  // ===================================================
+
   const leaveTypeNameById =
     useMemo(() => {
       const map = new Map<
@@ -629,7 +783,10 @@ const Leave: React.FC = () => {
       >();
 
       leaveTypes.forEach((item) =>
-        map.set(item.id, item.name)
+        map.set(
+          item.id,
+          item.name
+        )
       );
 
       return map;
@@ -664,11 +821,19 @@ const Leave: React.FC = () => {
             leaveTypeFilter;
         }
 
+        /*
+         * IMPORTANT:
+         * The API response uses:
+         *
+         * Pending
+         * Approved
+         * Rejected
+         *
+         * Do not convert these to 0/1/2.
+         */
         if (statusFilter) {
           params.Status =
-            STATUS_TO_CODE[
-              statusFilter as LeaveStatus
-            ];
+            statusFilter;
         }
 
         if (sortBy) {
@@ -676,42 +841,127 @@ const Leave: React.FC = () => {
         }
 
         const response =
-          await getMyLeaves(
-            token,
-            params
-          );
+          activeTab === "employeeLeaves"
+            ? await getEmployeeLeaves(token, params)
+            : await getMyLeaves(token, params);
 
-        const {
-          items,
-          total,
-        } =
-          extractListAndTotal(
-            response
-          );
-
-        setLeaveData(
-          items.map(normalizeLeave)
+        console.log(
+          "LEAVE API RESPONSE:",
+          response
         );
 
-        setTotalCount(total);
+        /*
+         * ACTUAL API STRUCTURE:
+         *
+         * response.data.leaves
+         *
+         * response.data.pagination
+         */
+        const data =
+          response?.data?.data ??
+          response?.data ??
+          response ??
+          {};
+
+        const leaves =
+          Array.isArray(data?.leaves)
+            ? data.leaves
+            : Array.isArray(data?.items)
+            ? data.items
+            : [];
+
+        const pagination =
+          data?.pagination;
+
+        const normalizedLeaves = leaves.map((item: any) => {
+          const normalized = normalizeLeave(item);
+
+          if (
+            normalized.leaveTypeId &&
+            (!normalized.leaveTypeName || normalized.leaveTypeName === "Leave")
+          ) {
+            normalized.leaveTypeName =
+              leaveTypeNameById.get(normalized.leaveTypeId) ||
+              normalized.leaveTypeName;
+          }
+
+          if (!normalized.leaveReason) {
+            normalized.leaveReason =
+              normalized.reason ||
+              normalized.leaveTypeName ||
+              "-";
+          }
+
+          return normalized;
+        });
+
+        setLeaveData(normalizedLeaves);
+
+        setTotalCount(
+          Number(
+            pagination?.totalRecords
+          ) || 0
+        );
+
+        setTotalPagesFromApi(
+          Number(
+            pagination?.totalPages
+          ) || 1
+        );
+
+        /*
+         * Actual API leave balance.
+         */
+        if (data?.leaveBalance) {
+          setEarnedLeave(
+            data.leaveBalance
+              .earnedLeave ?? {
+              totalCredit: 0,
+              used: 0,
+              remaining: 0,
+              monthlyAccrual: 0,
+              carryForward: false,
+            }
+          );
+
+          setGeneralLeave(
+            data.leaveBalance
+              .generalLeave ?? {
+              totalCredit: 0,
+              used: 0,
+              remaining: 0,
+              monthlyAccrual: 0,
+              carryForward: false,
+            }
+          );
+        }
       } catch (err: any) {
+        console.error(
+          "GET LEAVES ERROR:",
+          err
+        );
+
         setError(
-          err?.response?.data?.message ||
+          err?.response?.data
+            ?.message ||
             err?.message ||
             "Failed to load leaves."
         );
 
         setLeaveData([]);
         setTotalCount(0);
+        setTotalPagesFromApi(1);
       } finally {
         setLoading(false);
       }
     }, [
       currentPage,
       rowsPerPage,
+      activeTab,
       leaveTypeFilter,
       statusFilter,
       sortBy,
+      leaveTypeNameById,
     ]);
 
   useEffect(() => {
@@ -719,7 +969,7 @@ const Leave: React.FC = () => {
   }, [fetchLeaves]);
 
   // ===================================================
-  // CLIENT-SIDE REFINEMENT
+  // CLIENT-SIDE SEARCH / APPROVED FILTER
   // ===================================================
 
   const filteredData = useMemo(() => {
@@ -731,7 +981,13 @@ const Leave: React.FC = () => {
     if (query) {
       data = data.filter(
         (item) =>
+          item.leaveReason
+            .toLowerCase()
+            .includes(query) ||
           item.leaveTypeName
+            .toLowerCase()
+            .includes(query) ||
+          item.reason
             .toLowerCase()
             .includes(query) ||
           item.employee
@@ -769,7 +1025,11 @@ const Leave: React.FC = () => {
             (item) =>
               item.approvedBy
           )
-          .filter(Boolean)
+          .filter(
+            (name) =>
+              name &&
+              name !== "-"
+          )
       );
 
       return Array.from(names);
@@ -777,9 +1037,7 @@ const Leave: React.FC = () => {
 
   const totalPages = Math.max(
     1,
-    Math.ceil(
-      totalCount / rowsPerPage
-    )
+    totalPagesFromApi
   );
 
   const safePage = Math.min(
@@ -832,7 +1090,7 @@ const Leave: React.FC = () => {
   };
 
   // ===================================================
-  // CHAT MODAL
+  // CHAT
   // ===================================================
 
   const openChatModal = (
@@ -849,7 +1107,7 @@ const Leave: React.FC = () => {
   };
 
   // ===================================================
-  // VIEW MODAL
+  // VIEW
   // ===================================================
 
   const openViewModal = async (
@@ -871,6 +1129,7 @@ const Leave: React.FC = () => {
         );
 
       const raw =
+        response?.data?.data ??
         response?.data ??
         response;
 
@@ -891,33 +1150,41 @@ const Leave: React.FC = () => {
   };
 
   // ===================================================
-  // EDIT MODAL
+  // EDIT
   // ===================================================
 
   const openEditModal = (
     item: LeaveItem
   ) => {
+    if (!item.canEdit) {
+      return;
+    }
+
     setSelectedLeave(item);
 
     setForm({
       leaveTypeId:
         item.leaveTypeId,
 
-      from: formatDateForInput(
-        item.fromRaw
-      ),
+      from:
+        formatDateForInput(
+          item.fromRaw
+        ),
 
-      to: formatDateForInput(
-        item.toRaw
-      ),
+      to:
+        formatDateForInput(
+          item.toRaw
+        ),
 
       availType:
-        item.availType,
+        item.availType ||
+        "FullDay",
 
-      days: item.days.replace(
-        /[^0-9]/g,
-        ""
-      ),
+      days:
+        item.days.replace(
+          /[^0-9]/g,
+          ""
+        ),
 
       reasonText:
         item.description,
@@ -947,6 +1214,9 @@ const Leave: React.FC = () => {
       !form.to ||
       !form.reasonText
     ) {
+      setError(
+        "Please fill all required fields."
+      );
       return;
     }
 
@@ -986,7 +1256,7 @@ const Leave: React.FC = () => {
             ),
 
           AvailType:
-            form.availType,
+            form.availType as any,
 
           Reason:
             form.reasonText,
@@ -1006,7 +1276,8 @@ const Leave: React.FC = () => {
       await fetchLeaves();
     } catch (err: any) {
       setError(
-        err?.response?.data?.message ||
+        err?.response?.data
+          ?.message ||
           err?.message ||
           "Failed to update leave."
       );
@@ -1016,12 +1287,16 @@ const Leave: React.FC = () => {
   };
 
   // ===================================================
-  // DELETE MODAL
+  // DELETE
   // ===================================================
 
   const openDeleteModal = (
     item: LeaveItem
   ) => {
+    if (!item.canDelete) {
+      return;
+    }
+
     setSelectedLeave(item);
     setShowDeleteModal(true);
   };
@@ -1069,7 +1344,8 @@ const Leave: React.FC = () => {
         await fetchLeaves();
       } catch (err: any) {
         setError(
-          err?.response?.data?.message ||
+          err?.response?.data
+            ?.message ||
             err?.message ||
             "Failed to delete leave."
         );
@@ -1079,7 +1355,7 @@ const Leave: React.FC = () => {
     };
 
   // ===================================================
-  // ADD MODAL
+  // ADD
   // ===================================================
 
   const handleAddLeave = async (
@@ -1093,6 +1369,9 @@ const Leave: React.FC = () => {
       !form.to ||
       !form.reasonText
     ) {
+      setError(
+        "Please fill all required fields."
+      );
       return;
     }
 
@@ -1132,7 +1411,7 @@ const Leave: React.FC = () => {
             ),
 
           AvailType:
-            form.availType,
+            form.availType as any,
 
           Reason:
             form.reasonText,
@@ -1153,7 +1432,8 @@ const Leave: React.FC = () => {
       await fetchLeaves();
     } catch (err: any) {
       setError(
-        err?.response?.data?.message ||
+        err?.response?.data
+          ?.message ||
           err?.message ||
           "Failed to add leave."
       );
@@ -1161,6 +1441,10 @@ const Leave: React.FC = () => {
       setSaving(false);
     }
   };
+
+  // =====================================================
+  // RENDER
+  // =====================================================
 
   return (
     <>
@@ -1347,12 +1631,6 @@ const Leave: React.FC = () => {
           background: #c39237;
           color: #fff;
           font-weight: 500;
-        }
-
-        .leave-tab-note {
-          margin: -8px 0 16px;
-          color: #8a94a3;
-          font-size: 12px;
         }
 
         .leave-error-banner {
@@ -2211,15 +2489,17 @@ const Leave: React.FC = () => {
 
       <div className="leave-page">
 
-        <div className="leave-page-header">
+        {/* =====================================================
+            HEADER
+        ===================================================== */}
 
+        <div className="leave-page-header">
           <div>
             <h1 className="leave-page-title">
               Leaves
             </h1>
 
             <div className="leave-breadcrumb">
-
               <button
                 type="button"
                 className="leave-home"
@@ -2246,6 +2526,7 @@ const Leave: React.FC = () => {
             type="button"
             className="add-leave-btn"
             onClick={() => {
+              setError(null);
               setForm(emptyForm);
               setShowAddModal(true);
             }}
@@ -2255,10 +2536,13 @@ const Leave: React.FC = () => {
           </button>
         </div>
 
+        {/* =====================================================
+            SUMMARY
+        ===================================================== */}
+
         <div className="leave-summary">
 
           <div className="leave-summary-card">
-
             <div className="summary-background grey" />
 
             <div className="summary-icon dark">
@@ -2270,16 +2554,16 @@ const Leave: React.FC = () => {
             </div>
 
             <div className="summary-count">
-              20
+              {earnedLeave.totalCredit}
             </div>
 
             <span className="summary-remaining grey">
-              Remaining Leaves : 12
+              Remaining Leaves :{" "}
+              {earnedLeave.remaining}
             </span>
           </div>
 
           <div className="leave-summary-card">
-
             <div className="summary-background blue" />
 
             <div className="summary-icon blue">
@@ -2291,21 +2575,26 @@ const Leave: React.FC = () => {
             </div>
 
             <div className="summary-count">
-              10
+              {generalLeave.totalCredit}
             </div>
 
             <span className="summary-remaining blue">
-              Remaining Leaves : 8
+              Remaining Leaves :{" "}
+              {generalLeave.remaining}
             </span>
           </div>
         </div>
 
-        <div className="leave-tabs">
+        {/* =====================================================
+            TABS
+        ===================================================== */}
 
+        <div className="leave-tabs">
           <button
             type="button"
             className={`leave-tab ${
-              activeTab === "myLeaves"
+              activeTab ===
+              "myLeaves"
                 ? "active"
                 : ""
             }`}
@@ -2321,7 +2610,8 @@ const Leave: React.FC = () => {
           <button
             type="button"
             className={`leave-tab ${
-              activeTab === "employeeLeaves"
+              activeTab ===
+              "employeeLeaves"
                 ? "active"
                 : ""
             }`}
@@ -2337,19 +2627,15 @@ const Leave: React.FC = () => {
           </button>
         </div>
 
-        {/* {activeTab ===
-          "employeeLeaves" && (
-          <div className="leave-tab-note">
-            Showing data from the "my-leaves" endpoint — wire in a
-            dedicated all-employees endpoint here once it's available.
-          </div>
-        )} */}
-
         {error && (
           <div className="leave-error-banner">
             {error}
           </div>
         )}
+
+        {/* =====================================================
+            LIST CARD
+        ===================================================== */}
 
         <div className="leave-list-card">
 
@@ -2372,7 +2658,9 @@ const Leave: React.FC = () => {
 
               <select
                 className="leave-filter leave-type-filter"
-                value={leaveTypeFilter}
+                value={
+                  leaveTypeFilter
+                }
                 onChange={(e) => {
                   setLeaveTypeFilter(
                     e.target.value
@@ -2398,7 +2686,9 @@ const Leave: React.FC = () => {
 
               <select
                 className="leave-filter leave-approved-filter"
-                value={approvedFilter}
+                value={
+                  approvedFilter
+                }
                 onChange={(e) => {
                   setApprovedFilter(
                     e.target.value
@@ -2424,7 +2714,9 @@ const Leave: React.FC = () => {
 
               <select
                 className="leave-filter leave-status-filter"
-                value={statusFilter}
+                value={
+                  statusFilter
+                }
                 onChange={(e) => {
                   setStatusFilter(
                     e.target.value
@@ -2436,16 +2728,20 @@ const Leave: React.FC = () => {
                   Select Status
                 </option>
 
+                <option value="Pending">
+                  Pending
+                </option>
+
                 <option value="Approved">
                   Approved
                 </option>
 
-                <option value="Reject">
-                  Reject
+                <option value="Rejected">
+                  Rejected
                 </option>
 
-                <option value="New">
-                  New
+                <option value="Declined">
+                  Declined
                 </option>
               </select>
 
@@ -2474,6 +2770,10 @@ const Leave: React.FC = () => {
             </div>
           </div>
 
+          {/* =====================================================
+              TOOLBAR
+          ===================================================== */}
+
           <div className="leave-toolbar">
 
             <div className="leave-row-control">
@@ -2484,7 +2784,9 @@ const Leave: React.FC = () => {
 
               <select
                 className="leave-row-select"
-                value={rowsPerPage}
+                value={
+                  rowsPerPage
+                }
                 onChange={(e) => {
                   setRowsPerPage(
                     Number(
@@ -2517,13 +2819,17 @@ const Leave: React.FC = () => {
               className="leave-search"
               placeholder="Search"
               value={search}
-              onChange={(e) => {
+              onChange={(e) =>
                 setSearch(
                   e.target.value
-                );
-              }}
+                )
+              }
             />
           </div>
+
+          {/* =====================================================
+              TABLE
+          ===================================================== */}
 
           <div className="leave-table-scroll">
 
@@ -2535,6 +2841,7 @@ const Leave: React.FC = () => {
                   : ""
               }`}
             >
+
               <thead>
                 <tr>
 
@@ -2615,6 +2922,7 @@ const Leave: React.FC = () => {
               </thead>
 
               <tbody>
+
                 {loading && (
                   <tr>
                     <td
@@ -2625,8 +2933,7 @@ const Leave: React.FC = () => {
                           : 9
                       }
                       style={{
-                        height:
-                          "90px",
+                        height: "90px",
                         textAlign:
                           "center",
                       }}
@@ -2676,15 +2983,16 @@ const Leave: React.FC = () => {
 
                         <td>
                           <div className="reason-box">
-                            {item.leaveTypeName}
+                            {item.leaveReason ||
+                              item.leaveTypeName ||
+                              "-"}
+
                             <i className="ti ti-info-circle" />
                           </div>
                         </td>
 
                         <td>
-                          {
-                            item.requestDate
-                          }
+                          {item.requestDate}
                         </td>
 
                         <td>
@@ -2698,10 +3006,12 @@ const Leave: React.FC = () => {
                         <td>
                           <UserDisplay
                             name={
-                              item.approvedBy
+                              item.approvedBy ||
+                              "-"
                             }
                             role={
-                              item.approvedByRole
+                              item.approvedByRole ||
+                              ""
                             }
                           />
                         </td>
@@ -2725,7 +3035,7 @@ const Leave: React.FC = () => {
                             {activeTab ===
                               "employeeLeaves" &&
                               item.status ===
-                                "New" && (
+                                "Pending" && (
                                 <>
                                   <button
                                     type="button"
@@ -2753,12 +3063,8 @@ const Leave: React.FC = () => {
                                 </>
                               )}
 
-                            {!(
-                              activeTab ===
-                                "employeeLeaves" &&
-                              item.status ===
-                                "New"
-                            ) && (
+                            {activeTab !==
+                              "employeeLeaves" && (
                               <button
                                 type="button"
                                 className="action-icon"
@@ -2786,34 +3092,39 @@ const Leave: React.FC = () => {
                               <i className="ti ti-eye" />
                             </button>
 
-                            <button
-                              type="button"
-                              className="action-icon"
-                              title="Edit"
-                              onClick={() =>
-                                openEditModal(
-                                  item
-                                )
-                              }
-                            >
-                              <i className="ti ti-edit" />
-                            </button>
+                            {item.canEdit && (
+                              <button
+                                type="button"
+                                className="action-icon"
+                                title="Edit"
+                                onClick={() =>
+                                  openEditModal(
+                                    item
+                                  )
+                                }
+                              >
+                                <i className="ti ti-edit" />
+                              </button>
+                            )}
 
-                            <button
-                              type="button"
-                              className="action-icon"
-                              title="Delete"
-                              disabled={
-                                saving
-                              }
-                              onClick={() =>
-                                openDeleteModal(
-                                  item
-                                )
-                              }
-                            >
-                              <i className="ti ti-trash" />
-                            </button>
+                            {item.canDelete && (
+                              <button
+                                type="button"
+                                className="action-icon"
+                                title="Delete"
+                                disabled={
+                                  saving
+                                }
+                                onClick={() =>
+                                  openDeleteModal(
+                                    item
+                                  )
+                                }
+                              >
+                                <i className="ti ti-trash" />
+                              </button>
+                            )}
+
                           </div>
                         </td>
                       </tr>
@@ -2842,9 +3153,14 @@ const Leave: React.FC = () => {
                       </td>
                     </tr>
                   )}
+
               </tbody>
             </table>
           </div>
+
+          {/* =====================================================
+              FOOTER
+          ===================================================== */}
 
           <div className="leave-footer">
 
@@ -2907,12 +3223,15 @@ const Leave: React.FC = () => {
               >
                 ›
               </button>
+
             </div>
           </div>
         </div>
       </div>
 
-      {/* CHAT MODAL */}
+      {/* =====================================================
+          CHAT MODAL
+      ===================================================== */}
 
       {showChatModal &&
         selectedLeave && (
@@ -2931,13 +3250,14 @@ const Leave: React.FC = () => {
                   <div>
                     <div className="chat-name">
                       {selectedLeave.employee ||
-                        "-"}
+                        "Employee"}
                     </div>
 
                     <div className="chat-online">
                       Online
                     </div>
                   </div>
+
                 </div>
 
                 <button
@@ -2949,6 +3269,7 @@ const Leave: React.FC = () => {
                 >
                   ×
                 </button>
+
               </div>
 
               <div className="chat-body">
@@ -2973,11 +3294,13 @@ const Leave: React.FC = () => {
 
                       08:00 AM
                     </div>
+
                   </div>
 
                   <span>
                     ⋮
                   </span>
+
                 </div>
 
                 <div className="chat-right-row">
@@ -2991,6 +3314,7 @@ const Leave: React.FC = () => {
                       </div>
 
                       <div className="chat-right-meta">
+
                         <span className="chat-check">
                           ✓✓
                         </span>
@@ -3003,11 +3327,15 @@ const Leave: React.FC = () => {
 
                         You
                       </div>
+
                     </div>
 
                     <div className="chat-avatar" />
+
                   </div>
+
                 </div>
+
               </div>
 
               <div className="chat-footer">
@@ -3036,13 +3364,17 @@ const Leave: React.FC = () => {
                   >
                     <i className="ti ti-send" />
                   </button>
+
                 </div>
+
               </div>
             </div>
           </div>
         )}
 
-      {/* VIEW MODAL */}
+      {/* =====================================================
+          VIEW MODAL
+      ===================================================== */}
 
       {showViewModal &&
         selectedLeave && (
@@ -3065,6 +3397,7 @@ const Leave: React.FC = () => {
                 >
                   ×
                 </button>
+
               </div>
 
               <div className="view-body">
@@ -3074,7 +3407,8 @@ const Leave: React.FC = () => {
                   <ViewItem
                     label="Leave Reason"
                     value={
-                      selectedLeave.leaveTypeName
+                      selectedLeave.leaveReason ||
+                      "-"
                     }
                   />
 
@@ -3094,9 +3428,15 @@ const Leave: React.FC = () => {
 
                   <ViewItem
                     label="Leave Type"
-                    value={availTypeLabel(
-                      selectedLeave.availType
-                    )}
+                    value={
+                      selectedLeave.availType ===
+                      "FirstHalf"
+                        ? "First Half"
+                        : selectedLeave.availType ===
+                          "SecondHalf"
+                        ? "Second Half"
+                        : "Full Day"
+                    }
                   />
 
                   <ViewItem
@@ -3117,17 +3457,36 @@ const Leave: React.FC = () => {
                   <ViewItem
                     label="Reason"
                     value={
-                      selectedLeave.description ||
+                      selectedLeave.reason ||
                       "-"
                     }
                   />
+
+                  <ViewItem
+                    label="Status"
+                    value={
+                      selectedLeave.status ||
+                      "-"
+                    }
+                  />
+
+                  <ViewItem
+                    label="Approved By"
+                    value={
+                      selectedLeave.approvedBy ||
+                      "-"
+                    }
+                  />
+
                 </div>
               </div>
             </div>
           </div>
         )}
 
-      {/* EDIT MODAL */}
+      {/* =====================================================
+          EDIT MODAL
+      ===================================================== */}
 
       {showEditModal &&
         selectedLeave && (
@@ -3150,6 +3509,7 @@ const Leave: React.FC = () => {
                 >
                   ×
                 </button>
+
               </div>
 
               <form
@@ -3163,6 +3523,7 @@ const Leave: React.FC = () => {
                   <div className="form-grid">
 
                     <div className="form-field form-full">
+
                       <label>
                         Leave Reason
                       </label>
@@ -3181,6 +3542,7 @@ const Leave: React.FC = () => {
                           )
                         }
                       >
+
                         <option value="">
                           Select Leave Reason
                         </option>
@@ -3201,31 +3563,48 @@ const Leave: React.FC = () => {
                             </option>
                           )
                         )}
+
                       </select>
                     </div>
 
-                    {/* FROM - DD/MM/YYYY */}
+                    <div className="form-field">
+
+                      <label>
+                        From
+                      </label>
+
+                      <input
+                        type="text"
+                        placeholder="DD/MM/YYYY"
+                        inputMode="numeric"
+                        maxLength={10}
+                        value={
+                          form.from
+                        }
+                        onChange={(e) => {
+                          const from =
+                            formatDateTyping(
+                              e.target.value
+                            );
+
+                          setForm(
+                            (prev) => ({
+                              ...prev,
+                              from,
+                              days:
+                                calculateDays(
+                                  from,
+                                  prev.to
+                                ),
+                            })
+                          );
+                        }}
+                      />
+
+                    </div>
 
                     <div className="form-field">
-  <label>From</label>
 
-  <div className="date-input-wrapper">
-    <input
-      type="date"
-      value={ddmmyyyyToISO(form.from) || ""}
-      onChange={(e) => {
-        setForm((prev) => ({
-          ...prev,
-          from: isoToDDMMYYYY(e.target.value),
-        }));
-      }}
-    />
-  </div>
-</div>
-
-                    {/* TO - DD/MM/YYYY */}
-
-                    <div className="form-field">
                       <label>
                         To
                       </label>
@@ -3238,24 +3617,30 @@ const Leave: React.FC = () => {
                         value={
                           form.to
                         }
-                        onChange={(
-                          e
-                        ) => {
+                        onChange={(e) => {
+                          const to =
+                            formatDateTyping(
+                              e.target.value
+                            );
+
                           setForm(
                             (prev) => ({
                               ...prev,
-                              to:
-                                formatDateTyping(
-                                  e.target
-                                    .value
+                              to,
+                              days:
+                                calculateDays(
+                                  prev.from,
+                                  to
                                 ),
                             })
                           );
                         }}
                       />
+
                     </div>
 
                     <div className="form-field">
+
                       <label>
                         Leave Type
                       </label>
@@ -3269,14 +3654,13 @@ const Leave: React.FC = () => {
                             (prev) => ({
                               ...prev,
                               availType:
-                                Number(
-                                  e.target
-                                    .value
-                                ),
+                                e.target
+                                  .value,
                             })
                           )
                         }
                       >
+
                         {AVAIL_TYPE_OPTIONS.map(
                           (option) => (
                             <option
@@ -3293,10 +3677,12 @@ const Leave: React.FC = () => {
                             </option>
                           )
                         )}
+
                       </select>
                     </div>
 
                     <div className="form-field">
+
                       <label>
                         No of Days
                       </label>
@@ -3313,9 +3699,11 @@ const Leave: React.FC = () => {
                             : ""
                         }
                       />
+
                     </div>
 
                     <div className="form-field form-full">
+
                       <label>
                         Upload File
                       </label>
@@ -3327,17 +3715,18 @@ const Leave: React.FC = () => {
                             (prev) => ({
                               ...prev,
                               attachment:
-                                e
-                                  .target
+                                e.target
                                   .files?.[0] ||
                                 null,
                             })
                           )
                         }
                       />
+
                     </div>
 
                     <div className="form-field form-full">
+
                       <label>
                         Reason
                       </label>
@@ -3357,7 +3746,9 @@ const Leave: React.FC = () => {
                           )
                         }
                       />
+
                     </div>
+
                   </div>
                 </div>
 
@@ -3384,13 +3775,17 @@ const Leave: React.FC = () => {
                       ? "Saving..."
                       : "Save Changes"}
                   </button>
+
                 </div>
+
               </form>
             </div>
           </div>
         )}
 
-      {/* DELETE MODAL */}
+      {/* =====================================================
+          DELETE MODAL
+      ===================================================== */}
 
       {showDeleteModal &&
         selectedLeave && (
@@ -3436,12 +3831,15 @@ const Leave: React.FC = () => {
                     ? "Deleting..."
                     : "Yes, Delete"}
                 </button>
+
               </div>
             </div>
           </div>
         )}
 
-      {/* ADD MODAL */}
+      {/* =====================================================
+          ADD MODAL
+      ===================================================== */}
 
       {showAddModal && (
         <div className="modal-overlay-custom">
@@ -3468,6 +3866,7 @@ const Leave: React.FC = () => {
               >
                 ×
               </button>
+
             </div>
 
             <form
@@ -3481,6 +3880,7 @@ const Leave: React.FC = () => {
                 <div className="form-grid">
 
                   <div className="form-field form-full">
+
                     <label>
                       Leave Reason
                     </label>
@@ -3499,6 +3899,7 @@ const Leave: React.FC = () => {
                         )
                       }
                     >
+
                       <option value="">
                         Select Leave Reason
                       </option>
@@ -3519,12 +3920,12 @@ const Leave: React.FC = () => {
                           </option>
                         )
                       )}
+
                     </select>
                   </div>
 
-                  {/* FROM - DD/MM/YYYY */}
-
                   <div className="form-field">
+
                     <label>
                       From
                     </label>
@@ -3537,24 +3938,30 @@ const Leave: React.FC = () => {
                       value={
                         form.from
                       }
-                      onChange={(e) =>
+                      onChange={(e) => {
+                        const from =
+                          formatDateTyping(
+                            e.target.value
+                          );
+
                         setForm(
                           (prev) => ({
                             ...prev,
-                            from:
-                              formatDateTyping(
-                                e.target
-                                  .value
+                            from,
+                            days:
+                              calculateDays(
+                                from,
+                                prev.to
                               ),
                           })
-                        )
-                      }
+                        );
+                      }}
                     />
+
                   </div>
 
-                  {/* TO - DD/MM/YYYY */}
-
                   <div className="form-field">
+
                     <label>
                       To
                     </label>
@@ -3567,22 +3974,30 @@ const Leave: React.FC = () => {
                       value={
                         form.to
                       }
-                      onChange={(e) =>
+                      onChange={(e) => {
+                        const to =
+                          formatDateTyping(
+                            e.target.value
+                          );
+
                         setForm(
                           (prev) => ({
                             ...prev,
-                            to:
-                              formatDateTyping(
-                                e.target
-                                  .value
+                            to,
+                            days:
+                              calculateDays(
+                                prev.from,
+                                to
                               ),
                           })
-                        )
-                      }
+                        );
+                      }}
                     />
+
                   </div>
 
                   <div className="form-field">
+
                     <label>
                       Leave Type
                     </label>
@@ -3596,14 +4011,13 @@ const Leave: React.FC = () => {
                           (prev) => ({
                             ...prev,
                             availType:
-                              Number(
-                                e.target
-                                  .value
-                              ),
+                              e.target
+                                .value,
                           })
                         )
                       }
                     >
+
                       {AVAIL_TYPE_OPTIONS.map(
                         (option) => (
                           <option
@@ -3620,33 +4034,33 @@ const Leave: React.FC = () => {
                           </option>
                         )
                       )}
+
                     </select>
                   </div>
 
                   <div className="form-field">
+
                     <label>
                       No of Days
                     </label>
 
                     <input
-                      type="number"
+                      type="text"
+                      readOnly
                       value={
                         form.days
-                      }
-                      onChange={(e) =>
-                        setForm(
-                          (prev) => ({
-                            ...prev,
-                            days:
-                              e.target
-                                .value,
-                          })
-                        )
+                          ? form.days.padStart(
+                              2,
+                              "0"
+                            )
+                          : ""
                       }
                     />
+
                   </div>
 
                   <div className="form-field form-full">
+
                     <label>
                       Upload File
                     </label>
@@ -3658,17 +4072,18 @@ const Leave: React.FC = () => {
                           (prev) => ({
                             ...prev,
                             attachment:
-                              e
-                                .target
+                              e.target
                                 .files?.[0] ||
                               null,
                           })
                         )
                       }
                     />
+
                   </div>
 
                   <div className="form-field form-full">
+
                     <label>
                       Reason
                     </label>
@@ -3688,7 +4103,9 @@ const Leave: React.FC = () => {
                         )
                       }
                     />
+
                   </div>
+
                 </div>
               </div>
 
@@ -3720,7 +4137,9 @@ const Leave: React.FC = () => {
                     ? "Saving..."
                     : "Add Leave"}
                 </button>
+
               </div>
+
             </form>
           </div>
         </div>
@@ -3728,6 +4147,10 @@ const Leave: React.FC = () => {
     </>
   );
 };
+
+// =====================================================
+// USER DISPLAY
+// =====================================================
 
 interface UserDisplayProps {
   name: string;
@@ -3752,32 +4175,48 @@ const UserDisplay = ({
           {role}
         </div>
       </div>
+
     </div>
   );
 };
+
+// =====================================================
+// STATUS BADGE
+// =====================================================
 
 const StatusBadge = ({
   status,
 }: {
   status: LeaveStatus;
 }) => {
+  const normalized =
+    String(status)
+      .toLowerCase();
+
+  const statusClass =
+    normalized === "approved"
+      ? "status-approved"
+      : normalized === "rejected" ||
+        normalized === "declined" ||
+        normalized === "reject"
+      ? "status-reject"
+      : "status-new";
+
   return (
     <span className="status-badge">
 
       <span
-        className={`status-dot-wrap ${
-          status === "Approved"
-            ? "status-approved"
-            : status === "Reject"
-            ? "status-reject"
-            : "status-new"
-        }`}
+        className={`status-dot-wrap ${statusClass}`}
       />
 
       {status}
     </span>
   );
 };
+
+// =====================================================
+// VIEW ITEM
+// =====================================================
 
 interface ViewItemProps {
   label: string;
@@ -3790,6 +4229,7 @@ const ViewItem = ({
 }: ViewItemProps) => {
   return (
     <div>
+
       <div className="view-label">
         {label}
       </div>
@@ -3797,9 +4237,9 @@ const ViewItem = ({
       <div className="view-value">
         {value}
       </div>
+
     </div>
   );
 };
 
 export default Leave;
-

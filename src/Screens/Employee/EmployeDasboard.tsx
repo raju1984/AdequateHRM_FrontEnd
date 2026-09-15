@@ -1,10 +1,353 @@
-import React, { useState } from "react";
+
+import React, { useEffect, useState } from "react";
 import userImg from "../../assets/img/profiles/avatar-27.jpg";
 
-const Dashboard = () => {
+import { getEmployeeDashboard } from "../../services/employeservices";
+
+const EmployeDasboard = () => {
   const [activeLeaveTab, setActiveLeaveTab] = useState<
     "earned" | "general"
   >("earned");
+
+  const [dashboardData, setDashboardData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  // =====================================================
+  // GET EMPLOYEE DASHBOARD
+  // =====================================================
+
+  useEffect(() => {
+    const fetchDashboard = async () => {
+      try {
+        setLoading(true);
+        setError("");
+
+        const response = await getEmployeeDashboard();
+
+        console.log(
+          "EMPLOYEE DASHBOARD API RESPONSE:",
+          response
+        );
+
+        setDashboardData(
+          response?.data ?? response
+        );
+      } catch (err: any) {
+        console.error(
+          "EMPLOYEE DASHBOARD API ERROR:",
+          err
+        );
+
+        setError(
+          err?.response?.data?.message ||
+            err?.message ||
+            "Failed to load dashboard."
+        );
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchDashboard();
+  }, []);
+
+  // =====================================================
+  // API DATA
+  // =====================================================
+
+  const data = dashboardData || {};
+
+  const employee =
+    data?.employee ||
+    data?.profile ||
+    data?.user ||
+    data?.Employee ||
+    data?.Profile ||
+    {};
+
+  const manager =
+    data?.reportingManager ||
+    data?.manager ||
+    data?.ReportingManager ||
+    {};
+
+  const leave =
+    data?.leave ||
+    data?.leaveDetails ||
+    data?.Leave ||
+    data?.LeaveDetails ||
+    {};
+
+  const earnedLeave =
+    leave?.earned ||
+    leave?.earnedLeave ||
+    leave?.EarnedLeave ||
+    {};
+
+  const generalLeave =
+    leave?.general ||
+    leave?.generalLeave ||
+    leave?.GeneralLeave ||
+    {};
+
+  const attendance =
+    data?.attendance ||
+    data?.todayAttendance ||
+    data?.Attendance ||
+    data?.TodayAttendance ||
+    {};
+
+  const workingHours =
+    data?.workingHours ||
+    data?.hours ||
+    data?.WorkingHours ||
+    {};
+
+  // =====================================================
+  // EMPLOYEE DETAILS
+  // =====================================================
+
+  const firstName =
+    employee?.firstName ||
+    employee?.FirstName ||
+    "";
+
+  const lastName =
+    employee?.lastName ||
+    employee?.LastName ||
+    "";
+
+  const employeeName =
+    employee?.name ||
+    employee?.Name ||
+    `${firstName} ${lastName}`.trim() ||
+    "Anjali Verma";
+
+  const employeeId =
+    employee?.employeeId ||
+    employee?.EmployeeId ||
+    employee?.employeeCode ||
+    employee?.EmployeeCode ||
+    employee?.id ||
+    employee?.Id ||
+    "EMP001";
+
+  const department =
+    employee?.departmentName ||
+    employee?.DepartmentName ||
+    employee?.department ||
+    employee?.Department ||
+    "HR";
+
+  const designation =
+    employee?.designationName ||
+    employee?.DesignationName ||
+    employee?.designation ||
+    employee?.Designation ||
+    "HR Manager";
+
+  const dateOfJoining =
+    employee?.dateOfJoining ||
+    employee?.DateOfJoining ||
+    employee?.joiningDate ||
+    employee?.JoiningDate ||
+    "2020-08-01";
+
+  const uan =
+    employee?.uan ||
+    employee?.UAN ||
+    employee?.uanNo ||
+    employee?.UANNo ||
+    "100234567890";
+
+  const phone =
+    employee?.phone ||
+    employee?.Phone ||
+    employee?.contactNumber ||
+    employee?.ContactNumber ||
+    "+91 9123456780";
+
+  const email =
+    employee?.email ||
+    employee?.Email ||
+    "anjali.verma@company.com";
+
+  const salary =
+    employee?.salary ||
+    employee?.Salary ||
+    "90,000";
+
+  const status =
+    employee?.status ||
+    employee?.Status ||
+    "Active";
+
+  const profilePicture =
+    employee?.profilePicture ||
+    employee?.ProfilePicture ||
+    employee?.profilePictureUrl ||
+    employee?.ProfilePictureUrl ||
+    userImg;
+
+  const reportingManagerName =
+    manager?.name ||
+    manager?.Name ||
+    `${manager?.firstName || manager?.FirstName || ""} ${
+      manager?.lastName || manager?.LastName || ""
+    }`.trim() ||
+    "Asher Miller";
+
+  // =====================================================
+  // LEAVE DATA
+  // =====================================================
+
+  const earnedTotal =
+    earnedLeave?.totalAllocated ??
+    earnedLeave?.TotalAllocated ??
+    earnedLeave?.allocated ??
+    20;
+
+  const earnedMonthly =
+    earnedLeave?.monthlyAccrual ??
+    earnedLeave?.MonthlyAccrual ??
+    1.5;
+
+  const earnedAvailed =
+    earnedLeave?.availed ??
+    earnedLeave?.Availed ??
+    8;
+
+  const earnedRemaining =
+    earnedLeave?.remaining ??
+    earnedLeave?.Remaining ??
+    12;
+
+  const earnedCarryForward =
+    earnedLeave?.carryForward ??
+    earnedLeave?.CarryForward ??
+    "Yes";
+
+  const generalTotal =
+    generalLeave?.totalAllocated ??
+    generalLeave?.TotalAllocated ??
+    generalLeave?.allocated ??
+    10;
+
+  const generalMonthly =
+    generalLeave?.monthlyAccrual ??
+    generalLeave?.MonthlyAccrual ??
+    1;
+
+  const generalAvailed =
+    generalLeave?.availed ??
+    generalLeave?.Availed ??
+    2;
+
+  const generalRemaining =
+    generalLeave?.remaining ??
+    generalLeave?.Remaining ??
+    8;
+
+  const generalCarryForward =
+    generalLeave?.carryForward ??
+    generalLeave?.CarryForward ??
+    "No (Lapses at Year End)";
+
+  // =====================================================
+  // ATTENDANCE DATA
+  // =====================================================
+
+  const attendanceDate =
+    attendance?.date ||
+    attendance?.Date ||
+    attendance?.attendanceDate ||
+    attendance?.AttendanceDate ||
+    "11 Mar 2025";
+
+  const punchIn =
+    attendance?.punchIn ||
+    attendance?.PunchIn ||
+    attendance?.checkIn ||
+    attendance?.CheckIn ||
+    "10.00 AM";
+
+  const punchOut =
+    attendance?.punchOut ||
+    attendance?.PunchOut ||
+    attendance?.checkOut ||
+    attendance?.CheckOut ||
+    "";
+
+  const totalHours =
+    attendance?.totalHours ||
+    attendance?.TotalHours ||
+    workingHours?.totalHours ||
+    workingHours?.TotalHours ||
+    "5:45:32";
+
+  const productionHours =
+    attendance?.productionHours ||
+    attendance?.ProductionHours ||
+    attendance?.productiveHours ||
+    attendance?.ProductiveHours ||
+    "3.45";
+
+  const todayHours =
+    workingHours?.today ||
+    workingHours?.todayHours ||
+    workingHours?.Today ||
+    workingHours?.TodayHours ||
+    "8.36";
+
+  const todayHoursTotal =
+    workingHours?.todayTotal ||
+    workingHours?.todayHoursTotal ||
+    workingHours?.TodayTotal ||
+    "9";
+
+  const weekHours =
+    workingHours?.week ||
+    workingHours?.weekHours ||
+    workingHours?.Week ||
+    workingHours?.WeekHours ||
+    "10";
+
+  const weekHoursTotal =
+    workingHours?.weekTotal ||
+    workingHours?.weekHoursTotal ||
+    workingHours?.WeekTotal ||
+    "40";
+
+  const monthHours =
+    workingHours?.month ||
+    workingHours?.monthHours ||
+    workingHours?.Month ||
+    workingHours?.MonthHours ||
+    "75";
+
+  const monthHoursTotal =
+    workingHours?.monthTotal ||
+    workingHours?.monthHoursTotal ||
+    workingHours?.MonthTotal ||
+    "98";
+
+  const yearHours =
+    workingHours?.year ||
+    workingHours?.yearHours ||
+    workingHours?.Year ||
+    workingHours?.YearHours ||
+    "1500";
+
+  const yearHoursTotal =
+    workingHours?.yearTotal ||
+    workingHours?.yearHoursTotal ||
+    workingHours?.YearTotal ||
+    "3285";
+
+  // =====================================================
+  // STAT CARD
+  // =====================================================
 
   const statCard = (
     icon: string,
@@ -81,7 +424,9 @@ const Dashboard = () => {
                   width: "20px",
                   height: "20px",
                   borderRadius: "50%",
-                  background: isUp ? "#12c75d" : "#e11d20",
+                  background: isUp
+                    ? "#12c75d"
+                    : "#e11d20",
                   color: "#fff",
                   display: "flex",
                   alignItems: "center",
@@ -99,6 +444,39 @@ const Dashboard = () => {
       </div>
     );
   };
+
+  // =====================================================
+  // LOADING
+  // =====================================================
+
+  if (loading) {
+    return (
+      <div
+        style={{
+          padding: "40px",
+          background: "#f7f8fa",
+          minHeight: "100vh",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        <div
+          style={{
+            fontSize: "16px",
+            fontWeight: 600,
+            color: "#16213e",
+          }}
+        >
+          Loading dashboard...
+        </div>
+      </div>
+    );
+  }
+
+  // =====================================================
+  // DASHBOARD
+  // =====================================================
 
   return (
     <div
@@ -143,6 +521,21 @@ const Dashboard = () => {
       </div>
 
       {/* =========================
+          API ERROR
+      ========================== */}
+
+      {error && (
+        <div
+          className="alert alert-danger mb-4"
+          style={{
+            borderRadius: "6px",
+          }}
+        >
+          {error}
+        </div>
+      )}
+
+      {/* =========================
           ALERT
       ========================== */}
 
@@ -157,8 +550,7 @@ const Dashboard = () => {
           position: "relative",
         }}
       >
-        Your Leave Request on “24th April 2024” has been
-        Approved!!!
+        Your Leave Request has been Approved!!!
 
         <button
           type="button"
@@ -183,7 +575,7 @@ const Dashboard = () => {
       </div>
 
       {/* =========================
-          PROFILE + LEAVE SECTION
+          PROFILE + LEAVE
       ========================== */}
 
       <div className="row">
@@ -217,12 +609,15 @@ const Dashboard = () => {
                   }}
                 >
                   <img
-                    src={userImg}
+                    src={profilePicture}
                     alt="Employee"
                     style={{
                       width: "100%",
                       height: "100%",
                       objectFit: "cover",
+                    }}
+                    onError={(e) => {
+                      e.currentTarget.src = userImg;
                     }}
                   />
                 </span>
@@ -235,7 +630,7 @@ const Dashboard = () => {
                       fontWeight: 700,
                     }}
                   >
-                    Anjali Verma
+                    {employeeName}
                   </h5>
 
                   <p
@@ -245,7 +640,7 @@ const Dashboard = () => {
                       fontSize: "12px",
                     }}
                   >
-                    HR Manager
+                    {designation}
                   </p>
                 </div>
 
@@ -257,7 +652,7 @@ const Dashboard = () => {
                       fontWeight: 700,
                     }}
                   >
-                    Asher Miller
+                    {reportingManagerName}
                   </h5>
 
                   <p
@@ -293,7 +688,7 @@ const Dashboard = () => {
                     </span>
 
                     <p className="mb-0 text-dark">
-                      EMP001
+                      {employeeId}
                     </p>
                   </div>
 
@@ -309,7 +704,7 @@ const Dashboard = () => {
                     </span>
 
                     <p className="mb-0 text-dark">
-                      Anjali Verma
+                      {employeeName}
                     </p>
                   </div>
 
@@ -325,7 +720,7 @@ const Dashboard = () => {
                     </span>
 
                     <p className="mb-0 text-dark">
-                      HR
+                      {department}
                     </p>
                   </div>
 
@@ -341,7 +736,7 @@ const Dashboard = () => {
                     </span>
 
                     <p className="mb-0 text-dark">
-                      HR Manager
+                      {designation}
                     </p>
                   </div>
 
@@ -357,7 +752,7 @@ const Dashboard = () => {
                     </span>
 
                     <p className="mb-0 text-dark">
-                      2020-08-01
+                      {dateOfJoining}
                     </p>
                   </div>
                 </div>
@@ -375,7 +770,7 @@ const Dashboard = () => {
                     </span>
 
                     <p className="mb-0 text-dark">
-                      100234567890
+                      {uan}
                     </p>
                   </div>
 
@@ -391,7 +786,7 @@ const Dashboard = () => {
                     </span>
 
                     <p className="mb-0 text-dark">
-                      +91 9123456780
+                      {phone}
                     </p>
                   </div>
 
@@ -412,7 +807,7 @@ const Dashboard = () => {
                         wordBreak: "break-word",
                       }}
                     >
-                      anjali.verma@company.com
+                      {email}
                     </p>
                   </div>
 
@@ -428,7 +823,7 @@ const Dashboard = () => {
                     </span>
 
                     <p className="mb-0 text-dark">
-                      90,000
+                      {salary}
                     </p>
                   </div>
 
@@ -444,7 +839,7 @@ const Dashboard = () => {
                     </span>
 
                     <p className="mb-0 text-dark">
-                      Active
+                      {status}
                     </p>
                   </div>
                 </div>
@@ -564,7 +959,7 @@ const Dashboard = () => {
                           Total Allocated
                         </span>
 
-                        <h4>20</h4>
+                        <h4>{earnedTotal}</h4>
                       </div>
                     </div>
 
@@ -579,7 +974,7 @@ const Dashboard = () => {
                           Monthly Accrual
                         </span>
 
-                        <h4>1.5</h4>
+                        <h4>{earnedMonthly}</h4>
                       </div>
                     </div>
 
@@ -594,7 +989,7 @@ const Dashboard = () => {
                           Availed
                         </span>
 
-                        <h4>8</h4>
+                        <h4>{earnedAvailed}</h4>
                       </div>
                     </div>
 
@@ -609,7 +1004,7 @@ const Dashboard = () => {
                           Remaining
                         </span>
 
-                        <h4>12</h4>
+                        <h4>{earnedRemaining}</h4>
                       </div>
                     </div>
 
@@ -624,7 +1019,7 @@ const Dashboard = () => {
                           Carry Forward
                         </span>
 
-                        <h4>Yes</h4>
+                        <h4>{earnedCarryForward}</h4>
                       </div>
                     </div>
                   </div>
@@ -667,7 +1062,7 @@ const Dashboard = () => {
                           Total Allocated
                         </span>
 
-                        <h4>10</h4>
+                        <h4>{generalTotal}</h4>
                       </div>
                     </div>
 
@@ -682,7 +1077,7 @@ const Dashboard = () => {
                           Monthly Accrual
                         </span>
 
-                        <h4>1</h4>
+                        <h4>{generalMonthly}</h4>
                       </div>
                     </div>
 
@@ -697,7 +1092,7 @@ const Dashboard = () => {
                           Availed
                         </span>
 
-                        <h4>2</h4>
+                        <h4>{generalAvailed}</h4>
                       </div>
                     </div>
 
@@ -712,7 +1107,7 @@ const Dashboard = () => {
                           Remaining
                         </span>
 
-                        <h4>08</h4>
+                        <h4>{generalRemaining}</h4>
                       </div>
                     </div>
 
@@ -727,9 +1122,7 @@ const Dashboard = () => {
                           Carry Forward
                         </span>
 
-                        <h4>
-                          No (Lapses at Year End)
-                        </h4>
+                        <h4>{generalCarryForward}</h4>
                       </div>
                     </div>
                   </div>
@@ -791,7 +1184,7 @@ const Dashboard = () => {
                   fontSize: "19px",
                 }}
               >
-                08:35 AM, 11 Mar 2025
+                {punchIn}, {attendanceDate}
               </h3>
 
               <div
@@ -823,7 +1216,7 @@ const Dashboard = () => {
                       fontWeight: 700,
                     }}
                   >
-                    5:45:32
+                    {totalHours}
                   </h4>
                 </div>
               </div>
@@ -840,7 +1233,7 @@ const Dashboard = () => {
                   marginBottom: "16px",
                 }}
               >
-                Production : 3.45 hrs
+                Production : {productionHours} hrs
               </div>
 
               <div
@@ -857,7 +1250,7 @@ const Dashboard = () => {
                   }}
                 ></i>
 
-                Punch In at 10.00 AM
+                Punch In at {punchIn}
               </div>
 
               <button
@@ -872,7 +1265,9 @@ const Dashboard = () => {
                   border: "none",
                 }}
               >
-                Punch Out
+                {punchOut
+                  ? "Punch In"
+                  : "Punch Out"}
               </button>
             </div>
           </div>
@@ -885,8 +1280,8 @@ const Dashboard = () => {
             {statCard(
               "ti ti-clock",
               "#c6963c",
-              "8.36",
-              "9",
+              String(todayHours),
+              String(todayHoursTotal),
               "Total Hours Today",
               "5% This Week",
               "up"
@@ -895,8 +1290,8 @@ const Dashboard = () => {
             {statCard(
               "ti ti-clock",
               "#111827",
-              "10",
-              "40",
+              String(weekHours),
+              String(weekHoursTotal),
               "Total Hours Week",
               "7% Last Week",
               "up"
@@ -905,8 +1300,8 @@ const Dashboard = () => {
             {statCard(
               "ti ti-calendar",
               "#0d6efd",
-              "75",
-              "98",
+              String(monthHours),
+              String(monthHoursTotal),
               "Total Hours Month",
               "8% Last Month",
               "down"
@@ -915,8 +1310,8 @@ const Dashboard = () => {
             {statCard(
               "ti ti-briefcase",
               "#ff3f9f",
-              "1500",
-              "3285",
+              String(yearHours),
+              String(yearHoursTotal),
               "Total Hours Year",
               "6% Last Year",
               "down"
@@ -951,7 +1346,7 @@ const Dashboard = () => {
                           color: "#16213e",
                         }}
                       >
-                        10 Oct, 2025
+                        {attendanceDate}
                       </h3>
                     </div>
 
@@ -978,7 +1373,7 @@ const Dashboard = () => {
                           color: "#16213e",
                         }}
                       >
-                        12h 36m
+                        {todayHours}h
                       </h3>
                     </div>
 
@@ -1005,7 +1400,7 @@ const Dashboard = () => {
                           color: "#16213e",
                         }}
                       >
-                        08h 36m
+                        {productionHours} hrs
                       </h3>
                     </div>
 
@@ -1176,8 +1571,6 @@ const Dashboard = () => {
               border: "none",
             }}
           >
-            {/* HEADER */}
-
             <div
               className="modal-header"
               style={{
@@ -1203,8 +1596,6 @@ const Dashboard = () => {
               ></button>
             </div>
 
-            {/* BODY */}
-
             <div
               className="modal-body"
               style={{
@@ -1212,8 +1603,6 @@ const Dashboard = () => {
               }}
             >
               <div className="row">
-                {/* LEAVE REASON */}
-
                 <div className="col-md-12 mb-3">
                   <label
                     className="form-label"
@@ -1246,8 +1635,6 @@ const Dashboard = () => {
                   </select>
                 </div>
 
-                {/* FROM */}
-
                 <div className="col-md-6 mb-3">
                   <label
                     className="form-label"
@@ -1268,8 +1655,6 @@ const Dashboard = () => {
                   />
                 </div>
 
-                {/* TO */}
-
                 <div className="col-md-6 mb-3">
                   <label
                     className="form-label"
@@ -1289,8 +1674,6 @@ const Dashboard = () => {
                     }}
                   />
                 </div>
-
-                {/* LEAVE TYPE */}
 
                 <div className="col-md-6 mb-3">
                   <label
@@ -1320,8 +1703,6 @@ const Dashboard = () => {
                   </select>
                 </div>
 
-                {/* NO OF DAYS */}
-
                 <div className="col-md-6 mb-3">
                   <label
                     className="form-label"
@@ -1343,8 +1724,6 @@ const Dashboard = () => {
                   />
                 </div>
 
-                {/* UPLOAD FILE */}
-
                 <div className="col-md-12 mb-3">
                   <label
                     className="form-label"
@@ -1365,8 +1744,6 @@ const Dashboard = () => {
                     }}
                   />
                 </div>
-
-                {/* REASON */}
 
                 <div className="col-md-12 mb-3">
                   <label
@@ -1390,8 +1767,6 @@ const Dashboard = () => {
                 </div>
               </div>
             </div>
-
-            {/* FOOTER */}
 
             <div
               className="modal-footer"
@@ -1438,4 +1813,5 @@ const Dashboard = () => {
   );
 };
 
-export default Dashboard;
+export default EmployeDasboard;
+

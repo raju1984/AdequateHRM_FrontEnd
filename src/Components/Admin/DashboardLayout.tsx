@@ -15,11 +15,17 @@ const DashboardLayout = ({ children }: any) => {
 
         <Header />
 
-        <div className="page-content">
+      <div
+  className="page-content"
+  style={{
+    paddingTop: "10px",
+    marginTop: 0,
+  }}
+>
           {children}
         </div>
       </div>
-    </div>
+    // </div>
   );
 };
 

@@ -2080,6 +2080,83 @@ export const updateAdminAttendance =
     }
   };
 
+
+  /* =====================================================
+   ADMIN DASHBOARD
+===================================================== */
+
+export interface GetAdminDashboardParams {
+  AttendancePeriod?: string;
+  DepartmentPeriod?: string;
+  DepartmentId?: string;
+  ClockInOutCount?: number;
+  LateEmployeeCount?: number;
+}
+
+/* =====================================================
+   GET ADMIN DASHBOARD
+   GET /api/AdminDashboard/page-data
+===================================================== */
+
+export const getAdminDashboard = async (
+  params?: GetAdminDashboardParams
+) => {
+  const token = getToken();
+
+  try {
+    const response = await axios.get(
+      `${BASE_URL}/AdminDashboard/page-data`,
+      {
+        params: {
+          AttendancePeriod:
+            params?.AttendancePeriod ||
+            undefined,
+
+          DepartmentPeriod:
+            params?.DepartmentPeriod ||
+            undefined,
+
+          DepartmentId:
+            params?.DepartmentId ||
+            undefined,
+
+          ClockInOutCount:
+            params?.ClockInOutCount,
+
+          LateEmployeeCount:
+            params?.LateEmployeeCount,
+        },
+
+        headers: {
+          ...getAuthHeaders(token),
+          Accept: "application/json",
+        },
+      }
+    );
+
+    console.log(
+      "GET ADMIN DASHBOARD RESPONSE:",
+      response.data
+    );
+
+    return response.data;
+  } catch (error) {
+    console.error(
+      "GET ADMIN DASHBOARD ERROR:",
+      error
+    );
+
+    console.error(
+      "GET ADMIN DASHBOARD ERROR RESPONSE:",
+      (error as AxiosError)?.response?.data
+    );
+
+    throw new Error(
+      getApiErrorMessage(error)
+    );
+  }
+};
+
 /* =====================================================
    DEFAULT EXPORT
 ===================================================== */
@@ -2138,7 +2215,11 @@ export default {
   sendLeaveChatMessage,
   deleteLeaveChatMessage,
 
+/* ADMIN DASHBOARD */
+getAdminDashboard,
+
   /* ADMIN ATTENDANCE */
   getAdminAttendance,
   updateAdminAttendance,
 };
+

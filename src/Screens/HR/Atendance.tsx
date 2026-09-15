@@ -1,4 +1,10 @@
-import React, { useMemo, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
+
 import {
   Clock3,
   ChevronDown,
@@ -11,154 +17,33 @@ import {
   CalendarDays,
   X,
 } from "lucide-react";
+
 import { useNavigate } from "react-router-dom";
 
-interface AttendanceType {
-  id: number;
-  name: string;
-  team: string;
-  status: "Present" | "Absent" | "Late";
-  checkIn: string;
-  checkOut: string;
-  break: string;
-  late: string;
-  hours: string;
-  hoursType?: "green" | "red" | "blue";
-  date?: string;
-}
+import {
+  getAttendance,
+  getAttendanceDashboard,
+  getAttendanceById,
+  AttendanceStatus,
+} from "../../services/hrservices";
 
-const initialData: AttendanceType[] = [
-  {
-    id: 1,
-    name: "Anthony Lewis",
-    team: "UI/UX Team",
-    status: "Present",
-    checkIn: "09:00 AM",
-    checkOut: "06:45 PM",
-    break: "30 Min",
-    late: "32 Min",
-    hours: "08:55 AM",
-    hoursType: "green",
-    date: "",
-  },
-  {
-    id: 2,
-    name: "Brian Villalobos",
-    team: "Development",
-    status: "Present",
-    checkIn: "09:00 AM",
-    checkOut: "06:12 PM",
-    break: "20 Min",
-    late: "20 Min",
-    hours: "07:54 Hrs",
-    hoursType: "red",
-    date: "",
-  },
-  {
-    id: 3,
-    name: "Harvey Smith",
-    team: "HR",
-    status: "Present",
-    checkIn: "09:00 AM",
-    checkOut: "06:13 PM",
-    break: "50 Min",
-    late: "23 Min",
-    hours: "08:45 Hrs",
-    hoursType: "green",
-    date: "",
-  },
-  {
-    id: 4,
-    name: "Stephan Peralt",
-    team: "Management",
-    status: "Present",
-    checkIn: "09:00 AM",
-    checkOut: "06:23 PM",
-    break: "41 Min",
-    late: "50 Min",
-    hours: "08:35 Hrs",
-    hoursType: "green",
-    date: "",
-  },
-  {
-    id: 5,
-    name: "Doglas Martini",
-    team: "Development",
-    status: "Present",
-    checkIn: "09:00 AM",
-    checkOut: "06:43 PM",
-    break: "23 Min",
-    late: "10 Min",
-    hours: "08:22 Hrs",
-    hoursType: "green",
-    date: "",
-  },
-  {
-    id: 6,
-    name: "Linda Ray",
-    team: "UI/UX Team",
-    status: "Present",
-    checkIn: "09:00 AM",
-    checkOut: "07:15 PM",
-    break: "03 Min",
-    late: "30 Min",
-    hours: "08:32 Hrs",
-    hoursType: "green",
-    date: "",
-  },
-  {
-    id: 7,
-    name: "Elliot Murray",
-    team: "UI/UX Team",
-    status: "Present",
-    checkIn: "09:00 AM",
-    checkOut: "07:13 PM",
-    break: "32 Min",
-    late: "41 Min",
-    hours: "09:15 Hrs",
-    hoursType: "blue",
-    date: "",
-  },
-  {
-    id: 8,
-    name: "Rebecca Smith",
-    team: "UI/UX Team",
-    status: "Present",
-    checkIn: "09:00 AM",
-    checkOut: "09:17 PM",
-    break: "14 Min",
-    late: "12 Min",
-    hours: "09:25 Hrs",
-    hoursType: "green",
-    date: "",
-  },
-  {
-    id: 9,
-    name: "Connie Waters",
-    team: "Management",
-    status: "Present",
-    checkIn: "09:00 AM",
-    checkOut: "08:15 PM",
-    break: "12 Min",
-    late: "03 Min",
-    hours: "08:35 Hrs",
-    hoursType: "green",
-    date: "",
-  },
-  {
-    id: 10,
-    name: "Lori Broaddus",
-    team: "Finance",
-    status: "Absent",
-    checkIn: "-",
-    checkOut: "-",
-    break: "-",
-    late: "-",
-    hours: "00:00 Hrs",
-    hoursType: "red",
-    date: "",
-  },
-];
+/* =====================================================
+   TYPES
+===================================================== */
+
+interface AttendanceType {
+  id: string;
+  employeeId: string;
+  employeeName: string;
+  departmentName: string;
+  attendanceDate: string;
+  checkInTime: string | null;
+  checkOutTime: string | null;
+  breakInMinutes: number;
+  lateInMinutes: number;
+  totalProductionHours: number;
+  status: number;
+}
 
 interface EditFormType {
   date: string;
@@ -167,240 +52,1379 @@ interface EditFormType {
   break: string;
   late: string;
   hours: string;
-  status: "Present" | "Absent" | "Late";
+  status: string;
 }
 
+interface AttendanceApiData {
+  attendanceList: AttendanceType[];
+  totalRecords: number;
+  totalPages: number;
+  currentPage: number;
+  pageSize: number;
+}
+
+/* =====================================================
+   DATE HELPERS
+===================================================== */
+
+const toUTCDateTime = (
+  date: string,
+  endOfDay = false
+): string | undefined => {
+  if (!date) {
+    return undefined;
+  }
+
+  const utcDate = new Date(
+    `${date}T${
+      endOfDay
+        ? "23:59:59.999"
+        : "00:00:00.000"
+    }Z`
+  );
+
+  if (Number.isNaN(utcDate.getTime())) {
+    return undefined;
+  }
+
+  return utcDate.toISOString();
+};
+
+const getUTCDateOnly = (
+  date: Date
+): string => {
+  const year =
+    date.getUTCFullYear();
+
+  const month = String(
+    date.getUTCMonth() + 1
+  ).padStart(2, "0");
+
+  const day = String(
+    date.getUTCDate()
+  ).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+};
+
+/* =====================================================
+   VALUE HELPER
+===================================================== */
+
+const getValue = (
+  item: any,
+  keys: string[],
+  fallback: any = ""
+) => {
+  for (const key of keys) {
+    if (
+      item &&
+      item[key] !== undefined &&
+      item[key] !== null &&
+      item[key] !== ""
+    ) {
+      return item[key];
+    }
+  }
+
+  return fallback;
+};
+
+/* =====================================================
+   STATUS
+===================================================== */
+
+/*
+  IMPORTANT:
+
+  Backend currently returns numeric status.
+
+  Based on your existing AttendanceStatus enum:
+  
+  0 = Present
+  1 = Absent
+  2 = Late
+
+  If Swagger/backend enum is different,
+  change ONLY these values in hrservices.tsx.
+*/
+
+const getStatusLabel = (
+  status: number
+): string => {
+  if (
+    status === AttendanceStatus.Present
+  ) {
+    return "Present";
+  }
+
+  if (
+    status === AttendanceStatus.Absent
+  ) {
+    return "Absent";
+  }
+
+  if (
+    status === AttendanceStatus.Late
+  ) {
+    return "Late";
+  }
+
+  return `Status ${status}`;
+};
+
+/* =====================================================
+   TIME FORMAT
+===================================================== */
+
+const formatTime = (
+  value: string | null
+): string => {
+  if (!value) {
+    return "-";
+  }
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  return date.toLocaleTimeString(
+    "en-IN",
+    {
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: true,
+    }
+  );
+};
+
+/* =====================================================
+   DATE FORMAT
+===================================================== */
+
+const formatDate = (
+  value: string | null
+): string => {
+  if (!value) {
+    return "-";
+  }
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  return date.toLocaleDateString(
+    "en-IN",
+    {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      timeZone: "UTC",
+    }
+  );
+};
+
+/* =====================================================
+   BREAK FORMAT
+===================================================== */
+
+const formatMinutes = (
+  value: number
+): string => {
+  if (
+    value === undefined ||
+    value === null
+  ) {
+    return "-";
+  }
+
+  return `${value} min`;
+};
+
+/* =====================================================
+   PRODUCTION HOURS
+===================================================== */
+
+const formatProductionHours = (
+  value: number
+): string => {
+  if (
+    value === undefined ||
+    value === null
+  ) {
+    return "0 Hrs";
+  }
+
+  return `${value} Hrs`;
+};
+
+/* =====================================================
+   RESPONSE DATA
+===================================================== */
+
+const getAttendanceResponseData = (
+  response: any
+): AttendanceApiData => {
+  const data =
+    response?.data ||
+    response?.Data ||
+    {};
+
+  return {
+    attendanceList:
+      Array.isArray(
+        data.attendanceList
+      )
+        ? data.attendanceList
+        : [],
+
+    totalRecords:
+      Number(
+        data.totalRecords
+      ) || 0,
+
+    totalPages:
+      Number(
+        data.totalPages
+      ) || 1,
+
+    currentPage:
+      Number(
+        data.currentPage
+      ) || 1,
+
+    pageSize:
+      Number(
+        data.pageSize
+      ) || 10,
+  };
+};
+
+/* =====================================================
+   COMPONENT
+===================================================== */
+
 const Atendance: React.FC = () => {
-  const navigate = useNavigate();
+  const navigate =
+    useNavigate();
 
-  const [attendanceData, setAttendanceData] =
-    useState<AttendanceType[]>(initialData);
+  /* ===================================================
+     DATA
+  =================================================== */
 
-  const [rowsPerPage, setRowsPerPage] = useState(10);
-  const [search, setSearch] = useState("");
+  const [
+    attendanceData,
+    setAttendanceData,
+  ] = useState<
+    AttendanceType[]
+  >([]);
 
-  const [statusFilter, setStatusFilter] = useState("Select Status");
-  const [departmentFilter, setDepartmentFilter] =
-    useState("Department");
+  const [
+    loading,
+    setLoading,
+  ] = useState(false);
 
-  const [dateFilter, setDateFilter] = useState(
+  const [
+    error,
+    setError,
+  ] = useState("");
+
+  /* ===================================================
+     PAGINATION
+  =================================================== */
+
+  const [
+    rowsPerPage,
+    setRowsPerPage,
+  ] = useState(10);
+
+  const [
+    currentPage,
+    setCurrentPage,
+  ] = useState(1);
+
+  const [
+    totalRecords,
+    setTotalRecords,
+  ] = useState(0);
+
+  const [
+    totalPagesFromApi,
+    setTotalPagesFromApi,
+  ] = useState(1);
+
+  /* ===================================================
+     FILTERS
+  =================================================== */
+
+  const [
+    search,
+    setSearch,
+  ] = useState("");
+
+  const [
+    statusFilter,
+    setStatusFilter,
+  ] = useState(
+    "Select Status"
+  );
+
+  const [
+    departmentFilter,
+    setDepartmentFilter,
+  ] = useState(
+    "Department"
+  );
+
+  const [
+    dateFilter,
+    setDateFilter,
+  ] = useState(
     "08/27/2026 - 09/02/2026"
   );
 
-  const [sortFilter, setSortFilter] = useState(
+  const [
+    sortFilter,
+    setSortFilter,
+  ] = useState(
     "Sort By : Last 7 Days"
   );
 
-  const [selectedRows, setSelectedRows] = useState<number[]>([]);
+  const [
+    selectedRows,
+    setSelectedRows,
+  ] = useState<string[]>(
+    []
+  );
 
-  /* =========================
-     EDIT MODAL STATES
-  ========================= */
+  /* ===================================================
+     DASHBOARD
+  =================================================== */
 
-  const [showEditModal, setShowEditModal] = useState(false);
+  const [
+    dashboardData,
+    setDashboardData,
+  ] = useState<any>(null);
 
-  const [editingAttendance, setEditingAttendance] =
-    useState<AttendanceType | null>(null);
+  const [
+    dashboardLoading,
+    setDashboardLoading,
+  ] = useState(false);
 
-  const [editForm, setEditForm] = useState<EditFormType>({
+  /* ===================================================
+     DETAIL MODAL
+  =================================================== */
+
+  const [
+    showEditModal,
+    setShowEditModal,
+  ] = useState(false);
+
+  const [
+    editingAttendance,
+    setEditingAttendance,
+  ] = useState<
+    AttendanceType | null
+  >(null);
+
+  const [
+    editForm,
+    setEditForm,
+  ] = useState<EditFormType>({
     date: "",
     checkIn: "",
     checkOut: "",
     break: "",
     late: "",
     hours: "",
-    status: "Present",
+    status: "",
   });
 
-  /* =========================
-     FILTER DATA
-  ========================= */
+  const [
+    editLoading,
+    setEditLoading,
+  ] = useState(false);
 
-  const filteredData = useMemo(() => {
-    let data = [...attendanceData];
+  /* ===================================================
+     DATE PARAMS
+  =================================================== */
 
-    if (search.trim()) {
-      data = data.filter(
-        (item) =>
-          item.name
-            .toLowerCase()
-            .includes(search.toLowerCase()) ||
-          item.team
-            .toLowerCase()
-            .includes(search.toLowerCase())
-      );
-    }
+  const getDateParams =
+    useCallback(() => {
+      if (
+        dateFilter ===
+        "08/27/2026 - 09/02/2026"
+      ) {
+        return {
+          FromDate:
+            toUTCDateTime(
+              "2026-08-27",
+              false
+            ),
 
-    if (statusFilter !== "Select Status") {
-      data = data.filter(
-        (item) => item.status === statusFilter
-      );
-    }
+          ToDate:
+            toUTCDateTime(
+              "2026-09-02",
+              true
+            ),
+        };
+      }
 
-    if (departmentFilter !== "Department") {
-      data = data.filter(
-        (item) => item.team === departmentFilter
-      );
-    }
+      if (
+        dateFilter ===
+        "09/02/2026"
+      ) {
+        return {
+          FromDate:
+            toUTCDateTime(
+              "2026-09-02",
+              false
+            ),
 
-    if (sortFilter === "Ascending") {
-      data.sort((a, b) =>
-        a.name.localeCompare(b.name)
-      );
-    }
+          ToDate:
+            toUTCDateTime(
+              "2026-09-02",
+              true
+            ),
+        };
+      }
 
-    if (sortFilter === "Descending") {
-      data.sort((a, b) =>
-        b.name.localeCompare(a.name)
-      );
-    }
+      if (
+        dateFilter ===
+        "09/01/2026"
+      ) {
+        return {
+          FromDate:
+            toUTCDateTime(
+              "2026-09-01",
+              false
+            ),
 
-    return data;
+          ToDate:
+            toUTCDateTime(
+              "2026-09-01",
+              true
+            ),
+        };
+      }
+
+      if (
+        dateFilter ===
+        "Last 7 Days"
+      ) {
+        const today =
+          new Date();
+
+        const toDate =
+          getUTCDateOnly(
+            today
+          );
+
+        const from =
+          new Date();
+
+        from.setUTCDate(
+          from.getUTCDate() - 6
+        );
+
+        const fromDate =
+          getUTCDateOnly(
+            from
+          );
+
+        return {
+          FromDate:
+            toUTCDateTime(
+              fromDate,
+              false
+            ),
+
+          ToDate:
+            toUTCDateTime(
+              toDate,
+              true
+            ),
+        };
+      }
+
+      if (
+        dateFilter ===
+        "Last 30 Days"
+      ) {
+        const today =
+          new Date();
+
+        const toDate =
+          getUTCDateOnly(
+            today
+          );
+
+        const from =
+          new Date();
+
+        from.setUTCDate(
+          from.getUTCDate() - 29
+        );
+
+        const fromDate =
+          getUTCDateOnly(
+            from
+          );
+
+        return {
+          FromDate:
+            toUTCDateTime(
+              fromDate,
+              false
+            ),
+
+          ToDate:
+            toUTCDateTime(
+              toDate,
+              true
+            ),
+        };
+      }
+
+      if (
+        dateFilter ===
+        "This Month"
+      ) {
+        const now =
+          new Date();
+
+        const year =
+          now.getUTCFullYear();
+
+        const month =
+          String(
+            now.getUTCMonth() + 1
+          ).padStart(2, "0");
+
+        const firstDay =
+          `${year}-${month}-01`;
+
+        const today =
+          getUTCDateOnly(
+            now
+          );
+
+        return {
+          FromDate:
+            toUTCDateTime(
+              firstDay,
+              false
+            ),
+
+          ToDate:
+            toUTCDateTime(
+              today,
+              true
+            ),
+        };
+      }
+
+      return {
+        FromDate: undefined,
+        ToDate: undefined,
+      };
+    }, [dateFilter]);
+
+  /* ===================================================
+     SORT PARAMS
+  =================================================== */
+
+  const getSortParams =
+    useCallback(() => {
+      if (
+        sortFilter ===
+        "Ascending"
+      ) {
+        return {
+          SortBy: "Name",
+          IsAscending: true,
+        };
+      }
+
+      if (
+        sortFilter ===
+        "Descending"
+      ) {
+        return {
+          SortBy: "Name",
+          IsAscending: false,
+        };
+      }
+
+      if (
+        sortFilter ===
+        "Recently Added"
+      ) {
+        return {
+          SortBy: "Date",
+          IsAscending: false,
+        };
+      }
+
+      if (
+        sortFilter ===
+        "Last Month"
+      ) {
+        return {
+          SortBy: "Date",
+          IsAscending: false,
+        };
+      }
+
+      if (
+        sortFilter ===
+        "Last 7 Days"
+      ) {
+        return {
+          SortBy: "Date",
+          IsAscending: false,
+        };
+      }
+
+      return {};
+    }, [sortFilter]);
+
+  /* ===================================================
+     STATUS PARAM
+  =================================================== */
+
+  const getStatusParam =
+    useCallback(() => {
+      if (
+        statusFilter ===
+        "Present"
+      ) {
+        return AttendanceStatus.Present;
+      }
+
+      if (
+        statusFilter ===
+        "Absent"
+      ) {
+        return AttendanceStatus.Absent;
+      }
+
+      if (
+        statusFilter ===
+        "Late"
+      ) {
+        return AttendanceStatus.Late;
+      }
+
+      return undefined;
+    }, [statusFilter]);
+
+  /* ===================================================
+     DASHBOARD API
+  =================================================== */
+
+  const loadDashboard =
+    useCallback(async () => {
+      try {
+        setDashboardLoading(
+          true
+        );
+
+        const response =
+          await getAttendanceDashboard();
+
+        setDashboardData(
+          response
+        );
+      } catch (err) {
+        console.error(
+          "Attendance dashboard error:",
+          err
+        );
+      } finally {
+        setDashboardLoading(
+          false
+        );
+      }
+    }, []);
+
+  /* ===================================================
+     ATTENDANCE API
+  =================================================== */
+
+  const loadAttendance =
+    useCallback(async () => {
+      try {
+        setLoading(true);
+        setError("");
+
+        const dateParams =
+          getDateParams();
+
+        const sortParams =
+          getSortParams();
+
+        const status =
+          getStatusParam();
+
+        const response =
+          await getAttendance({
+            Search:
+              search.trim() ||
+              undefined,
+
+            FromDate:
+              dateParams.FromDate,
+
+            ToDate:
+              dateParams.ToDate,
+
+            /*
+              DepartmentId intentionally
+              not sent because current
+              dropdown contains department names,
+              not UUIDs.
+            */
+
+            Status: status,
+
+            SortBy:
+              sortParams.SortBy,
+
+            IsAscending:
+              sortParams.IsAscending,
+
+            PageNumber:
+              currentPage,
+
+            PageSize:
+              rowsPerPage,
+          });
+
+        console.log(
+          "Attendance API Response:",
+          response
+        );
+
+        /*
+          ACTUAL API STRUCTURE:
+
+          response
+            .data
+              .attendanceList
+              .totalRecords
+              .totalPages
+              .currentPage
+              .pageSize
+        */
+
+        const apiData =
+          getAttendanceResponseData(
+            response
+          );
+
+        setAttendanceData(
+          apiData.attendanceList
+        );
+
+        setTotalRecords(
+          apiData.totalRecords
+        );
+
+        setTotalPagesFromApi(
+          apiData.totalPages
+        );
+      } catch (err: any) {
+        console.error(
+          "Attendance API error:",
+          err
+        );
+
+        const apiMessage =
+          err?.response?.data
+            ?.message ||
+          err?.response?.data
+            ?.Message ||
+          err?.message ||
+          "Unable to load attendance.";
+
+        setError(
+          apiMessage
+        );
+
+        setAttendanceData(
+          []
+        );
+
+        setTotalRecords(0);
+
+        setTotalPagesFromApi(
+          1
+        );
+      } finally {
+        setLoading(false);
+      }
+    }, [
+      search,
+      getDateParams,
+      getSortParams,
+      getStatusParam,
+      currentPage,
+      rowsPerPage,
+    ]);
+
+  /* ===================================================
+     INITIAL DASHBOARD
+  =================================================== */
+
+  useEffect(() => {
+    loadDashboard();
+  }, [loadDashboard]);
+
+  /* ===================================================
+     LOAD ATTENDANCE
+  =================================================== */
+
+  useEffect(() => {
+    loadAttendance();
+  }, [loadAttendance]);
+
+  /* ===================================================
+     RESET PAGE WHEN FILTER CHANGES
+  =================================================== */
+
+  useEffect(() => {
+    setCurrentPage(1);
+    setSelectedRows([]);
   }, [
-    attendanceData,
     search,
     statusFilter,
     departmentFilter,
+    dateFilter,
     sortFilter,
+    rowsPerPage,
   ]);
 
-  const visibleData = filteredData.slice(0, rowsPerPage);
+  /* ===================================================
+     DEPARTMENT FILTER
+  =================================================== */
 
-  /* =========================
-     CHECKBOX
-  ========================= */
+  const filteredData =
+    useMemo(() => {
+      if (
+        departmentFilter ===
+        "Department"
+      ) {
+        return attendanceData;
+      }
 
-  const toggleRow = (id: number) => {
-    setSelectedRows((prev) =>
-      prev.includes(id)
-        ? prev.filter((rowId) => rowId !== id)
-        : [...prev, id]
+      return attendanceData.filter(
+        (item) =>
+          item.departmentName ===
+          departmentFilter
+      );
+    }, [
+      attendanceData,
+      departmentFilter,
+    ]);
+
+  /* ===================================================
+     SELECT ROW
+  =================================================== */
+
+  const toggleRow = (
+    id: string
+  ) => {
+    setSelectedRows(
+      (prev) =>
+        prev.includes(id)
+          ? prev.filter(
+              (rowId) =>
+                rowId !== id
+            )
+          : [
+              ...prev,
+              id,
+            ]
     );
   };
 
+  /* ===================================================
+     SELECT ALL
+  =================================================== */
+
   const toggleAll = () => {
+    const ids =
+      filteredData.map(
+        (item) => item.id
+      );
+
     if (
-      visibleData.length > 0 &&
-      selectedRows.length === visibleData.length
+      ids.length > 0 &&
+      ids.every((id) =>
+        selectedRows.includes(id)
+      )
     ) {
       setSelectedRows([]);
     } else {
-      setSelectedRows(
-        visibleData.map((item) => item.id)
+      setSelectedRows(ids);
+    }
+  };
+
+  /* ===================================================
+     GET ATTENDANCE BY ID
+  =================================================== */
+
+  const handleEdit = async (
+    item: AttendanceType
+  ) => {
+    try {
+      setEditingAttendance(
+        item
+      );
+
+      setEditForm({
+        date:
+          formatDate(
+            item.attendanceDate
+          ),
+
+        checkIn:
+          formatTime(
+            item.checkInTime
+          ),
+
+        checkOut:
+          formatTime(
+            item.checkOutTime
+          ),
+
+        break:
+          formatMinutes(
+            item.breakInMinutes
+          ),
+
+        late:
+          formatMinutes(
+            item.lateInMinutes
+          ),
+
+        hours:
+          formatProductionHours(
+            item.totalProductionHours
+          ),
+
+        status:
+          getStatusLabel(
+            item.status
+          ),
+      });
+
+      setShowEditModal(
+        true
+      );
+
+      setEditLoading(
+        true
+      );
+
+      const response =
+        await getAttendanceById(
+          item.id
+        );
+
+      /*
+        Actual API may return:
+
+        {
+          statusCode: 200,
+          data: {...}
+        }
+      */
+
+      const data =
+        response?.data ||
+        response?.Data ||
+        response?.result ||
+        response?.Result ||
+        response;
+
+      if (
+        data &&
+        typeof data === "object"
+      ) {
+        const detail: AttendanceType =
+          {
+            id: String(
+              data.id ??
+                item.id
+            ),
+
+            employeeId:
+              String(
+                data.employeeId ??
+                  item.employeeId
+              ),
+
+            employeeName:
+              String(
+                data.employeeName ??
+                  item.employeeName
+              ),
+
+            departmentName:
+              String(
+                data.departmentName ??
+                  item.departmentName ??
+                  ""
+              ),
+
+            attendanceDate:
+              data.attendanceDate ??
+              item.attendanceDate,
+
+            checkInTime:
+              data.checkInTime ??
+              item.checkInTime,
+
+            checkOutTime:
+              data.checkOutTime ??
+              item.checkOutTime,
+
+            breakInMinutes:
+              Number(
+                data.breakInMinutes ??
+                  item.breakInMinutes ??
+                  0
+              ),
+
+            lateInMinutes:
+              Number(
+                data.lateInMinutes ??
+                  item.lateInMinutes ??
+                  0
+              ),
+
+            totalProductionHours:
+              Number(
+                data.totalProductionHours ??
+                  item.totalProductionHours ??
+                  0
+              ),
+
+            status:
+              Number(
+                data.status ??
+                  item.status
+              ),
+          };
+
+        setEditingAttendance(
+          detail
+        );
+
+        setEditForm({
+          date:
+            formatDate(
+              detail.attendanceDate
+            ),
+
+          checkIn:
+            formatTime(
+              detail.checkInTime
+            ),
+
+          checkOut:
+            formatTime(
+              detail.checkOutTime
+            ),
+
+          break:
+            formatMinutes(
+              detail.breakInMinutes
+            ),
+
+          late:
+            formatMinutes(
+              detail.lateInMinutes
+            ),
+
+          hours:
+            formatProductionHours(
+              detail.totalProductionHours
+            ),
+
+          status:
+            getStatusLabel(
+              detail.status
+            ),
+        });
+      }
+    } catch (err) {
+      console.error(
+        "Get attendance by id error:",
+        err
+      );
+    } finally {
+      setEditLoading(
+        false
       );
     }
   };
 
-  /* =========================
-     OPEN EDIT MODAL
-  ========================= */
-
-  const handleEdit = (item: AttendanceType) => {
-    setEditingAttendance(item);
-
-    setEditForm({
-      date: item.date || "",
-      checkIn: item.checkIn === "-" ? "" : item.checkIn,
-      checkOut:
-        item.checkOut === "-" ? "" : item.checkOut,
-      break: item.break === "-" ? "" : item.break,
-      late: item.late === "-" ? "" : item.late,
-      hours: item.hours,
-      status: item.status,
-    });
-
-    setShowEditModal(true);
-  };
-
-  /* =========================
+  /* ===================================================
      CLOSE MODAL
-  ========================= */
+  =================================================== */
 
-  const handleCloseModal = () => {
-    setShowEditModal(false);
-    setEditingAttendance(null);
-  };
+  const handleCloseModal =
+    () => {
+      setShowEditModal(
+        false
+      );
 
-  /* =========================
-     FORM CHANGE
-  ========================= */
+      setEditingAttendance(
+        null
+      );
+    };
 
-  const handleEditChange = (
-    field: keyof EditFormType,
-    value: string
-  ) => {
-    setEditForm((prev) => ({
-      ...prev,
-      [field]: value,
-    }));
-  };
-
-  /* =========================
-     SAVE CHANGES
-  ========================= */
-
-  const handleSaveChanges = () => {
-    if (!editingAttendance) return;
-
-    setAttendanceData((prev) =>
-      prev.map((item) => {
-        if (item.id !== editingAttendance.id) {
-          return item;
-        }
-
-        return {
-          ...item,
-          date: editForm.date,
-          checkIn: editForm.checkIn || "-",
-          checkOut: editForm.checkOut || "-",
-          break: editForm.break || "-",
-          late: editForm.late || "-",
-          hours: editForm.hours || "00:00 Hrs",
-          status: editForm.status,
-          hoursType:
-            editForm.status === "Absent"
-              ? "red"
-              : item.hoursType || "green",
-        };
-      })
-    );
-
-    handleCloseModal();
-  };
-
-  /* =========================
+  /* ===================================================
      STATUS CLASS
-  ========================= */
+  =================================================== */
 
   const getStatusClass = (
-    status: AttendanceType["status"]
+    status: number
   ) => {
-    if (status === "Present") {
+    if (
+      status ===
+      AttendanceStatus.Present
+    ) {
       return "attendance-status present";
     }
 
-    if (status === "Late") {
+    if (
+      status ===
+      AttendanceStatus.Late
+    ) {
       return "attendance-status late";
     }
 
-    return "attendance-status absent";
+    if (
+      status ===
+      AttendanceStatus.Absent
+    ) {
+      return "attendance-status absent";
+    }
+
+    return "attendance-status unknown";
   };
 
-  /* =========================
+  /* ===================================================
      HOURS CLASS
-  ========================= */
+  =================================================== */
 
-  const getHoursClass = (type?: string) => {
-    if (type === "red") {
+  const getHoursClass = (
+    status: number
+  ) => {
+    if (
+      status ===
+      AttendanceStatus.Absent
+    ) {
       return "production-badge red";
     }
 
-    if (type === "blue") {
+    if (
+      status ===
+      AttendanceStatus.Late
+    ) {
       return "production-badge blue";
     }
 
     return "production-badge green";
   };
+
+  /* ===================================================
+     DASHBOARD VALUE
+  =================================================== */
+
+  const getDashboardValue = (
+    keys: string[],
+    fallback: string
+  ) => {
+    const value =
+      getValue(
+        dashboardData,
+        keys,
+        undefined
+      );
+
+    if (
+      value !== undefined &&
+      value !== null
+    ) {
+      return String(value);
+    }
+
+    const nested =
+      dashboardData?.data ||
+      dashboardData?.Data ||
+      dashboardData?.result ||
+      dashboardData?.Result;
+
+    const nestedValue =
+      getValue(
+        nested,
+        keys,
+        undefined
+      );
+
+    if (
+      nestedValue !== undefined &&
+      nestedValue !== null
+    ) {
+      return String(
+        nestedValue
+      );
+    }
+
+    return fallback;
+  };
+
+  /* ===================================================
+     DASHBOARD COUNTS
+  =================================================== */
+
+  const presentCount =
+    getDashboardValue(
+      [
+        "present",
+        "Present",
+        "presentCount",
+        "PresentCount",
+        "totalPresent",
+        "TotalPresent",
+      ],
+      "0"
+    );
+
+  const lateCount =
+    getDashboardValue(
+      [
+        "late",
+        "Late",
+        "lateCount",
+        "LateCount",
+        "lateLogin",
+        "LateLogin",
+      ],
+      "0"
+    );
+
+  const uninformedCount =
+    getDashboardValue(
+      [
+        "uninformed",
+        "Uninformed",
+        "uninformedCount",
+        "UninformedCount",
+      ],
+      "0"
+    );
+
+  const permissionCount =
+    getDashboardValue(
+      [
+        "permission",
+        "Permission",
+        "permissionCount",
+        "PermissionCount",
+      ],
+      "0"
+    );
+
+  const absentCount =
+    getDashboardValue(
+      [
+        "absent",
+        "Absent",
+        "absentCount",
+        "AbsentCount",
+        "totalAbsent",
+        "TotalAbsent",
+      ],
+      "0"
+    );
+
+  const totalEmployees =
+    getDashboardValue(
+      [
+        "totalEmployees",
+        "TotalEmployees",
+        "employeeCount",
+        "EmployeeCount",
+        "totalEmployee",
+        "TotalEmployee",
+      ],
+      "0"
+    );
+
+  /* ===================================================
+     PAGINATION
+  =================================================== */
+
+  const totalPages =
+    Math.max(
+      1,
+      totalPagesFromApi
+    );
+
+  const goToPreviousPage =
+    () => {
+      if (
+        currentPage > 1
+      ) {
+        setCurrentPage(
+          (prev) =>
+            prev - 1
+        );
+      }
+    };
+
+  const goToNextPage =
+    () => {
+      if (
+        currentPage <
+        totalPages
+      ) {
+        setCurrentPage(
+          (prev) =>
+            prev + 1
+        );
+      }
+    };
+
+  const startEntry =
+    totalRecords === 0
+      ? 0
+      : (currentPage - 1) *
+          rowsPerPage +
+        1;
+
+  const endEntry =
+    totalRecords === 0
+      ? 0
+      : Math.min(
+          currentPage *
+            rowsPerPage,
+          totalRecords
+        );
+
+  /* ===================================================
+     JSX
+  =================================================== */
 
   return (
     <div className="attendance-page">
@@ -421,10 +1445,6 @@ const Atendance: React.FC = () => {
           width: 100%;
           margin: 0 auto;
         }
-
-        /* =====================================
-           HEADER
-        ===================================== */
 
         .attendance-header {
           margin-bottom: 24px;
@@ -456,10 +1476,6 @@ const Atendance: React.FC = () => {
         .breadcrumb-current {
           color: #27364a;
         }
-
-        /* =====================================
-           TOP CARD
-        ===================================== */
 
         .today-card {
           background: #ffffff;
@@ -585,10 +1601,6 @@ const Atendance: React.FC = () => {
           background: #ed0808;
         }
 
-        /* =====================================
-           TABLE CARD
-        ===================================== */
-
         .attendance-table-card {
           background: #ffffff;
           border: 1px solid #e1e5ea;
@@ -669,10 +1681,6 @@ const Atendance: React.FC = () => {
           width: 178px;
         }
 
-        /* =====================================
-           TOOLBAR
-        ===================================== */
-
         .table-toolbar {
           min-height: 59px;
           display: flex;
@@ -720,10 +1728,6 @@ const Atendance: React.FC = () => {
         .search-input:focus {
           border-color: #bd9138;
         }
-
-        /* =====================================
-           TABLE
-        ===================================== */
 
         .table-wrapper {
           overflow-x: auto;
@@ -904,6 +1908,15 @@ const Atendance: React.FC = () => {
           background: #e2a000;
         }
 
+        .attendance-status.unknown {
+          background: #edf0f3;
+          color: #596579;
+        }
+
+        .attendance-status.unknown::before {
+          background: #7c8797;
+        }
+
         .production-badge {
           display: inline-flex;
           align-items: center;
@@ -947,10 +1960,6 @@ const Atendance: React.FC = () => {
           color: #bd9138;
         }
 
-        /* =====================================
-           FOOTER
-        ===================================== */
-
         .table-footer {
           height: 56px;
           padding: 0 16px;
@@ -980,6 +1989,11 @@ const Atendance: React.FC = () => {
           cursor: pointer;
         }
 
+        .pagination-button:disabled {
+          opacity: 0.35;
+          cursor: not-allowed;
+        }
+
         .pagination-current {
           width: 28px;
           height: 28px;
@@ -993,10 +2007,6 @@ const Atendance: React.FC = () => {
           font-weight: 600;
         }
 
-        /* =====================================
-           EDIT MODAL OVERLAY
-        ===================================== */
-
         .edit-modal-overlay {
           position: fixed;
           inset: 0;
@@ -1007,10 +2017,6 @@ const Atendance: React.FC = () => {
           z-index: 9999;
           padding: 20px;
         }
-
-        /* =====================================
-           EDIT MODAL
-        ===================================== */
 
         .edit-modal {
           width: 500px;
@@ -1104,11 +2110,6 @@ const Atendance: React.FC = () => {
           outline: none;
         }
 
-        .edit-input:focus {
-          border-color: #bd9138;
-          box-shadow: 0 0 0 1px rgba(189,145,56,0.08);
-        }
-
         .edit-input.with-icon {
           padding-right: 40px;
         }
@@ -1144,11 +2145,6 @@ const Atendance: React.FC = () => {
           outline: none;
           appearance: none;
           -webkit-appearance: none;
-          cursor: pointer;
-        }
-
-        .edit-select:focus {
-          border-color: #bd9138;
         }
 
         .edit-select-arrow {
@@ -1181,24 +2177,24 @@ const Atendance: React.FC = () => {
           cursor: pointer;
         }
 
-        .cancel-button:hover {
-          background: #eceef1;
+        .loading-row {
+          text-align: center;
+          height: 120px;
+          color: #7b8798;
         }
 
-        .save-button {
-          height: 39px;
-          padding: 0 15px;
-          border: none;
-          border-radius: 5px;
-          background: #bd9138;
-          color: white;
-          font-size: 14px;
-          font-weight: 500;
-          cursor: pointer;
+        .error-message {
+          padding: 10px 16px;
+          background: #fff1f1;
+          border-bottom: 1px solid #ffd4d4;
+          color: #d32323;
+          font-size: 13px;
         }
 
-        .save-button:hover {
-          background: #a98030;
+        .dashboard-loading {
+          color: #94a3b8;
+          font-size: 11px;
+          margin-left: 5px;
         }
 
         @media (max-width: 1100px) {
@@ -1288,9 +2284,9 @@ const Atendance: React.FC = () => {
 
       <div className="attendance-content">
 
-        {/* =====================================
+        {/* =================================================
             HEADER
-        ===================================== */}
+        ================================================= */}
 
         <div className="attendance-header">
           <h1 className="attendance-title">
@@ -1301,7 +2297,9 @@ const Atendance: React.FC = () => {
             <span
               className="breadcrumb-home"
               onClick={() =>
-                navigate("/HR/HrDashboard")
+                navigate(
+                  "/HR/HrDashboard"
+                )
               }
             >
               <Home size={13} />
@@ -1315,9 +2313,9 @@ const Atendance: React.FC = () => {
           </div>
         </div>
 
-        {/* =====================================
+        {/* =================================================
             TODAY CARD
-        ===================================== */}
+        ================================================= */}
 
         <div className="today-card">
           <div className="today-header">
@@ -1327,12 +2325,22 @@ const Atendance: React.FC = () => {
               </h2>
 
               <p className="today-subtitle">
-                Data from the 800+ total no of employees
+                Data from the{" "}
+                {totalEmployees}{" "}
+                total no of employees
+
+                {dashboardLoading && (
+                  <span className="dashboard-loading">
+                    Loading...
+                  </span>
+                )}
               </p>
             </div>
 
             <div className="absent-summary">
-              <span>Total Absenties today</span>
+              <span>
+                Total Absenties today
+              </span>
 
               <div className="avatar-stack">
                 <span className="stack-avatar" />
@@ -1342,7 +2350,7 @@ const Atendance: React.FC = () => {
                 <span className="stack-avatar" />
 
                 <span className="stack-more">
-                  +1
+                  +{absentCount}
                 </span>
               </div>
             </div>
@@ -1357,7 +2365,7 @@ const Atendance: React.FC = () => {
 
               <div className="stat-value-row">
                 <span className="stat-value">
-                  250
+                  {presentCount}
                 </span>
 
                 <span className="stat-change up">
@@ -1373,7 +2381,7 @@ const Atendance: React.FC = () => {
 
               <div className="stat-value-row">
                 <span className="stat-value">
-                  45
+                  {lateCount}
                 </span>
 
                 <span className="stat-change down">
@@ -1389,7 +2397,7 @@ const Atendance: React.FC = () => {
 
               <div className="stat-value-row">
                 <span className="stat-value">
-                  15
+                  {uninformedCount}
                 </span>
 
                 <span className="stat-change down">
@@ -1405,7 +2413,7 @@ const Atendance: React.FC = () => {
 
               <div className="stat-value-row">
                 <span className="stat-value">
-                  03
+                  {permissionCount}
                 </span>
 
                 <span className="stat-change up">
@@ -1421,7 +2429,7 @@ const Atendance: React.FC = () => {
 
               <div className="stat-value-row">
                 <span className="stat-value">
-                  12
+                  {absentCount}
                 </span>
 
                 <span className="stat-change down">
@@ -1433,13 +2441,11 @@ const Atendance: React.FC = () => {
           </div>
         </div>
 
-        {/* =====================================
-            TABLE CARD
-        ===================================== */}
+        {/* =================================================
+            TABLE
+        ================================================= */}
 
         <div className="attendance-table-card">
-
-          {/* FILTER HEADER */}
 
           <div className="filter-header">
 
@@ -1456,7 +2462,9 @@ const Atendance: React.FC = () => {
                   className="custom-select date-select"
                   value={dateFilter}
                   onChange={(e) =>
-                    setDateFilter(e.target.value)
+                    setDateFilter(
+                      e.target.value
+                    )
                   }
                 >
                   <option>
@@ -1495,7 +2503,9 @@ const Atendance: React.FC = () => {
               <div className="custom-select-wrapper">
                 <select
                   className="custom-select department-select"
-                  value={departmentFilter}
+                  value={
+                    departmentFilter
+                  }
                   onChange={(e) =>
                     setDepartmentFilter(
                       e.target.value
@@ -1538,7 +2548,9 @@ const Atendance: React.FC = () => {
               <div className="custom-select-wrapper">
                 <select
                   className="custom-select status-select"
-                  value={statusFilter}
+                  value={
+                    statusFilter
+                  }
                   onChange={(e) =>
                     setStatusFilter(
                       e.target.value
@@ -1573,7 +2585,9 @@ const Atendance: React.FC = () => {
               <div className="custom-select-wrapper">
                 <select
                   className="custom-select sort-select"
-                  value={sortFilter}
+                  value={
+                    sortFilter
+                  }
                   onChange={(e) =>
                     setSortFilter(
                       e.target.value
@@ -1614,6 +2628,14 @@ const Atendance: React.FC = () => {
             </div>
           </div>
 
+          {/* ERROR */}
+
+          {error && (
+            <div className="error-message">
+              {error}
+            </div>
+          )}
+
           {/* TOOLBAR */}
 
           <div className="table-toolbar">
@@ -1625,10 +2647,14 @@ const Atendance: React.FC = () => {
 
               <select
                 className="rows-select"
-                value={rowsPerPage}
+                value={
+                  rowsPerPage
+                }
                 onChange={(e) =>
                   setRowsPerPage(
-                    Number(e.target.value)
+                    Number(
+                      e.target.value
+                    )
                   )
                 }
               >
@@ -1663,11 +2689,14 @@ const Atendance: React.FC = () => {
               <Search
                 size={14}
                 style={{
-                  position: "absolute",
+                  position:
+                    "absolute",
                   right: "10px",
                   top: "8px",
-                  color: "#9aa3b0",
-                  pointerEvents: "none",
+                  color:
+                    "#9aa3b0",
+                  pointerEvents:
+                    "none",
                 }}
               />
 
@@ -1676,7 +2705,9 @@ const Atendance: React.FC = () => {
                 placeholder="Search"
                 value={search}
                 onChange={(e) =>
-                  setSearch(e.target.value)
+                  setSearch(
+                    e.target.value
+                  )
                 }
               />
 
@@ -1697,11 +2728,18 @@ const Atendance: React.FC = () => {
                       type="checkbox"
                       className="header-checkbox"
                       checked={
-                        visibleData.length > 0 &&
-                        selectedRows.length ===
-                          visibleData.length
+                        filteredData.length >
+                          0 &&
+                        filteredData.every(
+                          (item) =>
+                            selectedRows.includes(
+                              item.id
+                            )
+                        )
                       }
-                      onChange={toggleAll}
+                      onChange={
+                        toggleAll
+                      }
                     />
                   </th>
 
@@ -1803,135 +2841,175 @@ const Atendance: React.FC = () => {
 
               <tbody>
 
-                {visibleData.map((item) => (
-
-                  <tr key={item.id}>
-
-                    {/* CHECKBOX */}
-
-                    <td className="checkbox-cell">
-                      <input
-                        type="checkbox"
-                        className="row-checkbox"
-                        checked={selectedRows.includes(
-                          item.id
-                        )}
-                        onChange={() =>
-                          toggleRow(item.id)
-                        }
-                      />
-                    </td>
-
-                    {/* EMPLOYEE */}
-
-                    <td>
-                      <div className="employee-cell">
-
-                        <div className="employee-avatar">
-                          •••
-                        </div>
-
-                        <div className="employee-info">
-
-                          <span className="employee-name">
-                            {item.name}
-                          </span>
-
-                          <span className="employee-team">
-                            {item.team}
-                          </span>
-
-                        </div>
-                      </div>
-                    </td>
-
-                    {/* STATUS */}
-
-                    <td>
-                      <span
-                        className={getStatusClass(
-                          item.status
-                        )}
-                      >
-                        {item.status}
-                      </span>
-                    </td>
-
-                    {/* CHECK IN */}
-
-                    <td>
-                      {item.checkIn}
-                    </td>
-
-                    {/* CHECK OUT */}
-
-                    <td>
-                      {item.checkOut}
-                    </td>
-
-                    {/* BREAK */}
-
-                    <td>
-                      {item.break}
-                    </td>
-
-                    {/* LATE */}
-
-                    <td>
-                      {item.late}
-                    </td>
-
-                    {/* PRODUCTION */}
-
-                    <td className="hours-cell">
-                      <span
-                        className={getHoursClass(
-                          item.hoursType
-                        )}
-                      >
-                        <Clock3 size={11} />
-                        {item.hours}
-                      </span>
-                    </td>
-
-                    {/* EDIT */}
-
-                    <td>
-
-                      <button
-                        type="button"
-                        className="edit-button"
-                        onClick={() =>
-                          handleEdit(item)
-                        }
-                        title="Edit Attendance"
-                      >
-                        <Edit3 size={15} />
-                      </button>
-
-                    </td>
-
-                  </tr>
-
-                ))}
-
-                {visibleData.length === 0 && (
+                {loading && (
                   <tr>
                     <td
                       colSpan={9}
-                      style={{
-                        textAlign: "center",
-                        height: "120px",
-                        color: "#7b8798",
-                      }}
+                      className="loading-row"
                     >
-                      No attendance records found
+                      Loading attendance...
                     </td>
                   </tr>
                 )}
 
-              </tbody>
+                {!loading &&
+                  filteredData.map(
+                    (item) => (
+                      <tr
+                        key={
+                          item.id
+                        }
+                      >
 
+                        <td className="checkbox-cell">
+                          <input
+                            type="checkbox"
+                            className="row-checkbox"
+                            checked={selectedRows.includes(
+                              item.id
+                            )}
+                            onChange={() =>
+                              toggleRow(
+                                item.id
+                              )
+                            }
+                          />
+                        </td>
+
+                        <td>
+                          <div className="employee-cell">
+
+                            <div className="employee-avatar">
+                              •••
+                            </div>
+
+                            <div className="employee-info">
+
+                              <span className="employee-name">
+                                {
+                                  item.employeeName ||
+                                  "-"
+                                }
+                              </span>
+
+                              <span className="employee-team">
+                                {
+                                  item.departmentName ||
+                                  "-"
+                                }
+                              </span>
+
+                            </div>
+
+                          </div>
+                        </td>
+
+                        <td>
+                          <span
+                            className={getStatusClass(
+                              item.status
+                            )}
+                          >
+                            {
+                              getStatusLabel(
+                                item.status
+                              )
+                            }
+                          </span>
+                        </td>
+
+                        <td>
+                          {
+                            formatTime(
+                              item.checkInTime
+                            )
+                          }
+                        </td>
+
+                        <td>
+                          {
+                            formatTime(
+                              item.checkOutTime
+                            )
+                          }
+                        </td>
+
+                        <td>
+                          {
+                            formatMinutes(
+                              item.breakInMinutes
+                            )
+                          }
+                        </td>
+
+                        <td>
+                          {
+                            formatMinutes(
+                              item.lateInMinutes
+                            )
+                          }
+                        </td>
+
+                        <td className="hours-cell">
+                          <span
+                            className={getHoursClass(
+                              item.status
+                            )}
+                          >
+                            <Clock3
+                              size={11}
+                            />
+
+                            {
+                              formatProductionHours(
+                                item.totalProductionHours
+                              )
+                            }
+                          </span>
+                        </td>
+
+                        <td>
+                          <button
+                            type="button"
+                            className="edit-button"
+                            onClick={() =>
+                              handleEdit(
+                                item
+                              )
+                            }
+                            title="View Attendance"
+                          >
+                            <Edit3
+                              size={15}
+                            />
+                          </button>
+                        </td>
+
+                      </tr>
+                    )
+                  )}
+
+                {!loading &&
+                  filteredData.length ===
+                    0 && (
+                    <tr>
+                      <td
+                        colSpan={9}
+                        style={{
+                          textAlign:
+                            "center",
+                          height:
+                            "120px",
+                          color:
+                            "#7b8798",
+                        }}
+                      >
+                        No attendance records found
+                      </td>
+                    </tr>
+                  )}
+
+              </tbody>
             </table>
           </div>
 
@@ -1941,25 +3019,47 @@ const Atendance: React.FC = () => {
 
             <span>
               Showing{" "}
-              {visibleData.length === 0
-                ? 0
-                : 1}{" "}
-              - {visibleData.length} of{" "}
-              {filteredData.length} entries
+              {startEntry} -{" "}
+              {endEntry} of{" "}
+              {totalRecords}{" "}
+              entries
             </span>
 
             <div className="pagination">
 
-              <button className="pagination-button">
-                <ChevronLeft size={16} />
+              <button
+                type="button"
+                className="pagination-button"
+                disabled={
+                  currentPage <= 1
+                }
+                onClick={
+                  goToPreviousPage
+                }
+              >
+                <ChevronLeft
+                  size={16}
+                />
               </button>
 
               <span className="pagination-current">
-                1
+                {currentPage}
               </span>
 
-              <button className="pagination-button">
-                <ChevronRight size={16} />
+              <button
+                type="button"
+                className="pagination-button"
+                disabled={
+                  currentPage >=
+                  totalPages
+                }
+                onClick={
+                  goToNextPage
+                }
+              >
+                <ChevronRight
+                  size={16}
+                />
               </button>
 
             </div>
@@ -1969,298 +3069,279 @@ const Atendance: React.FC = () => {
       </div>
 
       {/* =================================================
-          EDIT ATTENDANCE MODAL
+          ATTENDANCE DETAIL MODAL
       ================================================= */}
 
-      {showEditModal && editingAttendance && (
-
-        <div
-          className="edit-modal-overlay"
-          onMouseDown={(e) => {
-            if (
-              e.target === e.currentTarget
-            ) {
-              handleCloseModal();
-            }
-          }}
-        >
-
+      {showEditModal &&
+        editingAttendance && (
           <div
-            className="edit-modal"
-            onMouseDown={(e) =>
-              e.stopPropagation()
-            }
+            className="edit-modal-overlay"
+            onMouseDown={(e) => {
+              if (
+                e.target ===
+                e.currentTarget
+              ) {
+                handleCloseModal();
+              }
+            }}
           >
 
-            {/* MODAL HEADER */}
+            <div
+              className="edit-modal"
+              onMouseDown={(e) =>
+                e.stopPropagation()
+              }
+            >
 
-            <div className="edit-modal-header">
+              <div className="edit-modal-header">
 
-              <h2 className="edit-modal-title">
-                Edit Attendance
-              </h2>
+                <h2 className="edit-modal-title">
+                  Attendance Details
+                </h2>
 
-              <button
-                type="button"
-                className="modal-close-button"
-                onClick={handleCloseModal}
-              >
-                <X size={13} strokeWidth={3} />
-              </button>
-
-            </div>
-
-            {/* MODAL BODY */}
-
-            <div className="edit-modal-body">
-
-              {/* DATE */}
-
-              <div className="edit-field">
-
-                <label className="edit-label">
-                  Date
-                </label>
-
-                <div className="edit-input-wrapper">
-
-                  <input
-                    type="text"
-                    className="edit-input with-icon"
-                    placeholder=""
-                    value={editForm.date}
-                    onChange={(e) =>
-                      handleEditChange(
-                        "date",
-                        e.target.value
-                      )
-                    }
+                <button
+                  type="button"
+                  className="modal-close-button"
+                  onClick={
+                    handleCloseModal
+                  }
+                >
+                  <X
+                    size={13}
+                    strokeWidth={3}
                   />
-
-                  <CalendarDays
-                    size={16}
-                    className="edit-input-icon"
-                  />
-
-                </div>
-              </div>
-
-              {/* CHECK IN / CHECK OUT */}
-
-              <div className="edit-two-column">
-
-                <div className="edit-field">
-
-                  <label className="edit-label">
-                    Check In
-                  </label>
-
-                  <div className="edit-input-wrapper">
-
-                    <input
-                      type="text"
-                      className="edit-input with-icon"
-                      value={
-                        editForm.checkIn
-                      }
-                      onChange={(e) =>
-                        handleEditChange(
-                          "checkIn",
-                          e.target.value
-                        )
-                      }
-                    />
-
-                    <Clock3
-                      size={17}
-                      className="edit-input-icon"
-                    />
-
-                  </div>
-
-                </div>
-
-                <div className="edit-field">
-
-                  <label className="edit-label">
-                    Check Out
-                  </label>
-
-                  <div className="edit-input-wrapper">
-
-                    <input
-                      type="text"
-                      className="edit-input with-icon"
-                      value={
-                        editForm.checkOut
-                      }
-                      onChange={(e) =>
-                        handleEditChange(
-                          "checkOut",
-                          e.target.value
-                        )
-                      }
-                    />
-
-                    <Clock3
-                      size={17}
-                      className="edit-input-icon"
-                    />
-
-                  </div>
-
-                </div>
+                </button>
 
               </div>
 
-              {/* BREAK / LATE */}
+              <div className="edit-modal-body">
 
-              <div className="edit-two-column">
-
-                <div className="edit-field">
-
-                  <label className="edit-label">
-                    Break
-                  </label>
-
-                  <input
-                    type="text"
-                    className="edit-input"
-                    value={editForm.break}
-                    onChange={(e) =>
-                      handleEditChange(
-                        "break",
-                        e.target.value
-                      )
-                    }
-                  />
-
-                </div>
-
-                <div className="edit-field">
-
-                  <label className="edit-label">
-                    Late
-                  </label>
-
-                  <input
-                    type="text"
-                    className="edit-input"
-                    value={editForm.late}
-                    onChange={(e) =>
-                      handleEditChange(
-                        "late",
-                        e.target.value
-                      )
-                    }
-                  />
-
-                </div>
-
-              </div>
-
-              {/* PRODUCTION HOURS */}
-
-              <div className="edit-field">
-
-                <label className="edit-label">
-                  Production Hours
-                </label>
-
-                <div className="edit-input-wrapper">
-
-                  <input
-                    type="text"
-                    className="edit-input with-icon"
-                    value={editForm.hours}
-                    onChange={(e) =>
-                      handleEditChange(
-                        "hours",
-                        e.target.value
-                      )
-                    }
-                  />
-
-                  <Clock3
-                    size={17}
-                    className="edit-input-icon"
-                  />
-
-                </div>
-
-              </div>
-
-              {/* STATUS */}
-
-              <div className="edit-field">
-
-                <label className="edit-label">
-                  Status
-                </label>
-
-                <div className="edit-select-wrapper">
-
-                  <select
-                    className="edit-select"
-                    value={editForm.status}
-                    onChange={(e) =>
-                      handleEditChange(
-                        "status",
-                        e.target.value
-                      )
-                    }
+                {editLoading && (
+                  <div
+                    style={{
+                      marginBottom:
+                        "12px",
+                      color:
+                        "#8a95a5",
+                      fontSize:
+                        "12px",
+                    }}
                   >
-                    <option value="Present">
-                      Present
-                    </option>
+                    Loading attendance details...
+                  </div>
+                )}
 
-                    <option value="Absent">
-                      Absent
-                    </option>
+                {/* EMPLOYEE */}
 
-                    <option value="Late">
+                <div className="edit-field">
+
+                  <label className="edit-label">
+                    Employee
+                  </label>
+
+                  <input
+                    type="text"
+                    className="edit-input"
+                    value={
+                      editingAttendance.employeeName
+                    }
+                    readOnly
+                  />
+
+                </div>
+
+                {/* DATE */}
+
+                <div className="edit-field">
+
+                  <label className="edit-label">
+                    Date
+                  </label>
+
+                  <div className="edit-input-wrapper">
+
+                    <input
+                      type="text"
+                      className="edit-input with-icon"
+                      value={
+                        editForm.date
+                      }
+                      readOnly
+                    />
+
+                    <CalendarDays
+                      size={16}
+                      className="edit-input-icon"
+                    />
+
+                  </div>
+
+                </div>
+
+                {/* CHECK IN / CHECK OUT */}
+
+                <div className="edit-two-column">
+
+                  <div className="edit-field">
+
+                    <label className="edit-label">
+                      Check In
+                    </label>
+
+                    <div className="edit-input-wrapper">
+
+                      <input
+                        type="text"
+                        className="edit-input with-icon"
+                        value={
+                          editForm.checkIn
+                        }
+                        readOnly
+                      />
+
+                      <Clock3
+                        size={17}
+                        className="edit-input-icon"
+                      />
+
+                    </div>
+
+                  </div>
+
+                  <div className="edit-field">
+
+                    <label className="edit-label">
+                      Check Out
+                    </label>
+
+                    <div className="edit-input-wrapper">
+
+                      <input
+                        type="text"
+                        className="edit-input with-icon"
+                        value={
+                          editForm.checkOut
+                        }
+                        readOnly
+                      />
+
+                      <Clock3
+                        size={17}
+                        className="edit-input-icon"
+                      />
+
+                    </div>
+
+                  </div>
+
+                </div>
+
+                {/* BREAK / LATE */}
+
+                <div className="edit-two-column">
+
+                  <div className="edit-field">
+
+                    <label className="edit-label">
+                      Break
+                    </label>
+
+                    <input
+                      type="text"
+                      className="edit-input"
+                      value={
+                        editForm.break
+                      }
+                      readOnly
+                    />
+
+                  </div>
+
+                  <div className="edit-field">
+
+                    <label className="edit-label">
                       Late
-                    </option>
-                  </select>
+                    </label>
 
-                  <ChevronDown
-                    size={16}
-                    className="edit-select-arrow"
+                    <input
+                      type="text"
+                      className="edit-input"
+                      value={
+                        editForm.late
+                      }
+                      readOnly
+                    />
+
+                  </div>
+
+                </div>
+
+                {/* PRODUCTION HOURS */}
+
+                <div className="edit-field">
+
+                  <label className="edit-label">
+                    Production Hours
+                  </label>
+
+                  <div className="edit-input-wrapper">
+
+                    <input
+                      type="text"
+                      className="edit-input with-icon"
+                      value={
+                        editForm.hours
+                      }
+                      readOnly
+                    />
+
+                    <Clock3
+                      size={17}
+                      className="edit-input-icon"
+                    />
+
+                  </div>
+
+                </div>
+
+                {/* STATUS */}
+
+                <div className="edit-field">
+
+                  <label className="edit-label">
+                    Status
+                  </label>
+
+                  <input
+                    type="text"
+                    className="edit-input"
+                    value={
+                      editForm.status
+                    }
+                    readOnly
                   />
 
                 </div>
 
               </div>
 
-            </div>
+              <div className="edit-modal-footer">
 
-            {/* MODAL FOOTER */}
+                <button
+                  type="button"
+                  className="cancel-button"
+                  onClick={
+                    handleCloseModal
+                  }
+                >
+                  Close
+                </button>
 
-            <div className="edit-modal-footer">
-
-              <button
-                type="button"
-                className="cancel-button"
-                onClick={handleCloseModal}
-              >
-                Cancel
-              </button>
-
-              <button
-                type="button"
-                className="save-button"
-                onClick={handleSaveChanges}
-              >
-                Save Changes
-              </button>
+              </div>
 
             </div>
-
           </div>
-
-        </div>
-
-      )}
+        )}
 
     </div>
   );

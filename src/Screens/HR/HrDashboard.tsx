@@ -1,6 +1,5 @@
-import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { Link } from "react-router-dom";
+import React, { useEffect, useState } from "react";
+import { useNavigate, Link } from "react-router-dom";
 
 import "../../assets/css/HrDashboard.css";
 
@@ -21,9 +20,15 @@ import avatar30 from "../../assets/img/profiles/avatar-30.jpg";
 import avatar14 from "../../assets/img/profiles/avatar-14.jpg";
 import avatar29 from "../../assets/img/profiles/avatar-29.jpg";
 
+import { getHRDashboard } from "../../services/hrservices";
+
 const HrDashboard = () => {
   const navigate = useNavigate();
-  // Real current date/month from the user's device
+
+  // =====================================================
+  // CALENDAR
+  // =====================================================
+
   const [currentDate, setCurrentDate] = useState(() => new Date());
 
   const today = new Date();
@@ -47,22 +52,14 @@ const HrDashboard = () => {
   ];
 
   const handlePrevMonth = () => {
-    setCurrentDate(
-      new Date(year, month - 1, 1)
-    );
+    setCurrentDate(new Date(year, month - 1, 1));
   };
 
   const handleNextMonth = () => {
-    setCurrentDate(
-      new Date(year, month + 1, 1)
-    );
+    setCurrentDate(new Date(year, month + 1, 1));
   };
 
-  const firstDayOfMonth = new Date(
-    year,
-    month,
-    1
-  ).getDay();
+  const firstDayOfMonth = new Date(year, month, 1).getDay();
 
   const daysInMonth = new Date(
     year,
@@ -82,11 +79,7 @@ const HrDashboard = () => {
   }[] = [];
 
   // Previous month dates
-  for (
-    let i = firstDayOfMonth;
-    i > 0;
-    i--
-  ) {
+  for (let i = firstDayOfMonth; i > 0; i--) {
     calendarDays.push({
       day: prevMonthDays - i + 1,
       currentMonth: false,
@@ -94,18 +87,14 @@ const HrDashboard = () => {
   }
 
   // Current month dates
-  for (
-    let i = 1;
-    i <= daysInMonth;
-    i++
-  ) {
+  for (let i = 1; i <= daysInMonth; i++) {
     calendarDays.push({
       day: i,
       currentMonth: true,
     });
   }
 
-  // Complete 6 week calendar like screenshot
+  // Complete 6 week calendar
   let nextDay = 1;
 
   while (calendarDays.length < 42) {
@@ -116,6 +105,255 @@ const HrDashboard = () => {
 
     nextDay++;
   }
+
+  // =====================================================
+  // API STATE
+  // =====================================================
+
+  const [dashboardData, setDashboardData] =
+    useState<any>(null);
+
+  const [dashboardLoading, setDashboardLoading] =
+    useState(true);
+
+  const [dashboardError, setDashboardError] =
+    useState("");
+
+  // =====================================================
+  // FETCH HR DASHBOARD
+  // =====================================================
+
+  useEffect(() => {
+    const fetchDashboard = async () => {
+      try {
+        setDashboardLoading(true);
+        setDashboardError("");
+
+        const response = await getHRDashboard({
+          AttendancePeriod: "Today",
+          RecentAttendanceCount: 10,
+          LateEmployeeCount: 10,
+        });
+
+        console.log(
+          "HR DASHBOARD RESPONSE:",
+          response
+        );
+
+        /*
+         * API response:
+         *
+         * {
+         *   statusCode: 200,
+         *   message: "...",
+         *   data: {...},
+         *   isSuccess: true
+         * }
+         *
+         * Keep the inner data object.
+         */
+        setDashboardData(
+          response?.data ?? response
+        );
+      } catch (error: any) {
+        console.error(
+          "HR DASHBOARD API ERROR:",
+          error
+        );
+
+        setDashboardError(
+          error?.response?.data?.message ||
+            error?.message ||
+            "Failed to load dashboard data."
+        );
+      } finally {
+        setDashboardLoading(false);
+      }
+    };
+
+    fetchDashboard();
+  }, []);
+
+  // =====================================================
+  // SAFE API DATA
+  // =====================================================
+
+  const data = dashboardData || {};
+
+  /*
+   * These mappings support the dashboard response shape
+   * already available from your API examples.
+   *
+   * If HRDashboard returns slightly different property
+   * names, console.log above will show the exact response.
+   */
+
+  const welcome = data?.welcome || {};
+
+  const summary = data?.summary || {};
+
+  const attendanceOverview =
+    data?.attendanceOverview ||
+    summary?.attendanceOverview ||
+    {};
+
+  const employeesByDepartment =
+    data?.employeesByDepartment || {};
+
+  const employeeStatus =
+    data?.employeeStatus || {};
+
+  const topPerformer =
+    data?.topPerformer || {};
+
+  const clockInOut =
+    Array.isArray(data?.clockInOut)
+      ? data.clockInOut
+      : [];
+
+  const lateEmployees =
+    Array.isArray(data?.lateEmployees)
+      ? data.lateEmployees
+      : [];
+
+  // =====================================================
+  // DASHBOARD VALUES
+  // =====================================================
+
+  const totalEmployees =
+    summary?.totalEmployees ??
+    data?.totalEmployees ??
+    25;
+
+  const totalDepartments =
+    summary?.totalDepartments ??
+    data?.totalDepartments ??
+    8;
+
+  const leaves =
+    summary?.leaves ??
+    data?.leaves ??
+    25;
+
+  const presentToday =
+    attendanceOverview?.presentToday ??
+    attendanceOverview?.present?.count ??
+    summary?.attendanceOverview?.presentToday ??
+    20;
+
+  const attendanceTotal =
+    attendanceOverview?.totalAttendance ??
+    summary?.attendanceOverview?.totalEmployees ??
+    totalEmployees;
+
+  // =====================================================
+  // ATTENDANCE STATUS
+  // =====================================================
+
+  const presentPercentage =
+    attendanceOverview?.present?.percentage ??
+    59;
+
+  const latePercentage =
+    attendanceOverview?.late?.percentage ??
+    21;
+
+  const permissionPercentage =
+    attendanceOverview?.permission?.percentage ??
+    2;
+
+  const absentPercentage =
+    attendanceOverview?.absent?.percentage ??
+    15;
+
+  const absentEmployees =
+    Array.isArray(
+      attendanceOverview?.absent?.employees
+    )
+      ? attendanceOverview.absent.employees
+      : [];
+
+  // =====================================================
+  // EMPLOYEE STATUS
+  // =====================================================
+
+  const employeeStatusTotal =
+    employeeStatus?.totalEmployee ??
+    employeeStatus?.totalEmployees ??
+    totalEmployees;
+
+  const fullTime =
+    employeeStatus?.fulltime ??
+    employeeStatus?.fullTime ??
+    employeeStatus?.fullTimeEmployees ??
+    112;
+
+  const contract =
+    employeeStatus?.contract ??
+    employeeStatus?.contractEmployees ??
+    112;
+
+  const probation =
+    employeeStatus?.probation ??
+    employeeStatus?.probationEmployees ??
+    12;
+
+  const wfh =
+    employeeStatus?.wfh ??
+    employeeStatus?.WFH ??
+    employeeStatus?.wfhEmployees ??
+    4;
+
+  const fullTimePercentage =
+    employeeStatus?.fulltimePercentage ??
+    employeeStatus?.fullTimePercentage ??
+    48;
+
+  const contractPercentage =
+    employeeStatus?.contractPercentage ??
+    20;
+
+  const probationPercentage =
+    employeeStatus?.probationPercentage ??
+    22;
+
+  const wfhPercentage =
+    employeeStatus?.wfhPercentage ??
+    20;
+
+  // =====================================================
+  // TOP PERFORMER
+  // =====================================================
+
+  const performerName =
+    topPerformer?.name ||
+    topPerformer?.employeeName ||
+    "Daniel Esbella";
+
+  const performerDesignation =
+    topPerformer?.designation ||
+    topPerformer?.role ||
+    "IOS Developer";
+
+  const performerPerformance =
+    topPerformer?.performancePercentage ??
+    topPerformer?.performance ??
+    topPerformer?.percentage ??
+    99;
+
+  // =====================================================
+  // DEPARTMENT DATA
+  // =====================================================
+
+  const departmentList = Array.isArray(
+    employeesByDepartment?.data
+  )
+    ? employeesByDepartment.data
+    : [];
+
+  // =====================================================
+  // UPCOMING EVENTS
+  // =====================================================
 
   const events = [
     {
@@ -135,12 +373,45 @@ const HrDashboard = () => {
     },
   ];
 
+  // =====================================================
+  // LOADING
+  // =====================================================
+
+  if (dashboardLoading) {
+    return (
+      <div className="hr-dashboard">
+        <div className="hr-page-header">
+          <h1>Dashboard</h1>
+
+          <div className="hr-breadcrumb">
+            <span className="home-icon">
+              <i className="ti ti-home"></i>
+            </span>
+
+            <span>/</span>
+
+            <span>Dashboard</span>
+          </div>
+        </div>
+
+        <div
+          style={{
+            padding: "40px",
+            textAlign: "center",
+          }}
+        >
+          Loading dashboard...
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="hr-dashboard">
 
-      {/* =========================
+      {/* =====================================================
           PAGE TITLE
-      ========================== */}
+      ====================================================== */}
 
       <div className="hr-page-header">
         <h1>Dashboard</h1>
@@ -156,36 +427,71 @@ const HrDashboard = () => {
         </div>
       </div>
 
-      {/* =========================
+      {/* =====================================================
+          API ERROR
+      ====================================================== */}
+
+      {dashboardError && (
+        <div
+          style={{
+            padding: "12px 16px",
+            marginBottom: "16px",
+            borderRadius: "8px",
+            background: "#fff1f1",
+            color: "#d11a2a",
+            border: "1px solid #f1cccc",
+          }}
+        >
+          {dashboardError}
+        </div>
+      )}
+
+      {/* =====================================================
           WELCOME CARD
-      ========================== */}
+      ====================================================== */}
 
       <div className="hr-welcome-card">
 
         <div className="welcome-avatar">
-          <span>300 × 300</span>
+          {welcome?.profilePicture ? (
+            <img
+              src={welcome.profilePicture}
+              alt="Profile"
+              style={{
+                width: "100%",
+                height: "100%",
+                objectFit: "cover",
+                borderRadius: "50%",
+              }}
+            />
+          ) : (
+            <span>300 × 300</span>
+          )}
         </div>
 
         <div className="welcome-info">
 
           <div className="welcome-title-row">
+
             <h2>
-              Welcome Back, Adrian
+              Welcome Back,{" "}
+              {welcome?.name || "Adrian"}
             </h2>
 
             <span className="welcome-edit">
               <i className="ti ti-edit"></i>
             </span>
+
           </div>
 
           <p>
             You have{" "}
             <span className="gold-text">
-              21
+              {welcome?.pendingApprovals ?? 21}
             </span>{" "}
             Pending Approvals &{" "}
             <span className="gold-text">
-              14
+              {welcome?.leaveRequests ?? 14}
             </span>{" "}
             Leave Requests
           </p>
@@ -194,19 +500,21 @@ const HrDashboard = () => {
 
       </div>
 
-      {/* =========================
+      {/* =====================================================
           MAIN GRID
-      ========================== */}
+      ====================================================== */}
 
       <div className="hr-main-grid">
 
-        {/* =========================
+        {/* =====================================================
             LEFT AREA
-        ========================== */}
+        ====================================================== */}
 
         <div className="hr-left-area">
 
-          {/* TOP STAT CARDS */}
+          {/* =====================================================
+              TOP STAT CARDS
+          ====================================================== */}
 
           <div className="hr-stats-grid">
 
@@ -225,15 +533,13 @@ const HrDashboard = () => {
               </p>
 
               <h3>
-                20/25
+                {presentToday}/{totalEmployees}
               </h3>
 
               <span
                 className="hr-stat-link"
                 onClick={() =>
-                  navigate(
-                    "/HR/Atendance"
-                  )
+                  navigate("/HR/Atendance")
                 }
               >
                 View Details
@@ -253,11 +559,16 @@ const HrDashboard = () => {
                 Total Employee
               </p>
 
-              <h3>25</h3>
+              <h3>
+                {totalEmployees}
+              </h3>
 
-              <span className="hr-stat-link">
-                View All
-              </span>
+            <span
+  className="hr-stat-link"
+  onClick={() => navigate("/Hr/Employee")}
+>
+  View All
+</span>
 
             </div>
 
@@ -273,11 +584,19 @@ const HrDashboard = () => {
                 Total Departments
               </p>
 
-              <h3>08</h3>
+              <h3>
+                {String(totalDepartments).padStart(
+                  2,
+                  "0"
+                )}
+              </h3>
 
-              <span className="hr-stat-link">
-                View All
-              </span>
+             <span
+  className="hr-stat-link"
+  onClick={() => navigate("/HR/Departments")}
+>
+  View All
+</span>
 
             </div>
 
@@ -293,19 +612,24 @@ const HrDashboard = () => {
                 Leaves
               </p>
 
-              <h3>25</h3>
+              <h3>
+                {leaves}
+              </h3>
 
-              <span className="hr-stat-link">
-                View All
-              </span>
+             <span
+  className="hr-stat-link"
+  onClick={() => navigate("/HR/Leave")}
+>
+  View All
+</span>
 
             </div>
 
           </div>
 
-          {/* =========================
+          {/* =====================================================
               EMPLOYEE STATUS
-          ========================== */}
+          ====================================================== */}
 
           <div className="employee-status-card">
 
@@ -331,7 +655,7 @@ const HrDashboard = () => {
                 </span>
 
                 <strong>
-                  154
+                  {employeeStatusTotal}
                 </strong>
 
               </div>
@@ -340,10 +664,33 @@ const HrDashboard = () => {
 
               <div className="employee-progress">
 
-                <div className="emp-fulltime"></div>
-                <div className="emp-contract"></div>
-                <div className="emp-probation"></div>
-                <div className="emp-wfh"></div>
+                <div
+                  className="emp-fulltime"
+                  style={{
+                    width: `${fullTimePercentage}%`,
+                  }}
+                ></div>
+
+                <div
+                  className="emp-contract"
+                  style={{
+                    width: `${contractPercentage}%`,
+                  }}
+                ></div>
+
+                <div
+                  className="emp-probation"
+                  style={{
+                    width: `${probationPercentage}%`,
+                  }}
+                ></div>
+
+                <div
+                  className="emp-wfh"
+                  style={{
+                    width: `${wfhPercentage}%`,
+                  }}
+                ></div>
 
               </div>
 
@@ -358,17 +705,17 @@ const HrDashboard = () => {
                     <span
                       className="employment-color"
                       style={{
-                        background:
-                          "#c89636",
+                        background: "#c89636",
                       }}
                     ></span>
 
-                    Fulltime (48%)
+                    Fulltime (
+                    {fullTimePercentage}%)
 
                   </div>
 
                   <strong>
-                    112
+                    {fullTime}
                   </strong>
 
                 </div>
@@ -380,17 +727,17 @@ const HrDashboard = () => {
                     <span
                       className="employment-color"
                       style={{
-                        background:
-                          "#3c7886",
+                        background: "#3c7886",
                       }}
                     ></span>
 
-                    Contract (20%)
+                    Contract (
+                    {contractPercentage}%)
 
                   </div>
 
                   <strong>
-                    112
+                    {contract}
                   </strong>
 
                 </div>
@@ -402,17 +749,17 @@ const HrDashboard = () => {
                     <span
                       className="employment-color"
                       style={{
-                        background:
-                          "#ef1111",
+                        background: "#ef1111",
                       }}
                     ></span>
 
-                    Probation (22%)
+                    Probation (
+                    {probationPercentage}%)
 
                   </div>
 
                   <strong>
-                    12
+                    {probation}
                   </strong>
 
                 </div>
@@ -424,17 +771,17 @@ const HrDashboard = () => {
                     <span
                       className="employment-color"
                       style={{
-                        background:
-                          "#f63591",
+                        background: "#f63591",
                       }}
                     ></span>
 
-                    WFH (20%)
+                    WFH (
+                    {wfhPercentage}%)
 
                   </div>
 
                   <strong>
-                    04
+                    {String(wfh).padStart(2, "0")}
                   </strong>
 
                 </div>
@@ -459,17 +806,38 @@ const HrDashboard = () => {
                     />
 
                     <div className="performer-avatar">
-                      <span>300</span>
+                      {topPerformer?.profilePicture ? (
+                        <img
+                          src={
+                            topPerformer.profilePicture
+                          }
+                          alt={
+                            performerName
+                          }
+                          style={{
+                            width: "100%",
+                            height: "100%",
+                            objectFit:
+                              "cover",
+                            borderRadius:
+                              "50%",
+                          }}
+                        />
+                      ) : (
+                        <span>300</span>
+                      )}
                     </div>
 
                     <div>
+
                       <h4>
-                        Daniel Esbella
+                        {performerName}
                       </h4>
 
                       <p>
-                        IOS Developer
+                        {performerDesignation}
                       </p>
+
                     </div>
 
                   </div>
@@ -481,7 +849,7 @@ const HrDashboard = () => {
                     </span>
 
                     <strong>
-                      99%
+                      {performerPerformance}%
                     </strong>
 
                   </div>
@@ -490,24 +858,27 @@ const HrDashboard = () => {
 
               </div>
 
-              <button
-                type="button"
-                className="view-employees-btn"
-              >
-                View All Employees
-              </button>
+            <button
+  type="button"
+  className="view-employees-btn"
+  onClick={() => navigate("/Hr/Employee")}
+>
+  View All Employees
+</button>
 
             </div>
 
           </div>
 
-          {/* =========================
+          {/* =====================================================
               BOTTOM AREA
-          ========================== */}
+          ====================================================== */}
 
           <div className="hr-bottom-grid">
 
-            {/* ATTENDANCE OVERVIEW */}
+            {/* =====================================================
+                ATTENDANCE OVERVIEW
+            ====================================================== */}
 
             <div className="attendance-overview-card">
 
@@ -543,7 +914,7 @@ const HrDashboard = () => {
                     </p>
 
                     <h2>
-                      120
+                      {attendanceTotal}
                     </h2>
 
                   </div>
@@ -564,7 +935,7 @@ const HrDashboard = () => {
                     </div>
 
                     <strong>
-                      59%
+                      {presentPercentage}%
                     </strong>
 
                   </div>
@@ -577,7 +948,7 @@ const HrDashboard = () => {
                     </div>
 
                     <strong>
-                      21%
+                      {latePercentage}%
                     </strong>
 
                   </div>
@@ -590,7 +961,7 @@ const HrDashboard = () => {
                     </div>
 
                     <strong>
-                      2%
+                      {permissionPercentage}%
                     </strong>
 
                   </div>
@@ -603,7 +974,7 @@ const HrDashboard = () => {
                     </div>
 
                     <strong>
-                      15%
+                      {absentPercentage}%
                     </strong>
 
                   </div>
@@ -618,29 +989,71 @@ const HrDashboard = () => {
 
                   <div className="absentee-images">
 
-                    <img
-                      src={avatar27}
-                      alt=""
-                    />
+                    {absentEmployees.length > 0 ? (
+                      absentEmployees
+                        .slice(0, 4)
+                        .map(
+                          (
+                            employee: any,
+                            index: number
+                          ) => (
+                            <img
+                              key={
+                                employee?.employeeId ||
+                                index
+                              }
+                              src={
+                                employee?.profilePicture ||
+                                [
+                                  avatar27,
+                                  avatar30,
+                                  avatar14,
+                                  avatar29,
+                                ][index]
+                              }
+                              alt={
+                                employee?.name ||
+                                "Employee"
+                              }
+                            />
+                          )
+                        )
+                    ) : (
+                      <>
+                        <img
+                          src={avatar27}
+                          alt=""
+                        />
 
-                    <img
-                      src={avatar30}
-                      alt=""
-                    />
+                        <img
+                          src={avatar30}
+                          alt=""
+                        />
 
-                    <img
-                      src={avatar14}
-                      alt=""
-                    />
+                        <img
+                          src={avatar14}
+                          alt=""
+                        />
 
-                    <img
-                      src={avatar29}
-                      alt=""
-                    />
+                        <img
+                          src={avatar29}
+                          alt=""
+                        />
+                      </>
+                    )}
 
-                    <span className="plus-avatar">
-                      +1
-                    </span>
+                    {absentEmployees.length > 4 && (
+                      <span className="plus-avatar">
+                        +
+                        {absentEmployees.length - 4}
+                      </span>
+                    )}
+
+                    {absentEmployees.length === 0 && (
+                      <span className="plus-avatar">
+                        +1
+                      </span>
+                    )}
 
                   </div>
 
@@ -657,7 +1070,9 @@ const HrDashboard = () => {
 
             </div>
 
-            {/* CLOCK IN OUT */}
+            {/* =====================================================
+                CLOCK IN OUT
+            ====================================================== */}
 
             <div className="clock-card">
 
@@ -689,156 +1104,258 @@ const HrDashboard = () => {
 
               <div className="clock-card-body">
 
-                {/* Employee 1 */}
+                {/* API CLOCK-IN/OUT EMPLOYEES */}
 
-                <div className="clock-person dashed">
+                {clockInOut.length > 0 ? (
+                  clockInOut
+                    .slice(0, 3)
+                    .map(
+                      (
+                        employee: any,
+                        index: number
+                      ) => {
 
-                  <div className="clock-user">
+                        const employeeAvatar =
+                          employee?.profilePicture ||
+                          [
+                            avatar27,
+                            avatar30,
+                            avatar14,
+                          ][index];
 
-                    <img
-                      src={avatar27}
-                      alt="Daniel"
-                    />
+                        const checkIn =
+                          employee?.checkIn ||
+                          employee?.checkInTime;
 
-                    <div>
-                      <h4>
-                        Daniel Esbella
-                      </h4>
+                        const formattedTime =
+                          checkIn
+                            ? new Date(
+                                checkIn
+                              ).toLocaleTimeString(
+                                [],
+                                {
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                  hour12: false,
+                                }
+                              )
+                            : "--:--";
 
-                      <p>
-                        UI/UX Designer
-                      </p>
-                    </div>
+                        return (
+                          <div
+                            className={`clock-person ${
+                              index === 0
+                                ? "dashed"
+                                : ""
+                            }`}
+                            key={
+                              employee?.attendanceId ||
+                              employee?.employeeId ||
+                              index
+                            }
+                          >
 
-                  </div>
+                            <div className="clock-user">
 
-                  <div className="clock-time-wrapper">
+                              <img
+                                src={
+                                  employeeAvatar
+                                }
+                                alt={
+                                  employee?.name ||
+                                  "Employee"
+                                }
+                              />
 
-                    <Clock3 size={14} />
+                              <div>
 
-                    <span className="time-green">
-                      • 09:15
-                    </span>
+                                <h4>
+                                  {employee?.name ||
+                                    "Employee"}
+                                </h4>
 
-                  </div>
+                                <p>
+                                  {employee?.designation ||
+                                    "Employee"}
+                                </p>
 
-                </div>
+                              </div>
 
-                {/* Employee 2 */}
+                            </div>
 
-                <div className="clock-person">
+                            <div className="clock-time-wrapper">
 
-                  <div className="clock-user">
+                              <Clock3 size={14} />
 
-                    <img
-                      src={avatar30}
-                      alt="Doglas"
-                    />
+                              <span className="time-green">
+                                •{" "}
+                                {formattedTime}
+                              </span>
 
-                    <div>
-                      <h4>
-                        Doglas Martini
-                      </h4>
+                            </div>
 
-                      <p>
-                        Project Manager
-                      </p>
-                    </div>
+                          </div>
+                        );
+                      }
+                    )
+                ) : (
+                  <>
+                    {/* FALLBACK */}
 
-                  </div>
+                    <div className="clock-person dashed">
 
-                  <div className="clock-time-wrapper">
+                      <div className="clock-user">
 
-                    <Clock3 size={14} />
+                        <img
+                          src={avatar27}
+                          alt="Daniel"
+                        />
 
-                    <span className="time-green">
-                      • 09:36
-                    </span>
+                        <div>
 
-                  </div>
+                          <h4>
+                            Daniel Esbella
+                          </h4>
 
-                </div>
+                          <p>
+                            UI/UX Designer
+                          </p>
 
-                {/* Employee 3 */}
+                        </div>
 
-                <div className="clock-expanded">
+                      </div>
 
-                  <div className="clock-person no-bottom">
+                      <div className="clock-time-wrapper">
 
-                    <div className="clock-user">
+                        <Clock3 size={14} />
 
-                      <img
-                        src={avatar14}
-                        alt="Brian"
-                      />
+                        <span className="time-green">
+                          • 09:15
+                        </span>
 
-                      <div>
-                        <h4>
-                          Brian Villalobos
-                        </h4>
-
-                        <p>
-                          PHP Developer
-                        </p>
                       </div>
 
                     </div>
 
-                    <div className="clock-time-wrapper">
+                    <div className="clock-person">
 
-                      <Clock3 size={14} />
+                      <div className="clock-user">
 
-                      <span className="time-green">
-                        • 09:15
-                      </span>
+                        <img
+                          src={avatar30}
+                          alt="Doglas"
+                        />
 
-                    </div>
+                        <div>
 
-                  </div>
+                          <h4>
+                            Doglas Martini
+                          </h4>
 
-                  <div className="clock-details-row">
+                          <p>
+                            Project Manager
+                          </p>
 
-                    <div>
+                        </div>
 
-                      <p className="detail-green">
-                        • Clock In
-                      </p>
+                      </div>
 
-                      <strong>
-                        10:30 AM
-                      </strong>
+                      <div className="clock-time-wrapper">
 
-                    </div>
+                        <Clock3 size={14} />
 
-                    <div>
+                        <span className="time-green">
+                          • 09:36
+                        </span>
 
-                      <p className="detail-red">
-                        • Clock Out
-                      </p>
-
-                      <strong>
-                        09:45 AM
-                      </strong>
+                      </div>
 
                     </div>
 
-                    <div>
+                    <div className="clock-expanded">
 
-                      <p className="detail-yellow">
-                        • Production
-                      </p>
+                      <div className="clock-person no-bottom">
 
-                      <strong>
-                        09:21 Hrs
-                      </strong>
+                        <div className="clock-user">
+
+                          <img
+                            src={avatar14}
+                            alt="Brian"
+                          />
+
+                          <div>
+
+                            <h4>
+                              Brian Villalobos
+                            </h4>
+
+                            <p>
+                              PHP Developer
+                            </p>
+
+                          </div>
+
+                        </div>
+
+                        <div className="clock-time-wrapper">
+
+                          <Clock3 size={14} />
+
+                          <span className="time-green">
+                            • 09:15
+                          </span>
+
+                        </div>
+
+                      </div>
+
+                      <div className="clock-details-row">
+
+                        <div>
+
+                          <p className="detail-green">
+                            • Clock In
+                          </p>
+
+                          <strong>
+                            10:30 AM
+                          </strong>
+
+                        </div>
+
+                        <div>
+
+                          <p className="detail-red">
+                            • Clock Out
+                          </p>
+
+                          <strong>
+                            09:45 AM
+                          </strong>
+
+                        </div>
+
+                        <div>
+
+                          <p className="detail-yellow">
+                            • Production
+                          </p>
+
+                          <strong>
+                            09:21 Hrs
+                          </strong>
+
+                        </div>
+
+                      </div>
 
                     </div>
+                  </>
+                )}
 
-                  </div>
-
-                </div>
-
-                {/* LATE */}
+                {/* =====================================================
+                    LATE EMPLOYEES
+                ====================================================== */}
 
                 <div className="late-section">
 
@@ -846,38 +1363,129 @@ const HrDashboard = () => {
                     Late
                   </h3>
 
-                  <div className="clock-person dashed">
+                  {lateEmployees.length > 0 ? (
+                    lateEmployees
+                      .slice(0, 3)
+                      .map(
+                        (
+                          employee: any,
+                          index: number
+                        ) => {
 
-                    <div className="clock-user">
+                          const lateAvatar =
+                            employee?.profilePicture ||
+                            [
+                              avatar29,
+                              avatar30,
+                              avatar14,
+                            ][index];
 
-                      <img
-                        src={avatar29}
-                        alt="Anthony"
-                      />
+                          const checkIn =
+                            employee?.checkInTime;
 
-                      <div>
-                        <h4>
-                          Anthony Lewis...
-                        </h4>
+                          const lateTime =
+                            checkIn
+                              ? new Date(
+                                  checkIn
+                                ).toLocaleTimeString(
+                                  [],
+                                  {
+                                    hour: "2-digit",
+                                    minute:
+                                      "2-digit",
+                                    hour12:
+                                      false,
+                                  }
+                                )
+                              : "--:--";
 
-                        <p>
-                          Marketing Head
-                        </p>
+                          return (
+                            <div
+                              className="clock-person dashed"
+                              key={
+                                employee?.attendanceId ||
+                                employee?.employeeId ||
+                                index
+                              }
+                            >
+
+                              <div className="clock-user">
+
+                                <img
+                                  src={lateAvatar}
+                                  alt={
+                                    employee?.name ||
+                                    "Employee"
+                                  }
+                                />
+
+                                <div>
+
+                                  <h4>
+                                    {employee?.name ||
+                                      "Employee"}
+                                  </h4>
+
+                                  <p>
+                                    {employee?.designation ||
+                                      employee?.department ||
+                                      "Employee"}
+                                  </p>
+
+                                </div>
+
+                              </div>
+
+                              <div className="clock-time-wrapper">
+
+                                <Clock3 size={14} />
+
+                                <span className="time-red">
+                                  • {lateTime}
+                                </span>
+
+                              </div>
+
+                            </div>
+                          );
+                        }
+                      )
+                  ) : (
+                    <div className="clock-person dashed">
+
+                      <div className="clock-user">
+
+                        <img
+                          src={avatar29}
+                          alt="Anthony"
+                        />
+
+                        <div>
+
+                          <h4>
+                            Anthony Lewis...
+                          </h4>
+
+                          <p>
+                            Marketing Head
+                          </p>
+
+                        </div>
+
+                      </div>
+
+                      <div className="clock-time-wrapper">
+
+                        <Clock3 size={14} />
+
+                        <span className="time-red">
+                          • 08:35
+                        </span>
+
                       </div>
 
                     </div>
-
-                    <div className="clock-time-wrapper">
-
-                      <Clock3 size={14} />
-
-                      <span className="time-red">
-                        • 08:35
-                      </span>
-
-                    </div>
-
-                  </div>
+                  )}
 
                 </div>
 
@@ -885,9 +1493,7 @@ const HrDashboard = () => {
                   type="button"
                   className="view-attendance-btn"
                   onClick={() =>
-                    navigate(
-                      "/HR/Atendance"
-                    )
+                    navigate("/HR/Atendance")
                   }
                 >
                   View All Attendance
@@ -901,9 +1507,9 @@ const HrDashboard = () => {
 
         </div>
 
-        {/* =========================
+        {/* =====================================================
             RIGHT CALENDAR
-        ========================== */}
+        ====================================================== */}
 
         <div className="hr-right-area">
 
@@ -960,14 +1566,17 @@ const HrDashboard = () => {
                   const selected =
                     date.currentMonth &&
                     date.day === today.getDate() &&
-                    month === today.getMonth() &&
-                    year === today.getFullYear();
+                    month ===
+                      today.getMonth() &&
+                    year ===
+                      today.getFullYear();
 
                   return (
                     <div
                       key={index}
                       className="calendar-cell"
                     >
+
                       <span
                         className={`calendar-number ${
                           !date.currentMonth
@@ -981,6 +1590,7 @@ const HrDashboard = () => {
                       >
                         {date.day}
                       </span>
+
                     </div>
                   );
                 }
@@ -999,7 +1609,7 @@ const HrDashboard = () => {
               </h3>
 
               <span>
-                15
+                {events.length}
               </span>
 
             </div>
@@ -1028,11 +1638,13 @@ const HrDashboard = () => {
                       </h4>
 
                       <p>
+
                         <Calendar
                           size={12}
                         />
 
                         {event.date}
+
                       </p>
 
                     </div>

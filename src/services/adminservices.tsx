@@ -332,14 +332,13 @@ const extractProfileData = (
 
 
 
-export const getEmployeeProfile = async (
+      export const getEmployeeProfile = async (
   idOrToken?: string,
   maybeToken?: string
 ) => {
-  const token =
-    maybeToken ||
-    idOrToken ||
-    getToken();
+  const token = maybeToken || idOrToken || getToken();
+
+
 
   try {
     const response = await axios.get(
@@ -349,36 +348,20 @@ export const getEmployeeProfile = async (
       }
     );
 
-    console.log(
-      "GET PROFILE RESPONSE:",
-      response.data
-    );
+    console.log("GET PROFILE RESPONSE:", response.data);
 
-    const profile =
-      extractProfileData(
-        response.data
-      );
+    const profile = extractProfileData(response.data);
 
-    console.log(
-      "EXTRACTED PROFILE DATA:",
-      profile
-    );
+    console.log("EXTRACTED PROFILE DATA:", profile);
 
     return profile;
   } catch (error) {
-    console.error(
-      "GET PROFILE ERROR:",
-      error
-    );
-
+    console.error("GET PROFILE ERROR:", error);
     console.error(
       "GET PROFILE ERROR RESPONSE:",
       (error as AxiosError)?.response?.data
     );
-
-    throw new Error(
-      getApiErrorMessage(error)
-    );
+    throw new Error(getApiErrorMessage(error));
   }
 };
 

@@ -1,6 +1,3 @@
-// SELECT * FROM Users
-// WHERE Email = 'admin@gmail.com';
-
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
 
@@ -40,10 +37,12 @@ const AdminLogin = () => {
 
       const response = await loginUser(payload);
 
-      console.log("FULL LOGIN RESPONSE:", response);
-      console.log("RESPONSE DATA:", response?.data);
-      console.log("TOKENS:", response?.data?.tokens);
-
+console.log("========== ADMIN LOGIN DEBUG ==========");
+console.log("LOGIN PAYLOAD:", payload);
+console.log("LOGIN RESPONSE:", response);
+console.log("LOGIN USER TYPE:", response?.data?.userType);
+console.log("LOGIN USER ID:", response?.data?.userId);
+console.log("LOGIN TOKENS:", response?.data?.tokens);
       // Get access token from login response
       const accessToken = response?.data?.tokens?.accessToken;
 
@@ -77,18 +76,72 @@ const AdminLogin = () => {
         return;
       }
 
-      // Remove old/bad token first
+      /*
+       * IMPORTANT:
+       * Clear the complete previous user's session.
+       * Otherwise HR's userId/role can remain in localStorage
+       * when logging into Admin.
+       */
       localStorage.removeItem("token");
+      localStorage.removeItem("userId");
+      localStorage.removeItem("role");
+      localStorage.removeItem("user");
 
-      // Save correct token
+     
       localStorage.setItem("token", tokenString);
+      
 
-      // Save user response
+      
       localStorage.setItem("user", JSON.stringify(response));
+
+    
+      const loggedInUserId =
+        response?.data?.userId ??
+        response?.data?.UserId ??
+        response?.data?.id ??
+        response?.data?.Id ??
+        response?.data?.user?.id ??
+        response?.data?.user?.Id ??
+        response?.data?.user?.userId ??
+        response?.data?.user?.UserId ??
+        "";
+
+      if (loggedInUserId) {
+        localStorage.setItem(
+          "userId",
+          String(loggedInUserId)
+        );
+      }
+
+      /*
+       * Save role/user type when available.
+       */
+      const userType =
+        response?.data?.userType ??
+        response?.data?.UserType ??
+        response?.data?.user?.userType ??
+        response?.data?.user?.UserType;
+
+      if (userType !== undefined && userType !== null) {
+        localStorage.setItem(
+          "role",
+          String(userType)
+        );
+      }
 
       console.log(
         "TOKEN SAVED:",
         localStorage.getItem("token")
+      );
+
+      console.log(
+        "SAVED USER ID:",
+        localStorage.getItem("userId")
+      );
+
+      console.log(
+        "SAVED ROLE:",
+        localStorage.getItem("role")
       );
 
       console.log(
@@ -98,16 +151,31 @@ const AdminLogin = () => {
 
       // Check login success
       if (response?.statusCode === 200) {
-        const userType = response?.data?.userType;
-
         console.log("USER TYPE:", userType);
 
         if (userType === 0) {
           navigate("/Admin/Dashboard");
         } else {
+          /*
+           * If backend returns a different userType,
+           * remove the newly saved Admin session.
+           */
+          localStorage.removeItem("token");
+          localStorage.removeItem("userId");
+          localStorage.removeItem("role");
+          localStorage.removeItem("user");
+
           alert("You are not an Admin");
         }
       } else {
+        /*
+         * Login failed, so don't leave authentication data behind.
+         */
+        localStorage.removeItem("token");
+        localStorage.removeItem("userId");
+        localStorage.removeItem("role");
+        localStorage.removeItem("user");
+
         alert(
           response?.data?.message ||
             response?.message ||
@@ -116,6 +184,15 @@ const AdminLogin = () => {
       }
     } catch (error: any) {
       console.error("LOGIN ERROR:", error);
+
+      /*
+       * Clear potentially stale authentication data
+       * if login fails.
+       */
+      localStorage.removeItem("token");
+      localStorage.removeItem("userId");
+      localStorage.removeItem("role");
+      localStorage.removeItem("user");
 
       alert(
         error?.response?.data?.message ||

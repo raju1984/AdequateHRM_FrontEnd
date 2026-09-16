@@ -2202,7 +2202,7 @@ const Employee = () => {
           </div>
         </div>
 
-        <button
+        {/* <button
           type="button"
           className="add-employee-btn"
           onClick={
@@ -2214,7 +2214,7 @@ const Employee = () => {
           </span>
 
           Add Employee
-        </button>
+        </button> */}
       </div>
 
       <div className="employee-stat-grid">

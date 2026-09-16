@@ -125,27 +125,6 @@ const getValue = (
 const getProfileObject = (
   response: any
 ): ProfileApiData => {
-  /*
-    Different APIs can return:
-
-    {
-      data: {...}
-    }
-
-    or
-
-    {
-      result: {...}
-    }
-
-    or directly:
-
-    {
-      id: "...",
-      firstName: "..."
-    }
-  */
-
   if (
     response?.data &&
     typeof response.data === "object" &&
@@ -173,27 +152,17 @@ const getProfileObject = (
   return response || {};
 };
 
-const getProfileId = (
-  data: ProfileApiData
-): string => {
-  return String(
-    data?.id ??
-      data?.Id ??
-      data?.userId ??
-      data?.UserId ??
-      localStorage.getItem("userId") ??
-      ""
-  ).trim();
-};
-
 /* =========================================================
    PROFILE COMPONENT
 ========================================================= */
 
 const Profile: React.FC = () => {
-  const token =
-    localStorage.getItem("token") || "";
-
+  /*
+   * Login ke time jo userId localStorage mein save hua hai,
+   * wahi logged-in user's identity hai.
+   *
+   * Profile API response se isko overwrite nahi karna hai.
+   */
   const storedUserId =
     localStorage.getItem("userId") || "";
 
@@ -265,9 +234,51 @@ const Profile: React.FC = () => {
     try {
       setLoading(true);
 
+      /*
+       * Always read the CURRENT token.
+       * This prevents an old Admin/HR token from being
+       * captured by the component.
+       */
+      const currentToken =
+        localStorage.getItem("token");
+
+      const currentUserId =
+        localStorage.getItem("userId");
+
+      const currentRole =
+        localStorage.getItem("role");
+
+      console.log(
+        "========== PROFILE SESSION =========="
+      );
+
+      /*
+       * Do NOT print the actual JWT.
+       */
+      console.log(
+        "PROFILE HAS TOKEN:",
+        Boolean(currentToken)
+      );
+
+      console.log(
+        "PROFILE CURRENT USER ID:",
+        currentUserId
+      );
+
+      console.log(
+        "PROFILE CURRENT ROLE:",
+        currentRole
+      );
+
+      if (!currentToken) {
+        throw new Error(
+          "Authentication token not found. Please login again."
+        );
+      }
+
       const response =
         await getEmployeeProfile(
-          token
+          currentToken
         );
 
       console.log(
@@ -343,24 +354,40 @@ const Profile: React.FC = () => {
         confirmPassword: "",
       };
 
-      const id =
-        getProfileId(data);
+      /*
+       * IMPORTANT:
+       *
+       * Do NOT do:
+       *
+       * const id = data.id;
+       * setProfileId(id);
+       *
+       * The API response ID should NOT overwrite
+       * the logged-in session identity.
+       *
+       * userId saved during login remains the identity.
+       */
 
-      if (id) {
-        setProfileId(id);
+      const loggedInUserId =
+        String(
+          localStorage.getItem(
+            "userId"
+          ) || ""
+        ).trim();
 
-        /*
-          Keep userId synchronized if backend
-          returned the actual profile ID.
-        */
-        localStorage.setItem(
-          "userId",
-          id
+      if (loggedInUserId) {
+        setProfileId(
+          loggedInUserId
         );
       }
 
-      setProfile(apiProfile);
-      setOriginalProfile(apiProfile);
+      setProfile(
+        apiProfile
+      );
+
+      setOriginalProfile(
+        apiProfile
+      );
 
       const profileImage =
         data?.profilePicture ||
@@ -396,10 +423,13 @@ const Profile: React.FC = () => {
   ======================================================= */
 
   useEffect(() => {
-    if (token) {
+    const currentToken =
+      localStorage.getItem("token");
+
+    if (currentToken) {
       fetchProfile();
     }
-  }, [token]);
+  }, []);
 
   /* =======================================================
      PHOTO CHANGE
@@ -428,10 +458,6 @@ const Profile: React.FC = () => {
       return;
     }
 
-    /*
-      Optional 4 MB validation.
-    */
-
     const maxSize =
       4 * 1024 * 1024;
 
@@ -443,10 +469,6 @@ const Profile: React.FC = () => {
       e.target.value = "";
       return;
     }
-
-    /*
-      Revoke previous blob URL.
-    */
 
     if (
       photoPreview &&
@@ -487,11 +509,6 @@ const Profile: React.FC = () => {
 
     setSelectedPhoto(null);
 
-    /*
-      Restore server image if possible
-      by fetching profile again.
-    */
-
     if (
       fileInputRef.current
     ) {
@@ -528,12 +545,6 @@ const Profile: React.FC = () => {
         "";
     }
 
-    /*
-      Restore original server photo.
-      Fetching keeps this safe if the backend
-      has a profile picture URL.
-    */
-
     fetchProfile();
   };
 
@@ -544,18 +555,24 @@ const Profile: React.FC = () => {
 
   const handleSave = async () => {
     try {
-      /* -----------------------------------------------
-         PROFILE ID
-      ------------------------------------------------ */
+      /*
+       * IMPORTANT:
+       *
+       * Always get the latest userId from localStorage.
+       *
+       * localStorage userId is the ID obtained during
+       * Admin login.
+       */
+      const currentUserId =
+        String(
+          localStorage.getItem(
+            "userId"
+          ) ||
+            profileId ||
+            ""
+        ).trim();
 
-      const id =
-        profileId ||
-        localStorage.getItem(
-          "userId"
-        ) ||
-        "";
-
-      if (!id.trim()) {
+      if (!currentUserId) {
         alert(
           "Profile ID not found. Please login again."
         );
@@ -602,13 +619,30 @@ const Profile: React.FC = () => {
       }
 
       /* -----------------------------------------------
+         CURRENT TOKEN
+      ------------------------------------------------ */
+
+      const currentToken =
+        localStorage.getItem(
+          "token"
+        );
+
+      if (!currentToken) {
+        alert(
+          "Authentication token not found. Please login again."
+        );
+
+        return;
+      }
+
+      /* -----------------------------------------------
          SAVE
       ------------------------------------------------ */
 
       setSaving(true);
 
       const payload = {
-        Id: id.trim(),
+        Id: currentUserId,
 
         FirstName:
           profile.firstName.trim(),
@@ -638,13 +672,16 @@ const Profile: React.FC = () => {
           profile.postalCode.trim(),
 
         CurrentPassword:
-          profile.currentPassword || "",
+          profile.currentPassword ||
+          "",
 
         NewPassword:
-          profile.newPassword || "",
+          profile.newPassword ||
+          "",
 
         ConfirmPassword:
-          profile.confirmPassword || "",
+          profile.confirmPassword ||
+          "",
 
         ProfilePicture:
           selectedPhoto,
@@ -654,37 +691,39 @@ const Profile: React.FC = () => {
         "PROFILE UPDATE PAYLOAD:",
         {
           ...payload,
+
           CurrentPassword:
             payload.CurrentPassword
               ? "***"
               : "",
+
           NewPassword:
             payload.NewPassword
               ? "***"
               : "",
+
           ConfirmPassword:
             payload.ConfirmPassword
               ? "***"
               : "",
+
           ProfilePicture:
             selectedPhoto?.name ||
             null,
         }
       );
 
+      /*
+       * Send update with the CURRENT Admin token.
+       */
       await updateEmployeeProfile(
         payload,
-        token
+        currentToken
       );
 
       alert(
         "Profile Updated Successfully."
       );
-
-      /*
-        Clear password fields after
-        successful update.
-      */
 
       setProfile((prev) => ({
         ...prev,
@@ -693,11 +732,6 @@ const Profile: React.FC = () => {
         newPassword: "",
         confirmPassword: "",
       }));
-
-      /*
-        Clear selected image because it has
-        already been uploaded.
-      */
 
       setSelectedPhoto(null);
 
@@ -709,9 +743,8 @@ const Profile: React.FC = () => {
       }
 
       /*
-        Reload latest profile from API.
-      */
-
+       * Re-fetch using the latest token.
+       */
       await fetchProfile();
     } catch (error: any) {
       console.error(

@@ -43,6 +43,16 @@ interface HolidayForm {
 }
 
 /* =====================================================
+   FINANCIAL YEAR STATIC HOLIDAY TYPE
+===================================================== */
+
+interface FinancialYearHoliday {
+  id: number;
+  date: string;
+  name: string;
+}
+
+/* =====================================================
    EMPTY FORM
 ===================================================== */
 
@@ -52,6 +62,337 @@ const emptyForm: HolidayForm = {
   description: "",
   status: "ACTIVE",
   type: "HR",
+};
+
+/* =====================================================
+   FINANCIAL YEAR LIST
+===================================================== */
+
+const financialYears = [
+  "2026-27",
+  "2027-28",
+  "2028-29",
+  "2029-30",
+  "2030-31",
+];
+
+/* =====================================================
+   STATIC FINANCIAL YEAR HOLIDAYS
+===================================================== */
+
+const financialYearHolidayData: Record<
+  string,
+  FinancialYearHoliday[]
+> = {
+  "2026-27": [
+    {
+      id: 1,
+      date: "1 January 2026",
+      name: "New Year",
+    },
+    {
+      id: 2,
+      date: "14 January 2026",
+      name: "Makar Sankranti",
+    },
+    {
+      id: 3,
+      date: "26 January 2026",
+      name: "Republic Day",
+    },
+    {
+      id: 4,
+      date: "4 March 2026",
+      name: "Holi",
+    },
+    {
+      id: 5,
+      date: "3 April 2026",
+      name: "Good Friday",
+    },
+    {
+      id: 6,
+      date: "14 April 2026",
+      name: "Ambedkar Jayanti",
+    },
+    {
+      id: 7,
+      date: "1 May 2026",
+      name: "May Day",
+    },
+    {
+      id: 8,
+      date: "27 May 2026",
+      name: "Eid-ul-Fitr",
+    },
+    {
+      id: 9,
+      date: "15 August 2026",
+      name: "Independence Day",
+    },
+    {
+      id: 10,
+      date: "26 August 2026",
+      name: "Janmashtami",
+    },
+    {
+      id: 11,
+      date: "2 October 2026",
+      name: "Gandhi Jayanti",
+    },
+    {
+      id: 12,
+      date: "20 October 2026",
+      name: "Dussehra",
+    },
+    {
+      id: 13,
+      date: "8 November 2026",
+      name: "Diwali",
+    },
+    {
+      id: 14,
+      date: "25 December 2026",
+      name: "Christmas",
+    },
+  ],
+
+  "2027-28": [
+    {
+      id: 1,
+      date: "1 January 2027",
+      name: "New Year",
+    },
+    {
+      id: 2,
+      date: "14 January 2027",
+      name: "Makar Sankranti",
+    },
+    {
+      id: 3,
+      date: "26 January 2027",
+      name: "Republic Day",
+    },
+    {
+      id: 4,
+      date: "22 March 2027",
+      name: "Holi",
+    },
+    {
+      id: 5,
+      date: "26 March 2027",
+      name: "Good Friday",
+    },
+    {
+      id: 6,
+      date: "14 April 2027",
+      name: "Ambedkar Jayanti",
+    },
+    {
+      id: 7,
+      date: "1 May 2027",
+      name: "May Day",
+    },
+    {
+      id: 8,
+      date: "15 August 2027",
+      name: "Independence Day",
+    },
+    {
+      id: 9,
+      date: "2 October 2027",
+      name: "Gandhi Jayanti",
+    },
+    {
+      id: 10,
+      date: "9 October 2027",
+      name: "Dussehra",
+    },
+    {
+      id: 11,
+      date: "29 October 2027",
+      name: "Diwali",
+    },
+    {
+      id: 12,
+      date: "25 December 2027",
+      name: "Christmas",
+    },
+  ],
+
+  "2028-29": [
+    {
+      id: 1,
+      date: "1 January 2028",
+      name: "New Year",
+    },
+    {
+      id: 2,
+      date: "14 January 2028",
+      name: "Makar Sankranti",
+    },
+    {
+      id: 3,
+      date: "26 January 2028",
+      name: "Republic Day",
+    },
+    {
+      id: 4,
+      date: "11 March 2028",
+      name: "Holi",
+    },
+    {
+      id: 5,
+      date: "14 April 2028",
+      name: "Ambedkar Jayanti",
+    },
+    {
+      id: 6,
+      date: "1 May 2028",
+      name: "May Day",
+    },
+    {
+      id: 7,
+      date: "15 August 2028",
+      name: "Independence Day",
+    },
+    {
+      id: 8,
+      date: "2 October 2028",
+      name: "Gandhi Jayanti",
+    },
+    {
+      id: 9,
+      date: "20 October 2028",
+      name: "Dussehra",
+    },
+    {
+      id: 10,
+      date: "17 November 2028",
+      name: "Diwali",
+    },
+    {
+      id: 11,
+      date: "25 December 2028",
+      name: "Christmas",
+    },
+  ],
+
+  "2029-30": [
+    {
+      id: 1,
+      date: "1 January 2029",
+      name: "New Year",
+    },
+    {
+      id: 2,
+      date: "14 January 2029",
+      name: "Makar Sankranti",
+    },
+    {
+      id: 3,
+      date: "26 January 2029",
+      name: "Republic Day",
+    },
+    {
+      id: 4,
+      date: "30 March 2029",
+      name: "Holi",
+    },
+    {
+      id: 5,
+      date: "14 April 2029",
+      name: "Ambedkar Jayanti",
+    },
+    {
+      id: 6,
+      date: "1 May 2029",
+      name: "May Day",
+    },
+    {
+      id: 7,
+      date: "15 August 2029",
+      name: "Independence Day",
+    },
+    {
+      id: 8,
+      date: "2 October 2029",
+      name: "Gandhi Jayanti",
+    },
+    {
+      id: 9,
+      date: "7 October 2029",
+      name: "Dussehra",
+    },
+    {
+      id: 10,
+      date: "27 October 2029",
+      name: "Diwali",
+    },
+    {
+      id: 11,
+      date: "25 December 2029",
+      name: "Christmas",
+    },
+  ],
+
+  "2030-31": [
+    {
+      id: 1,
+      date: "1 January 2030",
+      name: "New Year",
+    },
+    {
+      id: 2,
+      date: "14 January 2030",
+      name: "Makar Sankranti",
+    },
+    {
+      id: 3,
+      date: "26 January 2030",
+      name: "Republic Day",
+    },
+    {
+      id: 4,
+      date: "18 March 2030",
+      name: "Holi",
+    },
+    {
+      id: 5,
+      date: "14 April 2030",
+      name: "Ambedkar Jayanti",
+    },
+    {
+      id: 6,
+      date: "1 May 2030",
+      name: "May Day",
+    },
+    {
+      id: 7,
+      date: "15 August 2030",
+      name: "Independence Day",
+    },
+    {
+      id: 8,
+      date: "2 October 2030",
+      name: "Gandhi Jayanti",
+    },
+    {
+      id: 9,
+      date: "17 October 2030",
+      name: "Dussehra",
+    },
+    {
+      id: 10,
+      date: "5 November 2030",
+      name: "Diwali",
+    },
+    {
+      id: 11,
+      date: "25 December 2030",
+      name: "Christmas",
+    },
+  ],
 };
 
 /* =====================================================
@@ -86,17 +427,6 @@ const numberToHolidayType = (
 /* =====================================================
    DATE HELPERS
 ===================================================== */
-
-/*
-  API Date:
-  2026-09-07T06:56:24.477Z
-
-  Input:
-  2026-09-07
-
-  Display:
-  07 Sep 2026
-*/
 
 const formatApiDate = (
   date: any
@@ -142,9 +472,6 @@ const formatDateForInput = (
     return "";
   }
 
-  /*
-    Already yyyy-mm-dd
-  */
   if (
     /^\d{4}-\d{2}-\d{2}$/.test(
       date
@@ -180,9 +507,6 @@ const formatDateForInput = (
   return `${year}-${month}-${day}`;
 };
 
-/*
-  API wants ISO date.
-*/
 const inputDateToApiDate = (
   date: string
 ) => {
@@ -327,6 +651,44 @@ const Holidays: React.FC = () => {
     useState<HolidayType>("HR");
 
   /* ===================================================
+     FINANCIAL YEAR
+  =================================================== */
+
+  const [
+    financialYear,
+    setFinancialYear,
+  ] = useState("2026-27");
+
+ const [
+  financialYearOpen,
+  setFinancialYearOpen,
+] = useState(false);
+
+useEffect(() => {
+  const handleOutsideClick = () => {
+    setFinancialYearOpen(false);
+  };
+
+  if (financialYearOpen) {
+    document.addEventListener(
+      "click",
+      handleOutsideClick
+    );
+  }
+
+  return () => {
+    document.removeEventListener(
+      "click",
+      handleOutsideClick
+    );
+  };
+}, [financialYearOpen]);
+
+const [
+  financialYearModalOpen,
+  setFinancialYearModalOpen
+] = useState(false);
+  /* ===================================================
      TABLE
   =================================================== */
 
@@ -392,6 +754,42 @@ const Holidays: React.FC = () => {
     useState("");
 
   /* ===================================================
+     STATIC FINANCIAL YEAR HOLIDAYS
+  =================================================== */
+
+  const financialYearHolidays =
+    useMemo(() => {
+      return (
+        financialYearHolidayData[
+          financialYear
+        ] || []
+      );
+    }, [financialYear]);
+
+  /* ===================================================
+     FINANCIAL YEAR SELECT
+  =================================================== */
+
+  const handleFinancialYearSelect = (
+    year: string
+  ) => {
+    setFinancialYear(year);
+
+    setFinancialYearOpen(false);
+
+    setFinancialYearModalOpen(
+      true
+    );
+  };
+
+  const closeFinancialYearModal =
+    () => {
+      setFinancialYearModalOpen(
+        false
+      );
+    };
+
+  /* ===================================================
      LOAD HOLIDAYS
   =================================================== */
 
@@ -441,11 +839,6 @@ const Holidays: React.FC = () => {
           formatted
         );
 
-        /*
-          Try to get total records
-          from common API response structures.
-        */
-
         const total =
           response?.data?.totalCount ??
           response?.data?.totalRecords ??
@@ -494,7 +887,6 @@ const Holidays: React.FC = () => {
     return () =>
       clearTimeout(timer);
 
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     activeTab,
     search,
@@ -505,9 +897,6 @@ const Holidays: React.FC = () => {
 
   /* ===================================================
      FILTERED DATA
-
-     API already filters by type/search.
-     This additional filter keeps UI safe.
   =================================================== */
 
   const filteredData =
@@ -524,8 +913,6 @@ const Holidays: React.FC = () => {
 
   /* ===================================================
      PAGINATION
-
-     Backend pagination is being used.
   =================================================== */
 
   const totalPages =
@@ -629,7 +1016,6 @@ const Holidays: React.FC = () => {
     () => {
       setForm({
         ...emptyForm,
-
         type: activeTab,
       });
 
@@ -712,10 +1098,6 @@ const Holidays: React.FC = () => {
       );
 
       setCurrentPage(1);
-
-      await loadHolidays(
-        1
-      );
     } catch (err: any) {
       console.error(
         "ADD HOLIDAY ERROR:",
@@ -846,9 +1228,8 @@ const Holidays: React.FC = () => {
         form.type
       );
 
-      await loadHolidays(
-        currentPage
-      );
+      // The filter/tab/page state change above triggers the data reload.
+
     } catch (err: any) {
       console.error(
         "UPDATE HOLIDAY ERROR:",
@@ -921,12 +1302,6 @@ const Holidays: React.FC = () => {
 
         closeDeleteModal();
 
-        /*
-          If last item of current
-          page is deleted, go back
-          one page.
-        */
-
         const nextPage =
           filteredData.length ===
             1 &&
@@ -938,9 +1313,7 @@ const Holidays: React.FC = () => {
           nextPage
         );
 
-        await loadHolidays(
-          nextPage
-        );
+        // The page state change above triggers the data reload.
       } catch (err: any) {
         console.error(
           "DELETE HOLIDAY ERROR:",
@@ -1058,6 +1431,7 @@ const Holidays: React.FC = () => {
           border-bottom: 1px solid #dde2e8;
           display: flex;
           align-items: center;
+          justify-content: space-between;
         }
 
         .holiday-card-header h5 {
@@ -1065,6 +1439,141 @@ const Holidays: React.FC = () => {
           color: #071632;
           font-size: 16px;
           font-weight: 600;
+        }
+
+        /* =================================================
+           FINANCIAL YEAR DROPDOWN
+        ================================================= */
+
+        .holiday-financial-year {
+          position: relative;
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          color: #26354d;
+          font-size: 13px;
+          font-weight: 500;
+        }
+
+        .holiday-financial-year-dropdown {
+          position: relative;
+        }
+
+        .holiday-financial-year-trigger {
+          width: 110px;
+          height: 32px;
+          padding: 0 10px;
+          border: 1px solid #dce1e7;
+          border-radius: 5px;
+          outline: none;
+          background: #fff;
+          color: #26344d;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 8px;
+          font-size: 13px;
+          cursor: pointer;
+        }
+
+        .holiday-financial-year-trigger:hover {
+          border-color: #c29238;
+        }
+
+        .holiday-financial-year-menu {
+          position: absolute;
+          top: calc(100% + 5px);
+          right: 0;
+          z-index: 1000;
+          width: 140px;
+          padding: 5px 0;
+          border: 1px solid #dce1e7;
+          border-radius: 5px;
+          background: #fff;
+          box-shadow: 0 8px 20px rgba(0,0,0,.12);
+        }
+
+        .holiday-financial-year-option {
+          width: 100%;
+          height: 36px;
+          padding: 0 12px;
+          border: 0;
+          background: #fff;
+          color: #26344d;
+          text-align: left;
+          font-size: 13px;
+          cursor: pointer;
+        }
+
+        .holiday-financial-year-option:hover,
+        .holiday-financial-year-option.active {
+          background: #f8f1e4;
+          color: #c29238;
+          font-weight: 600;
+        }
+
+        /* =================================================
+           FINANCIAL YEAR HOLIDAY MODAL
+        ================================================= */
+
+        .holiday-financial-year-modal {
+          width: 600px;
+          max-width: calc(100vw - 30px);
+          overflow: hidden;
+          border-radius: 5px;
+          background: #fff;
+          box-shadow: 0 15px 45px rgba(0,0,0,.2);
+        }
+
+        .holiday-financial-year-body {
+          padding: 0;
+          max-height: 430px;
+          overflow-y: auto;
+        }
+
+        .holiday-year-table-wrapper {
+          width: 100%;
+          overflow-x: auto;
+        }
+
+        .holiday-year-table {
+          width: 100%;
+          border-collapse: collapse;
+        }
+
+        .holiday-year-table thead {
+          background: #e1e4e9;
+        }
+
+        .holiday-year-table th {
+          height: 45px;
+          padding: 0 18px;
+          text-align: left;
+          color: #06142e;
+          font-size: 13px;
+          font-weight: 600;
+          white-space: nowrap;
+        }
+
+        .holiday-year-table td {
+          height: 48px;
+          padding: 0 18px;
+          border-bottom: 1px solid #dfe3e8;
+          color: #5d6879;
+          font-size: 13px;
+          white-space: nowrap;
+        }
+
+        .holiday-year-table td:last-child {
+          color: #000d27;
+          font-weight: 500;
+        }
+
+        .holiday-year-empty {
+          padding: 50px 20px;
+          text-align: center;
+          color: #687587;
+          font-size: 13px;
         }
 
         .holiday-table-controls {
@@ -1178,20 +1687,14 @@ const Holidays: React.FC = () => {
           height: 21px;
           min-width: 67px;
           padding: 0 8px;
-
           display: inline-flex;
           align-items: center;
           justify-content: center;
-
           gap: 6px;
-
           border-radius: 4px;
-
           color: #fff;
-
           font-size: 11px;
           font-weight: 600;
-
           line-height: 1;
         }
 
@@ -1530,6 +2033,21 @@ const Holidays: React.FC = () => {
             gap: 15px;
           }
 
+          .holiday-card-header {
+            height: auto;
+            min-height: 52px;
+            padding: 10px 15px;
+            gap: 10px;
+          }
+
+          .holiday-financial-year {
+            gap: 6px;
+          }
+
+          .holiday-financial-year-trigger {
+            width: 100px;
+          }
+
           .holiday-table-controls {
             flex-direction: column;
             align-items: stretch;
@@ -1650,9 +2168,88 @@ const Holidays: React.FC = () => {
         <div className="holiday-card">
 
           <div className="holiday-card-header">
+
             <h5>
               Holidays List
             </h5>
+
+            {/* =================================================
+                FINANCIAL YEAR
+            ================================================= */}
+
+            <div className="holiday-financial-year">
+
+              <span>
+                Financial Year
+              </span>
+
+              <div className="holiday-financial-year-dropdown">
+
+                <button
+                  type="button"
+                  className="holiday-financial-year-trigger"
+                  onClick={(e) => {
+  e.stopPropagation();
+
+  setFinancialYearOpen(
+    (previous) =>
+      !previous
+  );
+}}
+                >
+
+                  <span>
+                    {financialYear}
+                  </span>
+
+                  <i
+                    className={`ti ${
+                      financialYearOpen
+                        ? "ti-chevron-up"
+                        : "ti-chevron-down"
+                    }`}
+                  />
+
+                </button>
+
+                {financialYearOpen && (
+
+                  <div className="holiday-financial-year-menu">
+
+                    {financialYears.map(
+                      (year) => (
+
+                        <button
+                          key={year}
+                          type="button"
+                          className={`holiday-financial-year-option ${
+                            financialYear ===
+                            year
+                              ? "active"
+                              : ""
+                          }`}
+                         onClick={(e) => {
+  e.stopPropagation();
+
+  handleFinancialYearSelect(
+    year
+  );
+}}
+                        >
+                          {year}
+                        </button>
+
+                      )
+                    )}
+
+                  </div>
+
+                )}
+
+              </div>
+
+            </div>
+
           </div>
 
           {/* =================================================
@@ -1760,8 +2357,6 @@ const Holidays: React.FC = () => {
 
                   </th>
 
-                  {/* TITLE */}
-
                   <th>
 
                     <div
@@ -1777,11 +2372,10 @@ const Holidays: React.FC = () => {
                       <span className="holiday-sort">
                         ↑↓
                       </span>
+
                     </div>
 
                   </th>
-
-                  {/* DATE */}
 
                   <th>
 
@@ -1798,11 +2392,10 @@ const Holidays: React.FC = () => {
                       <span className="holiday-sort">
                         ↑↓
                       </span>
+
                     </div>
 
                   </th>
-
-                  {/* DESCRIPTION */}
 
                   <th>
 
@@ -1819,11 +2412,10 @@ const Holidays: React.FC = () => {
                       <span className="holiday-sort">
                         ↑↓
                       </span>
+
                     </div>
 
                   </th>
-
-                  {/* STATUS */}
 
                   <th>
 
@@ -1840,6 +2432,7 @@ const Holidays: React.FC = () => {
                       <span className="holiday-sort">
                         ↑↓
                       </span>
+
                     </div>
 
                   </th>
@@ -1855,12 +2448,14 @@ const Holidays: React.FC = () => {
                 {loading ? (
 
                   <tr>
+
                     <td
                       colSpan={6}
                       className="holiday-loading"
                     >
                       Loading holidays...
                     </td>
+
                   </tr>
 
                 ) : filteredData.length >
@@ -1874,8 +2469,6 @@ const Holidays: React.FC = () => {
                           holiday.id
                         }
                       >
-
-                        {/* CHECKBOX */}
 
                         <td className="holiday-checkbox-column">
 
@@ -1894,15 +2487,11 @@ const Holidays: React.FC = () => {
 
                         </td>
 
-                        {/* TITLE */}
-
                         <td className="holiday-title-cell">
                           {
                             holiday.title
                           }
                         </td>
-
-                        {/* DATE */}
 
                         <td>
                           {
@@ -1910,15 +2499,11 @@ const Holidays: React.FC = () => {
                           }
                         </td>
 
-                        {/* DESCRIPTION */}
-
                         <td>
                           {
                             holiday.description
                           }
                         </td>
-
-                        {/* STATUS */}
 
                         <td>
 
@@ -1942,13 +2527,9 @@ const Holidays: React.FC = () => {
 
                         </td>
 
-                        {/* ACTION */}
-
                         <td>
 
                           <div className="holiday-actions">
-
-                            {/* EDIT */}
 
                             <button
                               type="button"
@@ -1965,8 +2546,6 @@ const Holidays: React.FC = () => {
                             >
                               <i className="ti ti-edit" />
                             </button>
-
-                            {/* DELETE */}
 
                             <button
                               type="button"
@@ -2026,6 +2605,7 @@ const Holidays: React.FC = () => {
           <div className="holiday-table-footer">
 
             <div>
+
               Showing{" "}
 
               {filteredData.length ===
@@ -2053,6 +2633,7 @@ const Holidays: React.FC = () => {
               }
 
               {" "}entries
+
             </div>
 
             <div className="holiday-pagination">
@@ -2114,6 +2695,135 @@ const Holidays: React.FC = () => {
       </div>
 
       {/* =================================================
+          FINANCIAL YEAR HOLIDAY LIST MODAL
+      ================================================= */}
+
+      {financialYearModalOpen && (
+
+        <div
+          className="holiday-modal-overlay"
+          onClick={
+            closeFinancialYearModal
+          }
+        >
+
+          <div
+            className="holiday-financial-year-modal"
+            onClick={(e) =>
+              e.stopPropagation()
+            }
+          >
+
+            <div className="holiday-modal-header">
+
+              <h3>
+                Holidays -{" "}
+                {financialYear}
+              </h3>
+
+              <button
+                type="button"
+                className="holiday-modal-close"
+                onClick={
+                  closeFinancialYearModal
+                }
+              >
+                ×
+              </button>
+
+            </div>
+
+            <div className="holiday-financial-year-body">
+
+              {financialYearHolidays.length >
+              0 ? (
+
+                <div className="holiday-year-table-wrapper">
+
+                  <table className="holiday-year-table">
+
+                    <thead>
+
+                      <tr>
+
+                        <th>
+                          Holiday Date
+                        </th>
+
+                        <th>
+                          Holiday Name
+                        </th>
+
+                      </tr>
+
+                    </thead>
+
+                    <tbody>
+
+                      {financialYearHolidays.map(
+                        (holiday) => (
+
+                          <tr
+                            key={
+                              holiday.id
+                            }
+                          >
+
+                            <td>
+                              {
+                                holiday.date
+                              }
+                            </td>
+
+                            <td>
+                              {
+                                holiday.name
+                              }
+                            </td>
+
+                          </tr>
+
+                        )
+                      )}
+
+                    </tbody>
+
+                  </table>
+
+                </div>
+
+              ) : (
+
+                <div className="holiday-year-empty">
+                  No holidays found for{" "}
+                  {financialYear}
+                </div>
+
+              )}
+
+            </div>
+
+            <div className="holiday-modal-footer">
+
+              <button
+                type="button"
+                className="holiday-modal-cancel"
+                onClick={
+                  closeFinancialYearModal
+                }
+              >
+                Close
+              </button>
+
+            </div>
+
+          </div>
+
+        </div>
+
+      )}
+
+      {/* =================================================
           ADD HOLIDAY MODAL
       ================================================= */}
 
@@ -2149,8 +2859,6 @@ const Holidays: React.FC = () => {
 
               <div className="holiday-modal-body">
 
-                {/* TITLE */}
-
                 <div className="holiday-form-group">
 
                   <label>
@@ -2177,8 +2885,6 @@ const Holidays: React.FC = () => {
                   />
 
                 </div>
-
-                {/* DATE */}
 
                 <div className="holiday-form-group">
 
@@ -2212,8 +2918,6 @@ const Holidays: React.FC = () => {
                   </div>
 
                 </div>
-
-                {/* HOLIDAY TYPE */}
 
                 <div className="holiday-form-group">
 
@@ -2251,8 +2955,6 @@ const Holidays: React.FC = () => {
 
                 </div>
 
-                {/* DESCRIPTION */}
-
                 <div className="holiday-form-group">
 
                   <label>
@@ -2278,8 +2980,6 @@ const Holidays: React.FC = () => {
                   />
 
                 </div>
-
-                {/* STATUS */}
 
                 <div className="holiday-form-group">
 
@@ -2393,8 +3093,6 @@ const Holidays: React.FC = () => {
 
                 <div className="holiday-modal-body">
 
-                  {/* TITLE */}
-
                   <div className="holiday-form-group">
 
                     <label>
@@ -2421,8 +3119,6 @@ const Holidays: React.FC = () => {
                     />
 
                   </div>
-
-                  {/* DATE */}
 
                   <div className="holiday-form-group">
 
@@ -2456,8 +3152,6 @@ const Holidays: React.FC = () => {
                     </div>
 
                   </div>
-
-                  {/* HOLIDAY TYPE */}
 
                   <div className="holiday-form-group">
 
@@ -2495,8 +3189,6 @@ const Holidays: React.FC = () => {
 
                   </div>
 
-                  {/* DESCRIPTION */}
-
                   <div className="holiday-form-group">
 
                     <label>
@@ -2522,8 +3214,6 @@ const Holidays: React.FC = () => {
                     />
 
                   </div>
-
-                  {/* STATUS */}
 
                   <div className="holiday-form-group">
 
@@ -2627,6 +3317,7 @@ const Holidays: React.FC = () => {
             </p>
 
             {error && (
+
               <div
                 className="holiday-error"
                 style={{
@@ -2638,6 +3329,7 @@ const Holidays: React.FC = () => {
               >
                 {error}
               </div>
+
             )}
 
             <div className="holiday-delete-actions">

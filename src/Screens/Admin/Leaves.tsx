@@ -2,9 +2,12 @@ import React, {
   FormEvent,
   useEffect,
   useMemo,
+  // useRef,
   useState,
 } from "react";
+
 import { Link } from "react-router-dom";
+
 import {
   Eye,
   MessageSquareMore,
@@ -103,6 +106,9 @@ interface LeaveChatMessage {
   profilePicture: string;
   raw: any;
 }
+
+// const financialYearDropdownRef =
+//   useRef<HTMLDivElement>(null);
 
 const AVAIL_TYPE_MAP: Record<
   LeaveTypeOption,
@@ -3779,15 +3785,15 @@ const Leaves = () => {
                 defaultValue=""
               >
                 <option value="">
-                  Date Range
+                Today
                 </option>
 
                 <option value="last7">
-                  Last 7 Days
+                  Week
                 </option>
 
                 <option value="thisMonth">
-                  This Month
+                   Month
                 </option>
               </select>
 
@@ -4531,6 +4537,21 @@ const Leaves = () => {
                       <option value="Second Half">
                         Second Half
                       </option>
+
+                       <option value="Second Half">
+                       Short Leaves
+                      </option>
+
+
+                      <option value="Second Half">
+                        Late Comings
+                      </option>
+
+
+                     <option value="Second Half">
+                       Early Dispersal
+                      </option>
+
 
                     </select>
 

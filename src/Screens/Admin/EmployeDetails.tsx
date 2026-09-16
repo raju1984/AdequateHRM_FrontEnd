@@ -180,6 +180,7 @@ const EmployeDetails: React.FC = () => {
                 <div className="ed-mini-grid">
                   <div className="ed-mini-row"><FiBriefcase /><span>Passport No</span><span>QRET4566FGRT</span></div>
                   <div className="ed-mini-row"><FiCalendar /><span>Passport Exp Date</span><span>15 May 2029</span></div>
+                    <div className="ed-mini-row"><FiBriefcase /><span>PAN No</span><span>QRET4566FGRT</span></div>  
                   <div className="ed-mini-row"><FiUser /><span>Nationality</span><span>Indian</span></div>
                   <div className="ed-mini-row"><FiUser /><span>Religion</span><span>Christianity</span></div>
                   <div className="ed-mini-row"><FiUser /><span>Marital status</span><span>Yes</span></div>

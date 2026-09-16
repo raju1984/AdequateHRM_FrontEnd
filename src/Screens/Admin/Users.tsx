@@ -13,8 +13,8 @@ import {
   Shield,
   Pencil,
   Trash2,
-  Eye,
-  EyeOff,
+  Plus,
+  X,
 } from "lucide-react";
 
 /* =========================================
@@ -23,9 +23,7 @@ import {
 
 type UserRole = "Employee" | "HR";
 
-type UserStatus =
-  | "Active"
-  | "Inactive";
+type UserStatus = "Active" | "Inactive";
 
 interface UserItem {
   id: number;
@@ -59,24 +57,71 @@ interface UserItem {
 interface UserForm {
   firstName: string;
   lastName: string;
-
   username: string;
-
   email: string;
-
   password: string;
-
   confirmPassword: string;
-
   phone: string;
-
   company: string;
-
   department: string;
-
   designation: string;
-
   about: string;
+}
+
+/* =========================================
+   ADD USER FORM TYPES
+========================================= */
+
+interface EducationRow {
+  schoolName: string;
+  location: string;
+  yearsAttended: string;
+  degreeReceived: string;
+  major: string;
+}
+
+interface ReferenceRow {
+  name: string;
+  title: string;
+  company: string;
+  phone: string;
+}
+
+interface EmploymentRow {
+  employer: string;
+  jobTitle: string;
+  datesEmployed: string;
+  workPhone: string;
+  startingPayRate: string;
+  endingPayRate: string;
+  address: string;
+  city: string;
+  state: string;
+  zip: string;
+}
+
+interface ApplicationForm {
+  address: string;
+  city: string;
+  state: string;
+  zip: string;
+
+  phoneNumber: string;
+  emailAddress: string;
+
+  eligibleToWork: string;
+  veteran: string;
+  convicted: string;
+
+  positionDesired: string;
+  availableStartDate: string;
+  desiredPay: string;
+
+  employmentType: string;
+
+  education: EducationRow[];
+  references: ReferenceRow[];
+  employmentHistory: EmploymentRow[];
 }
 
 /* =========================================
@@ -86,332 +131,273 @@ interface UserForm {
 const initialUsers: UserItem[] = [
   {
     id: 1,
-
     firstName: "Anthony",
     lastName: "Lewis",
-
     username: "anthony",
-
     name: "Anthony Lewis",
-
     email: "anthony@example.com",
-
     phone: "988765544",
-
     company: "Adequate",
-
     department: "IT",
-
     designation: "Developer",
-
     about:
       "Frontend developer working on HR management applications.",
-
     createdDate: "12 Sep 2024",
-
     role: "Employee",
-
     status: "Active",
   },
 
   {
     id: 2,
-
     firstName: "Brian",
     lastName: "Villalobos",
-
     username: "brian",
-
     name: "Brian Villalobos",
-
     email: "brian@example.com",
-
     phone: "987654321",
-
     company: "Adequate",
-
     department: "Sales",
-
     designation: "Sales Executive",
-
     about:
       "Responsible for sales activities and customer relationships.",
-
     createdDate: "24 Oct 2024",
-
     role: "Employee",
-
     status: "Active",
   },
 
   {
     id: 3,
-
     firstName: "Sophie",
     lastName: "Headrick",
-
     username: "sophie",
-
     name: "Sophie Headrick",
-
     email: "sophie@example.com",
-
     phone: "987654322",
-
     company: "Adequate",
-
     department: "HR",
-
     designation: "HR Executive",
-
     about:
       "Handles employee management and HR related activities.",
-
     createdDate: "18 Feb 2024",
-
     role: "HR",
-
     status: "Active",
   },
 
   {
     id: 4,
-
     firstName: "Stephan",
     lastName: "Peralt",
-
     username: "stephan",
-
     name: "Stephan Peralt",
-
     email: "peral@example.com",
-
     phone: "987654323",
-
     company: "Adequate",
-
     department: "Finance",
-
     designation: "Accountant",
-
     about:
       "Handles accounting and financial operations.",
-
     createdDate: "17 Oct 2024",
-
     role: "Employee",
-
     status: "Active",
   },
 
   {
     id: 5,
-
     firstName: "Thomas",
     lastName: "Bordelon",
-
     username: "thomas",
-
     name: "Thomas Bordelon",
-
     email: "thomas@example.com",
-
     phone: "987654324",
-
     company: "Adequate",
-
     department: "HR",
-
     designation: "HR Manager",
-
     about:
       "Manages HR operations and employee relations.",
-
     createdDate: "20 Jul 2024",
-
     role: "HR",
-
     status: "Active",
   },
 
   {
     id: 6,
-
     firstName: "Doglas",
     lastName: "Martini",
-
     username: "doglas",
-
     name: "Doglas Martini",
-
     email: "martniwr@example.com",
-
     phone: "987654325",
-
     company: "Adequate",
-
     department: "Operations",
-
     designation: "Manager",
-
     about:
       "Manages daily business operations.",
-
     createdDate: "10 Apr 2024",
-
     role: "Employee",
-
     status: "Active",
   },
 
   {
     id: 7,
-
     firstName: "Cameron",
     lastName: "Drake",
-
     username: "cameron",
-
     name: "Cameron Drake",
-
     email: "cameron@example.com",
-
     phone: "987654326",
-
     company: "Adequate",
-
     department: "Marketing",
-
     designation: "Marketing Executive",
-
     about:
       "Works on marketing campaigns and brand activities.",
-
     createdDate: "29 Aug 2024",
-
     role: "HR",
-
     status: "Active",
   },
 
   {
     id: 8,
-
     firstName: "Harvey",
     lastName: "Smith",
-
     username: "harvey",
-
     name: "Harvey Smith",
-
     email: "harvey@example.com",
-
     phone: "987654327",
-
     company: "Adequate",
-
     department: "IT",
-
     designation: "Designer",
-
     about:
       "Works on UI and visual design requirements.",
-
     createdDate: "22 Feb 2024",
-
     role: "Employee",
-
     status: "Inactive",
   },
 
   {
     id: 9,
-
     firstName: "Michael",
     lastName: "Walker",
-
     username: "michael",
-
     name: "Michael Walker",
-
     email: "michael@example.com",
-
     phone: "987654328",
-
     company: "Adequate",
-
     department: "Sales",
-
     designation: "Sales Manager",
-
     about:
       "Manages sales team and business development.",
-
     createdDate: "03 Nov 2024",
-
     role: "HR",
-
     status: "Active",
   },
 
   {
     id: 10,
-
     firstName: "Doris",
     lastName: "Crowley",
-
     username: "doris",
-
     name: "Doris Crowley",
-
     email: "doris@example.com",
-
     phone: "987654329",
-
     company: "Adequate",
-
     department: "Operations",
-
     designation: "Manager",
-
     about:
       "Handles operations and team coordination.",
-
     createdDate: "17 Dec 2024",
-
     role: "HR",
-
     status: "Active",
   },
 ];
 
 /* =========================================
-   EMPTY FORM
+   EMPTY USER FORM
 ========================================= */
 
 const emptyForm: UserForm = {
   firstName: "",
-
   lastName: "",
-
   username: "",
-
   email: "",
-
   password: "",
-
   confirmPassword: "",
-
   phone: "",
-
   company: "",
-
   department: "",
-
   designation: "",
-
   about: "",
 };
+
+/* =========================================
+   EMPTY APPLICATION FORM
+========================================= */
+
+const createEmptyApplicationForm =
+  (): ApplicationForm => ({
+    address: "",
+    city: "",
+    state: "",
+    zip: "",
+
+    phoneNumber: "",
+    emailAddress: "",
+
+    eligibleToWork: "",
+    veteran: "",
+    convicted: "",
+
+    positionDesired: "",
+    availableStartDate: "",
+    desiredPay: "",
+
+    employmentType: "",
+
+    education: [
+      {
+        schoolName: "",
+        location: "",
+        yearsAttended: "",
+        degreeReceived: "",
+        major: "",
+      },
+    ],
+
+    references: [
+      {
+        name: "",
+        title: "",
+        company: "",
+        phone: "",
+      },
+      {
+        name: "",
+        title: "",
+        company: "",
+        phone: "",
+      },
+      {
+        name: "",
+        title: "",
+        company: "",
+        phone: "",
+      },
+    ],
+
+    employmentHistory: [
+      {
+        employer: "",
+        jobTitle: "",
+        datesEmployed: "",
+        workPhone: "",
+        startingPayRate: "",
+        endingPayRate: "",
+        address: "",
+        city: "",
+        state: "",
+        zip: "",
+      },
+    ],
+  });
 
 /* =========================================
    DROPDOWN DATA
@@ -444,9 +430,7 @@ const designations = [
 
 const Users: React.FC = () => {
   const [users, setUsers] =
-    useState<UserItem[]>(
-      initialUsers
-    );
+    useState<UserItem[]>(initialUsers);
 
   const [search, setSearch] =
     useState("");
@@ -454,148 +438,135 @@ const Users: React.FC = () => {
   const [roleFilter, setRoleFilter] =
     useState("");
 
-  const [
-    statusFilter,
-    setStatusFilter,
-  ] = useState("");
+  const [statusFilter, setStatusFilter] =
+    useState("");
 
   const [sortBy, setSortBy] =
     useState("Last 7 Days");
 
-  const [
-    rowsPerPage,
-    setRowsPerPage,
-  ] = useState(10);
+  const [rowsPerPage, setRowsPerPage] =
+    useState(10);
 
-  const [
-    currentPage,
-    setCurrentPage,
-  ] = useState(1);
+  const [currentPage, setCurrentPage] =
+    useState(1);
 
   const [selected, setSelected] =
     useState<number[]>([]);
 
   /* =========================================
-     MODALS
+     PAGE STATE
   ========================================= */
 
-  const [addOpen, setAddOpen] =
+  const [showAddPage, setShowAddPage] =
     useState(false);
+
+  /* =========================================
+     MODALS
+  ========================================= */
 
   const [editOpen, setEditOpen] =
     useState(false);
 
-  const [
-    deleteOpen,
-    setDeleteOpen,
-  ] = useState(false);
+  const [deleteOpen, setDeleteOpen] =
+    useState(false);
 
-  const [
-    editingUser,
-    setEditingUser,
-  ] = useState<UserItem | null>(
-    null
-  );
+  const [editingUser, setEditingUser] =
+    useState<UserItem | null>(null);
 
   const [deleteId, setDeleteId] =
     useState<number | null>(null);
 
   /* =========================================
-     FORM
+     USER FORM
   ========================================= */
 
   const [form, setForm] =
     useState<UserForm>(emptyForm);
 
-  const [
-    showPassword,
-    setShowPassword,
-  ] = useState(false);
+  /* =========================================
+     APPLICATION FORM
+  ========================================= */
 
   const [
-    showConfirmPassword,
-    setShowConfirmPassword,
-  ] = useState(false);
+    applicationForm,
+    setApplicationForm,
+  ] = useState<ApplicationForm>(
+    createEmptyApplicationForm()
+  );
 
   /* =========================================
      FILTER / SEARCH / SORT
   ========================================= */
 
-  const filteredUsers =
-    useMemo(() => {
-      let result = [...users];
+  const filteredUsers = useMemo(() => {
+    let result = [...users];
 
-      if (search.trim()) {
-        const q = search
-          .trim()
-          .toLowerCase();
+    if (search.trim()) {
+      const q = search
+        .trim()
+        .toLowerCase();
 
-        result = result.filter(
-          (item) =>
-            item.name
-              .toLowerCase()
-              .includes(q) ||
-            item.email
-              .toLowerCase()
-              .includes(q) ||
-            item.role
-              .toLowerCase()
-              .includes(q) ||
-            item.status
-              .toLowerCase()
-              .includes(q) ||
-            item.department
-              .toLowerCase()
-              .includes(q) ||
-            item.designation
-              .toLowerCase()
-              .includes(q)
-        );
-      }
+      result = result.filter(
+        (item) =>
+          item.name
+            .toLowerCase()
+            .includes(q) ||
+          item.email
+            .toLowerCase()
+            .includes(q) ||
+          item.role
+            .toLowerCase()
+            .includes(q) ||
+          item.status
+            .toLowerCase()
+            .includes(q) ||
+          item.department
+            .toLowerCase()
+            .includes(q) ||
+          item.designation
+            .toLowerCase()
+            .includes(q)
+      );
+    }
 
-      if (roleFilter) {
-        result = result.filter(
-          (item) =>
-            item.role === roleFilter
-        );
-      }
+    if (roleFilter) {
+      result = result.filter(
+        (item) =>
+          item.role === roleFilter
+      );
+    }
 
-      if (statusFilter) {
-        result = result.filter(
-          (item) =>
-            item.status ===
-            statusFilter
-        );
-      }
+    if (statusFilter) {
+      result = result.filter(
+        (item) =>
+          item.status === statusFilter
+      );
+    }
 
-      if (
-        sortBy === "Ascending"
-      ) {
-        result.sort((a, b) =>
-          a.name.localeCompare(
-            b.name
-          )
-        );
-      }
+    if (sortBy === "Ascending") {
+      result.sort((a, b) =>
+        a.name.localeCompare(b.name)
+      );
+    }
 
-      if (
-        sortBy === "Descending"
-      ) {
-        result.sort((a, b) =>
-          b.name.localeCompare(
-            a.name
-          )
-        );
-      }
+    if (sortBy === "Descending") {
+      result.sort((a, b) =>
+        b.name.localeCompare(a.name)
+      );
+    }
 
-      return result;
-    }, [
-      users,
-      search,
-      roleFilter,
-      statusFilter,
-      sortBy,
-    ]);
+    if (sortBy === "Recently Added") {
+      result.sort((a, b) => b.id - a.id);
+    }
+
+    return result;
+  }, [
+    users,
+    search,
+    roleFilter,
+    statusFilter,
+    sortBy,
+  ]);
 
   /* =========================================
      PAGINATION
@@ -609,17 +580,15 @@ const Users: React.FC = () => {
     )
   );
 
-  const safeCurrentPage =
-    Math.min(
-      currentPage,
-      totalPages
-    );
+  const safeCurrentPage = Math.min(
+    currentPage,
+    totalPages
+  );
 
   const visibleUsers =
     filteredUsers.slice(
       (safeCurrentPage - 1) *
         rowsPerPage,
-
       safeCurrentPage *
         rowsPerPage
     );
@@ -635,16 +604,14 @@ const Users: React.FC = () => {
     );
 
   const handleSelectAll = () => {
-    const ids =
-      visibleUsers.map(
-        (item) => item.id
-      );
+    const ids = visibleUsers.map(
+      (item) => item.id
+    );
 
     if (allVisibleSelected) {
       setSelected((prev) =>
         prev.filter(
-          (id) =>
-            !ids.includes(id)
+          (id) => !ids.includes(id)
         )
       );
     } else {
@@ -657,112 +624,290 @@ const Users: React.FC = () => {
     }
   };
 
-  const toggleSelect = (
-    id: number
-  ) => {
+  const toggleSelect = (id: number) => {
     setSelected((prev) =>
       prev.includes(id)
         ? prev.filter(
-            (item) =>
-              item !== id
+            (item) => item !== id
           )
         : [...prev, id]
     );
   };
 
   /* =========================================
-     ADD USER
+     OPEN ADD USER PAGE
   ========================================= */
 
-  const openAddModal = () => {
-    setForm({
-      ...emptyForm,
-    });
+  const openAddPage = () => {
+    setApplicationForm(
+      createEmptyApplicationForm()
+    );
 
-    setShowPassword(false);
-
-    setShowConfirmPassword(false);
-
-    setAddOpen(true);
+    setShowAddPage(true);
   };
 
-  const closeAddModal = () => {
-    setAddOpen(false);
+  const closeAddPage = () => {
+    setShowAddPage(false);
 
-    setForm({
-      ...emptyForm,
-    });
-
-    setShowPassword(false);
-
-    setShowConfirmPassword(false);
+    setApplicationForm(
+      createEmptyApplicationForm()
+    );
   };
 
-  const handleAddUser = (
+  /* =========================================
+     APPLICATION FORM UPDATE
+  ========================================= */
+
+  const updateApplicationField = <
+    K extends keyof ApplicationForm
+  >(
+    field: K,
+    value: ApplicationForm[K]
+  ) => {
+    setApplicationForm((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
+  };
+
+  /* =========================================
+     EDUCATION
+  ========================================= */
+
+  const updateEducation = (
+    index: number,
+    field: keyof EducationRow,
+    value: string
+  ) => {
+    setApplicationForm((prev) => {
+      const education = [
+        ...prev.education,
+      ];
+
+      education[index] = {
+        ...education[index],
+        [field]: value,
+      };
+
+      return {
+        ...prev,
+        education,
+      };
+    });
+  };
+
+  const addEducationRow = () => {
+    setApplicationForm((prev) => ({
+      ...prev,
+
+      education: [
+        ...prev.education,
+
+        {
+          schoolName: "",
+          location: "",
+          yearsAttended: "",
+          degreeReceived: "",
+          major: "",
+        },
+      ],
+    }));
+  };
+
+  const removeEducationRow = (
+    index: number
+  ) => {
+    setApplicationForm((prev) => ({
+      ...prev,
+
+      education:
+        prev.education.length > 1
+          ? prev.education.filter(
+              (_, i) => i !== index
+            )
+          : prev.education,
+    }));
+  };
+
+  /* =========================================
+     REFERENCES
+  ========================================= */
+
+  const updateReference = (
+    index: number,
+    field: keyof ReferenceRow,
+    value: string
+  ) => {
+    setApplicationForm((prev) => {
+      const references = [
+        ...prev.references,
+      ];
+
+      references[index] = {
+        ...references[index],
+        [field]: value,
+      };
+
+      return {
+        ...prev,
+        references,
+      };
+    });
+  };
+
+  const addReferenceRow = () => {
+    setApplicationForm((prev) => ({
+      ...prev,
+
+      references: [
+        ...prev.references,
+
+        {
+          name: "",
+          title: "",
+          company: "",
+          phone: "",
+        },
+      ],
+    }));
+  };
+
+  const removeReferenceRow = (
+    index: number
+  ) => {
+    setApplicationForm((prev) => ({
+      ...prev,
+
+      references:
+        prev.references.length > 1
+          ? prev.references.filter(
+              (_, i) => i !== index
+            )
+          : prev.references,
+    }));
+  };
+
+  /* =========================================
+     EMPLOYMENT
+  ========================================= */
+
+  const updateEmployment = (
+    index: number,
+    field: keyof EmploymentRow,
+    value: string
+  ) => {
+    setApplicationForm((prev) => {
+      const employmentHistory = [
+        ...prev.employmentHistory,
+      ];
+
+      employmentHistory[index] = {
+        ...employmentHistory[index],
+        [field]: value,
+      };
+
+      return {
+        ...prev,
+        employmentHistory,
+      };
+    });
+  };
+
+  const addEmploymentRow = () => {
+    setApplicationForm((prev) => ({
+      ...prev,
+
+      employmentHistory: [
+        ...prev.employmentHistory,
+
+        {
+          employer: "",
+          jobTitle: "",
+          datesEmployed: "",
+          workPhone: "",
+          startingPayRate: "",
+          endingPayRate: "",
+          address: "",
+          city: "",
+          state: "",
+          zip: "",
+        },
+      ],
+    }));
+  };
+
+  const removeEmploymentRow = (
+    index: number
+  ) => {
+    setApplicationForm((prev) => ({
+      ...prev,
+
+      employmentHistory:
+        prev.employmentHistory.length > 1
+          ? prev.employmentHistory.filter(
+              (_, i) => i !== index
+            )
+          : prev.employmentHistory,
+    }));
+  };
+
+  /* =========================================
+     SAVE APPLICATION
+  ========================================= */
+
+  const handleApplicationSubmit = (
     e: FormEvent
   ) => {
     e.preventDefault();
 
-    if (
-      !form.firstName.trim() ||
-      !form.lastName.trim() ||
-      !form.email.trim() ||
-      !form.department ||
-      !form.designation
-    ) {
-      return;
-    }
-
-    if (
-      form.password &&
-      form.password !==
-        form.confirmPassword
-    ) {
-      return;
-    }
+    const fullName =
+      applicationForm.positionDesired.trim() ||
+      "New User";
 
     const newUser: UserItem = {
       id:
         users.length > 0
           ? Math.max(
               ...users.map(
-                (item) =>
-                  item.id
+                (item) => item.id
               )
             ) + 1
           : 1,
 
-      firstName:
-        form.firstName.trim(),
-
-      lastName:
-        form.lastName.trim(),
+      firstName: fullName,
+      lastName: "",
 
       username:
-        form.username.trim(),
+        fullName
+          .toLowerCase()
+          .replace(/\s+/g, ""),
 
-      name: `${form.firstName.trim()} ${form.lastName.trim()}`,
+      name: fullName,
 
       email:
-        form.email.trim(),
+        applicationForm.emailAddress.trim(),
 
       phone:
-        form.phone.trim(),
+        applicationForm.phoneNumber.trim(),
 
-      company:
-        form.company.trim(),
+      company: "",
 
-      department:
-        form.department,
+      department: "",
 
       designation:
-        form.designation,
+        applicationForm.positionDesired.trim(),
 
-      about:
-        form.about.trim(),
+      about: "",
 
       createdDate:
-        "03 Sep 2026",
+        new Date().toLocaleDateString(
+          "en-GB",
+          {
+            day: "2-digit",
+            month: "short",
+            year: "numeric",
+          }
+        ),
 
       role: "Employee",
 
@@ -774,7 +919,7 @@ const Users: React.FC = () => {
       newUser,
     ]);
 
-    closeAddModal();
+    closeAddPage();
   };
 
   /* =========================================
@@ -787,41 +932,18 @@ const Users: React.FC = () => {
     setEditingUser(user);
 
     setForm({
-      firstName:
-        user.firstName,
-
-      lastName:
-        user.lastName,
-
-      username:
-        user.username,
-
-      email:
-        user.email,
-
+      firstName: user.firstName,
+      lastName: user.lastName,
+      username: user.username,
+      email: user.email,
       password: "",
-
       confirmPassword: "",
-
-      phone:
-        user.phone,
-
-      company:
-        user.company,
-
-      department:
-        user.department,
-
-      designation:
-        user.designation,
-
-      about:
-        user.about,
+      phone: user.phone,
+      company: user.company,
+      department: user.department,
+      designation: user.designation,
+      about: user.about,
     });
-
-    setShowPassword(false);
-
-    setShowConfirmPassword(false);
 
     setEditOpen(true);
   };
@@ -834,10 +956,16 @@ const Users: React.FC = () => {
     setForm({
       ...emptyForm,
     });
+  };
 
-    setShowPassword(false);
-
-    setShowConfirmPassword(false);
+  const updateForm = (
+    field: keyof UserForm,
+    value: string
+  ) => {
+    setForm((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
   };
 
   const handleEditUser = (
@@ -845,16 +973,12 @@ const Users: React.FC = () => {
   ) => {
     e.preventDefault();
 
-    if (!editingUser) {
-      return;
-    }
+    if (!editingUser) return;
 
     if (
       !form.firstName.trim() ||
       !form.lastName.trim() ||
-      !form.email.trim() ||
-      !form.department ||
-      !form.designation
+      !form.email.trim()
     ) {
       return;
     }
@@ -869,8 +993,7 @@ const Users: React.FC = () => {
 
     setUsers((prev) =>
       prev.map((item) =>
-        item.id ===
-        editingUser.id
+        item.id === editingUser.id
           ? {
               ...item,
 
@@ -922,22 +1045,18 @@ const Users: React.FC = () => {
     setDeleteOpen(true);
   };
 
-  const closeDeleteModal =
-    () => {
-      setDeleteId(null);
+  const closeDeleteModal = () => {
+    setDeleteId(null);
 
-      setDeleteOpen(false);
-    };
+    setDeleteOpen(false);
+  };
 
   const handleDelete = () => {
-    if (deleteId === null) {
-      return;
-    }
+    if (deleteId === null) return;
 
     setUsers((prev) =>
       prev.filter(
-        (item) =>
-          item.id !== deleteId
+        (item) => item.id !== deleteId
       )
     );
 
@@ -951,25 +1070,1898 @@ const Users: React.FC = () => {
   };
 
   /* =========================================
-     FORM UPDATE
+     ADD USER APPLICATION PAGE
   ========================================= */
 
-  const updateForm = (
-    field: keyof UserForm,
-    value: string
-  ) => {
-    setForm((prev) => ({
-      ...prev,
-      [field]: value,
-    }));
-  };
+  if (showAddPage) {
+    return (
+      <>
+        <style>
+          {`
+          * {
+            box-sizing: border-box;
+          }
+
+          .application-page {
+            width: 100%;
+            min-height: calc(100vh - 50px);
+            padding: 24px 25px 35px;
+            background: #f8f9fb;
+            color: #17243d;
+            font-family: "Inter", "Segoe UI", Arial, sans-serif;
+          }
+
+          .application-top {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 18px;
+          }
+
+          .application-heading {
+            margin: 0;
+            color: #0f1e3c;
+            font-size: 24px;
+            font-weight: 700;
+          }
+
+          .application-breadcrumb {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 5px;
+            color: #697487;
+            font-size: 12px;
+          }
+
+          .application-breadcrumb a {
+            color: #315c75;
+            text-decoration: none;
+          }
+
+          .application-back-btn {
+            height: 38px;
+            padding: 0 15px;
+            border: 1px solid #d9dee5;
+            border-radius: 5px;
+            background: #fff;
+            color: #26344d;
+            cursor: pointer;
+            font-size: 13px;
+          }
+
+          .application-back-btn:hover {
+            background: #f3f5f7;
+          }
+
+          .application-card {
+            width: 100%;
+            border: 1px solid #d8dde3;
+            border-radius: 5px;
+            background: #fff;
+            overflow: hidden;
+          }
+
+          .application-form {
+            width: 100%;
+          }
+
+          /* =================================
+             SECTION
+          ================================= */
+
+          .application-section {
+            padding: 18px 10px 24px;
+          }
+
+          .application-section + .application-section {
+            border-top: 1px solid #e0e4e8;
+          }
+
+          .application-section-title {
+            height: 37px;
+            margin: 0 0 0;
+            padding: 0 12px;
+            display: flex;
+            align-items: center;
+            background: #75a0c2;
+            color: #fff;
+            font-size: 16px;
+            font-weight: 600;
+            letter-spacing: .1px;
+          }
+
+          /* =================================
+             FORM TABLE
+          ================================= */
+
+          .application-table {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: fixed;
+          }
+
+          .application-table th,
+          .application-table td {
+            border: 1px solid #bfc5ca;
+          }
+
+          .application-table th {
+            height: 29px;
+            padding: 5px 8px;
+            background: #fafafa;
+            color: #5d6570;
+            font-size: 10px;
+            font-weight: 500;
+            text-align: left;
+          }
+
+          .application-table td {
+            height: 38px;
+            padding: 0;
+            background: #fff;
+          }
+
+          .application-table input,
+          .application-table select {
+            width: 100%;
+            height: 37px;
+            padding: 5px 8px;
+            border: 0;
+            outline: none;
+            background: transparent;
+            color: #26344d;
+            font-family: inherit;
+            font-size: 12px;
+          }
+
+          .application-table input:focus,
+          .application-table select:focus {
+            background: #fffdf6;
+            box-shadow: inset 0 0 0 1px #c39237;
+          }
+
+          .application-label {
+            display: block;
+            padding: 5px 9px 2px;
+            color: #5f6771;
+            font-size: 10px;
+          }
+
+          /* =================================
+             PERSONAL INFORMATION
+          ================================= */
+
+          .personal-row-1 th:nth-child(1) {
+            width: 38%;
+          }
+
+          .personal-row-1 th:nth-child(2) {
+            width: 23%;
+          }
+
+          .personal-row-1 th:nth-child(3) {
+            width: 17%;
+          }
+
+          .personal-row-1 th:nth-child(4) {
+            width: 12%;
+          }
+
+          .personal-row-1 th:nth-child(5) {
+            width: 10%;
+          }
+
+          .personal-input {
+            height: 37px;
+          }
+
+          .question-cell {
+            padding: 7px 9px !important;
+            height: 45px !important;
+          }
+
+          .question-text {
+            display: block;
+            margin-bottom: 6px;
+            color: #5d6570;
+            font-size: 10px;
+          }
+
+          .radio-group {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+          }
+
+          .radio-option {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            color: #4f5967;
+            font-size: 10px;
+          }
+
+          .radio-option input {
+            width: 12px;
+            height: 12px;
+            margin: 0;
+          }
+
+          /* =================================
+             POSITION
+          ================================= */
+
+          .position-grid {
+            display: grid;
+            grid-template-columns: 1.7fr 1fr 1fr;
+            border-left: 1px solid #bfc5ca;
+            border-top: 1px solid #bfc5ca;
+          }
+
+          .position-field {
+            min-height: 62px;
+            border-right: 1px solid #bfc5ca;
+            border-bottom: 1px solid #bfc5ca;
+          }
+
+          .position-label {
+            height: 25px;
+            padding: 6px 8px 0;
+            color: #5d6570;
+            font-size: 10px;
+          }
+
+          .position-field input {
+            width: 100%;
+            height: 36px;
+            padding: 0 8px;
+            border: 0;
+            outline: none;
+            color: #26344d;
+            font-size: 12px;
+          }
+
+          .employment-type-row {
+            min-height: 46px;
+            padding: 9px 8px;
+            border-right: 1px solid #bfc5ca;
+            border-bottom: 1px solid #bfc5ca;
+            border-left: 1px solid #bfc5ca;
+            display: flex;
+            align-items: center;
+            gap: 30px;
+          }
+
+          .employment-type-title {
+            color: #5d6570;
+            font-size: 10px;
+          }
+
+          .employment-checkbox {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            color: #596270;
+            font-size: 10px;
+          }
+
+          .employment-checkbox input {
+            width: 12px;
+            height: 12px;
+            margin: 0;
+          }
+
+          /* =================================
+             EDUCATION
+          ================================= */
+
+          .education-actions,
+          .reference-actions,
+          .employment-actions {
+            display: flex;
+            justify-content: flex-end;
+            margin-top: 8px;
+          }
+
+          .small-add-btn {
+            height: 29px;
+            padding: 0 10px;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            border: 1px solid #d8dde3;
+            border-radius: 4px;
+            background: #fff;
+            color: #4d5969;
+            cursor: pointer;
+            font-size: 10px;
+          }
+
+          .small-add-btn:hover {
+            background: #f7f8fa;
+          }
+
+          .row-delete-btn {
+            width: 25px;
+            height: 25px;
+            padding: 0;
+            border: 0;
+            border-radius: 3px;
+            background: #fff0f0;
+            color: #e32929;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+          }
+
+          .row-delete-btn:hover {
+            background: #ffe0e0;
+          }
+
+          .table-with-actions {
+            width: 100%;
+            overflow-x: auto;
+          }
+
+          .table-with-actions .application-table {
+            min-width: 760px;
+          }
+
+          /* =================================
+             REFERENCES
+          ================================= */
+
+          .reference-table th:last-child,
+          .reference-table td:last-child {
+            width: 45px;
+            text-align: center;
+          }
+
+          .reference-table td:last-child {
+            padding: 5px;
+          }
+
+          /* =================================
+             EMPLOYMENT HISTORY
+          ================================= */
+
+         .employment-table {
+  width: 100%;
+  min-width: 0;
+  table-layout: fixed;
+}
+
+.employment-table th:last-child,
+.employment-table td:last-child {
+  width: 45px;
+  min-width: 45px;
+  max-width: 45px;
+  text-align: center;
+}
+
+.employment-table td:last-child {
+  padding: 5px !important;
+}
+
+.employment-table td:last-child .row-delete-btn {
+  width: 25px;
+  height: 25px;
+  margin: 0 auto;
+}
+         .employment-wrapper {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-bottom: 2px;
+} }
+
+          .employment-table th {
+            height: 32px;
+            font-size: 10px;
+          }
+
+          .employment-table td {
+            height: 38px;
+          }
+
+          .employment-table th:nth-child(1) {
+            width: 22%;
+          }
+
+          .employment-table th:nth-child(2) {
+            width: 18%;
+          }
+
+          .employment-table th:nth-child(3) {
+            width: 16%;
+          }
+
+          .employment-table th:nth-child(4) {
+            width: 13%;
+          }
+
+          .employment-table th:nth-child(5) {
+            width: 15%;
+          }
+
+          .employment-table th:nth-child(6) {
+            width: 14%;
+          }
+
+          .employment-bottom-table {
+            margin-top: 0;
+            min-width: 900px;
+          }
+
+          /* =================================
+             BUTTONS
+          ================================= */
+
+          .application-footer {
+            min-height: 70px;
+            padding: 15px 28px;
+            border-top: 1px solid #dde2e7;
+            background: #fff;
+            display: flex;
+            justify-content: flex-end;
+            align-items: center;
+            gap: 10px;
+          }
+
+          .application-cancel {
+            height: 39px;
+            padding: 0 18px;
+            border: 1px solid #d9dee5;
+            border-radius: 5px;
+            background: #fff;
+            color: #26344d;
+            cursor: pointer;
+            font-size: 13px;
+          }
+
+          .application-save {
+            height: 39px;
+            padding: 0 20px;
+            border: 1px solid #c39237;
+            border-radius: 5px;
+            background: #c39237;
+            color: #fff;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+          }
+
+          .application-save:hover {
+            background: #b58430;
+          }
+
+          /* =================================
+             EDIT MODAL
+          ================================= */
+
+          .users-modal-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 99999;
+            padding: 15px;
+            background: rgba(0,0,0,.42);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+          }
+
+          .users-form-modal {
+            width: 800px;
+            max-width: calc(100vw - 30px);
+            max-height: calc(100vh - 30px);
+            overflow-y: auto;
+            border-radius: 5px;
+            background: #fff;
+            box-shadow: 0 15px 45px rgba(0,0,0,.22);
+          }
+
+          .users-modal-header {
+            height: 64px;
+            padding: 0 17px;
+            border-bottom: 1px solid #e3e7eb;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+          }
+
+          .users-modal-header h3 {
+            margin: 0;
+            color: #1e2b49;
+            font-size: 20px;
+            font-weight: 600;
+          }
+
+          .users-modal-close {
+            width: 28px;
+            height: 28px;
+            border: 0;
+            background: transparent;
+            color: #667085;
+            cursor: pointer;
+            font-size: 24px;
+          }
+
+          .users-modal-body {
+            padding: 20px;
+          }
+
+          .users-form-grid {
+            display: grid;
+            grid-template-columns: repeat(2,minmax(0,1fr));
+            gap: 16px 24px;
+          }
+
+          .users-form-group label {
+            display: block;
+            margin-bottom: 7px;
+            color: #263452;
+            font-size: 13px;
+            font-weight: 500;
+          }
+
+          .users-required {
+            color: #e53935;
+            margin-left: 2px;
+          }
+
+          .users-form-group input,
+          .users-form-group select {
+            width: 100%;
+            height: 39px;
+            padding: 0 10px;
+            border: 1px solid #dce1e7;
+            border-radius: 5px;
+            outline: none;
+            background: #fff;
+            color: #26344d;
+            font-size: 13px;
+          }
+
+          .users-about-group {
+            grid-column: 1 / -1;
+          }
+
+          .users-about {
+            width: 100%;
+            min-height: 78px;
+            padding: 10px;
+            resize: vertical;
+            border: 1px solid #dce1e7;
+            border-radius: 5px;
+            outline: none;
+            font-family: inherit;
+          }
+
+          .users-modal-footer {
+            min-height: 64px;
+            padding: 10px 20px;
+            border-top: 1px solid #e4e7eb;
+            background: #fff;
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+          }
+
+          .users-modal-cancel,
+          .users-modal-save {
+            height: 39px;
+            padding: 0 17px;
+            border-radius: 5px;
+            font-size: 13px;
+            cursor: pointer;
+          }
+
+          .users-modal-cancel {
+            border: 1px solid #dfe3e8;
+            background: #fff;
+          }
+
+          .users-modal-save {
+            border: 1px solid #c39237;
+            background: #c39237;
+            color: #fff;
+            font-weight: 600;
+          }
+
+          /* =================================
+             DELETE MODAL
+          ================================= */
+
+          .users-delete-modal {
+            width: 400px;
+            max-width: calc(100vw - 30px);
+            padding: 25px 30px;
+            border-radius: 5px;
+            background: #fff;
+            text-align: center;
+            box-shadow: 0 15px 45px rgba(0,0,0,.2);
+          }
+
+          .users-delete-icon {
+            width: 58px;
+            height: 58px;
+            margin: 0 auto 14px;
+            border-radius: 4px;
+            background: #f6cccc;
+            color: #f10f18;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+          }
+
+          .users-delete-modal h3 {
+            margin: 0 0 6px;
+            color: #1d2b48;
+            font-size: 19px;
+          }
+
+          .users-delete-modal p {
+            margin: 0 auto 17px;
+            color: #3e4654;
+            font-size: 13px;
+            line-height: 1.5;
+          }
+
+          .users-delete-actions {
+            display: flex;
+            justify-content: center;
+            gap: 16px;
+          }
+
+          .users-delete-cancel,
+          .users-delete-confirm {
+            height: 39px;
+            padding: 0 16px;
+            border: 0;
+            border-radius: 5px;
+            cursor: pointer;
+          }
+
+          .users-delete-cancel {
+            background: #f6f7f8;
+          }
+
+          .users-delete-confirm {
+            background: #f10d16;
+            color: #fff;
+            font-weight: 600;
+          }
+
+          /* =================================
+             RESPONSIVE
+          ================================= */
+
+          @media(max-width: 800px) {
+            .application-page {
+              padding: 18px 12px 25px;
+            }
+
+            .application-section {
+              padding: 15px;
+            }
+
+            .application-top {
+              align-items: flex-start;
+              gap: 15px;
+            }
+
+            .application-heading {
+              font-size: 20px;
+            }
+
+            .position-grid {
+              grid-template-columns: 1fr;
+            }
+
+            .employment-type-row {
+              flex-wrap: wrap;
+              gap: 12px 20px;
+            }
+          }
+
+          @media(max-width: 600px) {
+            .application-top {
+              flex-direction: column;
+            }
+
+            .application-back-btn {
+              align-self: flex-start;
+            }
+
+            .application-footer {
+              padding: 12px 15px;
+            }
+          }
+          `}
+        </style>
+
+        <div className="application-page">
+
+          {/* =====================================
+              PAGE HEADER
+          ===================================== */}
+
+
+ <h1 className="application-heading">
+                Add New User
+              </h1>
+
+          {/* <div className="application-top">
+            <div>
+              <h1 className="application-heading">
+                Add User
+              </h1>
+
+              <div className="application-breadcrumb">
+                <Link to="/admin/dashboard">
+                  <i className="ti ti-home" />
+                </Link>
+
+                <span>/</span>
+
+                <button
+                  type="button"
+                  onClick={closeAddPage}
+                  style={{
+                    border: 0,
+                    background:
+                      "transparent",
+                    padding: 0,
+                    color: "#315c75",
+                    cursor: "pointer",
+                    fontSize: "12px",
+                  }}
+                >
+                  Users
+                </button>
+
+                <span>/</span>
+
+                <span>Add User</span>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              className="application-back-btn"
+              onClick={closeAddPage}
+            >
+              ← Back to Users
+            </button>
+          </div> */}
+
+          {/* =====================================
+              APPLICATION CARD
+          ===================================== */}
+
+          <div className="application-card">
+
+            <form
+              className="application-form"
+              onSubmit={
+                handleApplicationSubmit
+              }
+            >
+
+              {/* =================================
+                  PERSONAL INFORMATION
+              ================================= */}
+
+              <section className="application-section">
+
+                <h2 className="application-section-title">
+                  Personal Information
+                </h2>
+
+                <table className="application-table">
+
+                  <tbody>
+
+                    <tr>
+                      <th colSpan={2}>
+                        Name
+                      </th>
+
+                      <th>
+                        Address
+                      </th>
+
+                      <th>
+                        City
+                      </th>
+
+                      <th>
+                        State
+                      </th>
+                    </tr>
+
+                    <tr>
+                      <td colSpan={2}>
+                        <input
+                          className="personal-input"
+                          type="text"
+                          placeholder="Full name"
+                        />
+                      </td>
+
+                      <td>
+                        <input
+                          type="text"
+                          value={
+                            applicationForm.address
+                          }
+                          onChange={(e) =>
+                            updateApplicationField(
+                              "address",
+                              e.target.value
+                            )
+                          }
+                        />
+                      </td>
+
+                      <td>
+                        <input
+                          type="text"
+                          value={
+                            applicationForm.city
+                          }
+                          onChange={(e) =>
+                            updateApplicationField(
+                              "city",
+                              e.target.value
+                            )
+                          }
+                        />
+                      </td>
+
+                      <td>
+                        <input
+                          type="text"
+                          value={
+                            applicationForm.state
+                          }
+                          onChange={(e) =>
+                            updateApplicationField(
+                              "state",
+                              e.target.value
+                            )
+                          }
+                        />
+                      </td>
+                    </tr>
+
+                    <tr>
+                      <th>
+                        Zip
+                      </th>
+
+                      <th>
+                        Phone number
+                      </th>
+
+                      <th colSpan={2}>
+                        Email address
+                      </th>
+
+                      <th>
+                        Country
+                      </th>
+                    </tr>
+
+                    <tr>
+                      <td>
+                        <input
+                          type="text"
+                          value={
+                            applicationForm.zip
+                          }
+                          onChange={(e) =>
+                            updateApplicationField(
+                              "zip",
+                              e.target.value
+                            )
+                          }
+                        />
+                      </td>
+
+                      <td>
+                        <input
+                          type="text"
+                          value={
+                            applicationForm.phoneNumber
+                          }
+                          onChange={(e) =>
+                            updateApplicationField(
+                              "phoneNumber",
+                              e.target.value
+                            )
+                          }
+                        />
+                      </td>
+
+                      <td colSpan={2}>
+                        <input
+                          type="email"
+                          value={
+                            applicationForm.emailAddress
+                          }
+                          onChange={(e) =>
+                            updateApplicationField(
+                              "emailAddress",
+                              e.target.value
+                            )
+                          }
+                        />
+                      </td>
+
+                      <td>
+                        <input
+                          type="text"
+                          placeholder="India"
+                        />
+                      </td>
+                    </tr>
+
+                    <tr>
+                      <td
+                        colSpan={2}
+                        className="question-cell"
+                      >
+                        <span className="question-text">
+                          Are you legally eligible to work in the US?
+                        </span>
+
+                        <div className="radio-group">
+                          <label className="radio-option">
+                            <input
+                              type="radio"
+                              name="eligible"
+                              checked={
+                                applicationForm.eligibleToWork ===
+                                "Yes"
+                              }
+                              onChange={() =>
+                                updateApplicationField(
+                                  "eligibleToWork",
+                                  "Yes"
+                                )
+                              }
+                            />
+                            Yes
+                          </label>
+
+                          <label className="radio-option">
+                            <input
+                              type="radio"
+                              name="eligible"
+                              checked={
+                                applicationForm.eligibleToWork ===
+                                "No"
+                              }
+                              onChange={() =>
+                                updateApplicationField(
+                                  "eligibleToWork",
+                                  "No"
+                                )
+                              }
+                            />
+                            No
+                          </label>
+                        </div>
+                      </td>
+
+                      <td
+                        colSpan={1}
+                        className="question-cell"
+                      >
+                        <span className="question-text">
+                          Are you a veteran?
+                        </span>
+
+                        <div className="radio-group">
+                          <label className="radio-option">
+                            <input
+                              type="radio"
+                              name="veteran"
+                              checked={
+                                applicationForm.veteran ===
+                                "Yes"
+                              }
+                              onChange={() =>
+                                updateApplicationField(
+                                  "veteran",
+                                  "Yes"
+                                )
+                              }
+                            />
+                            Yes
+                          </label>
+
+                          <label className="radio-option">
+                            <input
+                              type="radio"
+                              name="veteran"
+                              checked={
+                                applicationForm.veteran ===
+                                "No"
+                              }
+                              onChange={() =>
+                                updateApplicationField(
+                                  "veteran",
+                                  "No"
+                                )
+                              }
+                            />
+                            No
+                          </label>
+                        </div>
+                      </td>
+
+                      <td
+                        colSpan={2}
+                        className="question-cell"
+                      >
+                        <span className="question-text">
+                          If selected for employment are you willing to be subject to a background check?
+                        </span>
+
+                        <div className="radio-group">
+                          <label className="radio-option">
+                            <input
+                              type="radio"
+                              name="convicted"
+                              checked={
+                                applicationForm.convicted ===
+                                "Yes"
+                              }
+                              onChange={() =>
+                                updateApplicationField(
+                                  "convicted",
+                                  "Yes"
+                                )
+                              }
+                            />
+                            Yes
+                          </label>
+
+                          <label className="radio-option">
+                            <input
+                              type="radio"
+                              name="convicted"
+                              checked={
+                                applicationForm.convicted ===
+                                "No"
+                              }
+                              onChange={() =>
+                                updateApplicationField(
+                                  "convicted",
+                                  "No"
+                                )
+                              }
+                            />
+                            No
+                          </label>
+                        </div>
+                      </td>
+                    </tr>
+
+                  </tbody>
+                </table>
+
+              </section>
+
+              {/* =================================
+                  POSITION
+              ================================= */}
+
+              <section className="application-section">
+
+                <h2 className="application-section-title">
+                  Position
+                </h2>
+
+                <div className="position-grid">
+
+                  <div className="position-field">
+                    <div className="position-label">
+                      Position you are applying for
+                    </div>
+
+                    <input
+                      type="text"
+                      value={
+                        applicationForm.positionDesired
+                      }
+                      onChange={(e) =>
+                        updateApplicationField(
+                          "positionDesired",
+                          e.target.value
+                        )
+                      }
+                    />
+                  </div>
+
+                  <div className="position-field">
+                    <div className="position-label">
+                      Available start date
+                    </div>
+
+                    <input
+                      type="date"
+                      value={
+                        applicationForm.availableStartDate
+                      }
+                      onChange={(e) =>
+                        updateApplicationField(
+                          "availableStartDate",
+                          e.target.value
+                        )
+                      }
+                    />
+                  </div>
+
+                  <div className="position-field">
+                    <div className="position-label">
+                      Desired pay
+                    </div>
+
+                    <input
+                      type="text"
+                      value={
+                        applicationForm.desiredPay
+                      }
+                      onChange={(e) =>
+                        updateApplicationField(
+                          "desiredPay",
+                          e.target.value
+                        )
+                      }
+                    />
+                  </div>
+
+                </div>
+
+                <div className="employment-type-row">
+
+                  <span className="employment-type-title">
+                    Employment desired
+                  </span>
+
+                  <label className="employment-checkbox">
+                    <input
+                      type="checkbox"
+                      checked={
+                        applicationForm.employmentType ===
+                        "Full time"
+                      }
+                      onChange={(e) =>
+                        updateApplicationField(
+                          "employmentType",
+                          e.target.checked
+                            ? "Full time"
+                            : ""
+                        )
+                      }
+                    />
+                    Full time
+                  </label>
+
+                  <label className="employment-checkbox">
+                    <input
+                      type="checkbox"
+                      checked={
+                        applicationForm.employmentType ===
+                        "Part time"
+                      }
+                      onChange={(e) =>
+                        updateApplicationField(
+                          "employmentType",
+                          e.target.checked
+                            ? "Part time"
+                            : ""
+                        )
+                      }
+                    />
+                    Part time
+                  </label>
+
+                  <label className="employment-checkbox">
+                    <input
+                      type="checkbox"
+                      checked={
+                        applicationForm.employmentType ===
+                        "Seasonal/Temporary"
+                      }
+                      onChange={(e) =>
+                        updateApplicationField(
+                          "employmentType",
+                          e.target.checked
+                            ? "Seasonal/Temporary"
+                            : ""
+                        )
+                      }
+                    />
+                    Seasonal/Temporary
+                  </label>
+
+                </div>
+
+              </section>
+
+              {/* =================================
+                  EDUCATION
+              ================================= */}
+
+              <section className="application-section">
+
+                <h2 className="application-section-title">
+                  Education
+                </h2>
+
+                <div className="table-with-actions">
+
+                  <table className="application-table">
+
+                    <thead>
+                      <tr>
+                        <th>
+                          School name
+                        </th>
+
+                        <th>
+                          Location
+                        </th>
+
+                        <th>
+                          Years attended
+                        </th>
+
+                        <th>
+                          Degree received
+                        </th>
+
+                        <th>
+                          Major
+                        </th>
+
+                        <th style={{ width: "45px" }}>
+                          #
+                        </th>
+                      </tr>
+                    </thead>
+
+                    <tbody>
+                      {applicationForm.education.map(
+                        (
+                          education,
+                          index
+                        ) => (
+                          <tr key={index}>
+
+                            <td>
+                              <input
+                                type="text"
+                                value={
+                                  education.schoolName
+                                }
+                                onChange={(e) =>
+                                  updateEducation(
+                                    index,
+                                    "schoolName",
+                                    e.target.value
+                                  )
+                                }
+                              />
+                            </td>
+
+                            <td>
+                              <input
+                                type="text"
+                                value={
+                                  education.location
+                                }
+                                onChange={(e) =>
+                                  updateEducation(
+                                    index,
+                                    "location",
+                                    e.target.value
+                                  )
+                                }
+                              />
+                            </td>
+
+                            <td>
+                              <input
+                                type="text"
+                                value={
+                                  education.yearsAttended
+                                }
+                                onChange={(e) =>
+                                  updateEducation(
+                                    index,
+                                    "yearsAttended",
+                                    e.target.value
+                                  )
+                                }
+                              />
+                            </td>
+
+                            <td>
+                              <input
+                                type="text"
+                                value={
+                                  education.degreeReceived
+                                }
+                                onChange={(e) =>
+                                  updateEducation(
+                                    index,
+                                    "degreeReceived",
+                                    e.target.value
+                                  )
+                                }
+                              />
+                            </td>
+
+                            <td>
+                              <input
+                                type="text"
+                                value={
+                                  education.major
+                                }
+                                onChange={(e) =>
+                                  updateEducation(
+                                    index,
+                                    "major",
+                                    e.target.value
+                                  )
+                                }
+                              />
+                            </td>
+
+                            <td
+                              style={{
+                                textAlign:
+                                  "center",
+                                padding:
+                                  "5px",
+                              }}
+                            >
+                              <button
+                                type="button"
+                                className="row-delete-btn"
+                                onClick={() =>
+                                  removeEducationRow(
+                                    index
+                                  )
+                                }
+                              >
+                                <X size={13} />
+                              </button>
+                            </td>
+
+                          </tr>
+                        )
+                      )}
+                    </tbody>
+
+                  </table>
+
+                </div>
+
+                <div className="education-actions">
+                  <button
+                    type="button"
+                    className="small-add-btn"
+                    onClick={
+                      addEducationRow
+                    }
+                  >
+                    <Plus size={12} />
+                    Add Education
+                  </button>
+                </div>
+
+              </section>
+
+              {/* =================================
+                  REFERENCES
+              ================================= */}
+
+              <section className="application-section">
+
+                <h2 className="application-section-title">
+                  References
+                </h2>
+
+                <div className="table-with-actions">
+
+                  <table className="application-table reference-table">
+
+                    <thead>
+                      <tr>
+                        <th>
+                          Name
+                        </th>
+
+                        <th>
+                          Title
+                        </th>
+
+                        <th>
+                          Company
+                        </th>
+
+                        <th>
+                          Phone
+                        </th>
+
+                        <th>
+                          #
+                        </th>
+                      </tr>
+                    </thead>
+
+                    <tbody>
+                      {applicationForm.references.map(
+                        (
+                          reference,
+                          index
+                        ) => (
+                          <tr key={index}>
+
+                            <td>
+                              <input
+                                type="text"
+                                value={
+                                  reference.name
+                                }
+                                onChange={(e) =>
+                                  updateReference(
+                                    index,
+                                    "name",
+                                    e.target.value
+                                  )
+                                }
+                              />
+                            </td>
+
+                            <td>
+                              <input
+                                type="text"
+                                value={
+                                  reference.title
+                                }
+                                onChange={(e) =>
+                                  updateReference(
+                                    index,
+                                    "title",
+                                    e.target.value
+                                  )
+                                }
+                              />
+                            </td>
+
+                            <td>
+                              <input
+                                type="text"
+                                value={
+                                  reference.company
+                                }
+                                onChange={(e) =>
+                                  updateReference(
+                                    index,
+                                    "company",
+                                    e.target.value
+                                  )
+                                }
+                              />
+                            </td>
+
+                            <td>
+                              <input
+                                type="text"
+                                value={
+                                  reference.phone
+                                }
+                                onChange={(e) =>
+                                  updateReference(
+                                    index,
+                                    "phone",
+                                    e.target.value
+                                  )
+                                }
+                              />
+                            </td>
+
+                            <td>
+                              <button
+                                type="button"
+                                className="row-delete-btn"
+                                onClick={() =>
+                                  removeReferenceRow(
+                                    index
+                                  )
+                                }
+                              >
+                                <X size={13} />
+                              </button>
+                            </td>
+
+                          </tr>
+                        )
+                      )}
+                    </tbody>
+
+                  </table>
+
+                </div>
+
+                <div className="reference-actions">
+                  <button
+                    type="button"
+                    className="small-add-btn"
+                    onClick={
+                      addReferenceRow
+                    }
+                  >
+                    <Plus size={12} />
+                    Add Reference
+                  </button>
+                </div>
+
+              </section>
+
+              {/* =================================
+                  EMPLOYMENT HISTORY
+              ================================= */}
+
+              <section className="application-section">
+
+                <h2 className="application-section-title">
+                  Employment History
+                </h2>
+
+                <div className="employment-wrapper">
+
+                  <table className="application-table employment-table">
+
+                    <thead>
+                      <tr>
+                        <th>
+                          Employer
+                        </th>
+
+                        <th>
+                          Job title
+                        </th>
+
+                        <th>
+                          Dates employed
+                        </th>
+
+                        <th>
+                          Work phone
+                        </th>
+
+                        <th>
+                          Starting pay rate
+                        </th>
+
+                        <th>
+                          Ending pay rate
+                        </th>
+
+                        <th>
+                          #
+                        </th>
+                      </tr>
+                    </thead>
+
+                    <tbody>
+
+                      {applicationForm.employmentHistory.map(
+                        (
+                          employment,
+                          index
+                        ) => (
+                          <React.Fragment
+                            key={index}
+                          >
+
+                            <tr>
+
+                              <td>
+                                <input
+                                  type="text"
+                                  value={
+                                    employment.employer
+                                  }
+                                  onChange={(e) =>
+                                    updateEmployment(
+                                      index,
+                                      "employer",
+                                      e.target.value
+                                    )
+                                  }
+                                />
+                              </td>
+
+                              <td>
+                                <input
+                                  type="text"
+                                  value={
+                                    employment.jobTitle
+                                  }
+                                  onChange={(e) =>
+                                    updateEmployment(
+                                      index,
+                                      "jobTitle",
+                                      e.target.value
+                                    )
+                                  }
+                                />
+                              </td>
+
+                              <td>
+                                <input
+                                  type="text"
+                                  value={
+                                    employment.datesEmployed
+                                  }
+                                  onChange={(e) =>
+                                    updateEmployment(
+                                      index,
+                                      "datesEmployed",
+                                      e.target.value
+                                    )
+                                  }
+                                />
+                              </td>
+
+                              <td>
+                                <input
+                                  type="text"
+                                  value={
+                                    employment.workPhone
+                                  }
+                                  onChange={(e) =>
+                                    updateEmployment(
+                                      index,
+                                      "workPhone",
+                                      e.target.value
+                                    )
+                                  }
+                                />
+                              </td>
+
+                              <td>
+                                <input
+                                  type="text"
+                                  value={
+                                    employment.startingPayRate
+                                  }
+                                  onChange={(e) =>
+                                    updateEmployment(
+                                      index,
+                                      "startingPayRate",
+                                      e.target.value
+                                    )
+                                  }
+                                />
+                              </td>
+
+                              <td>
+                                <input
+                                  type="text"
+                                  value={
+                                    employment.endingPayRate
+                                  }
+                                  onChange={(e) =>
+                                    updateEmployment(
+                                      index,
+                                      "endingPayRate",
+                                      e.target.value
+                                    )
+                                  }
+                                />
+                              </td>
+
+                              <td
+                                style={{
+                                  width:
+                                    "45px",
+                                  textAlign:
+                                    "center",
+                                  padding:
+                                    "5px",
+                                }}
+                              >
+                                <button
+                                  type="button"
+                                  className="row-delete-btn"
+                                  onClick={() =>
+                                    removeEmploymentRow(
+                                      index
+                                    )
+                                  }
+                                >
+                                  <X size={13} />
+                                </button>
+                              </td>
+
+                            </tr>
+
+                            <tr>
+
+                              <th>
+                                Address
+                              </th>
+
+                              <th>
+                                City
+                              </th>
+
+                              <th>
+                                State
+                              </th>
+
+                              <th>
+                                Zip
+                              </th>
+
+                              <th colSpan={3}>
+                                Employment details
+                              </th>
+
+                            </tr>
+
+                            <tr>
+
+                              <td>
+                                <input
+                                  type="text"
+                                  value={
+                                    employment.address
+                                  }
+                                  onChange={(e) =>
+                                    updateEmployment(
+                                      index,
+                                      "address",
+                                      e.target.value
+                                    )
+                                  }
+                                />
+                              </td>
+
+                              <td>
+                                <input
+                                  type="text"
+                                  value={
+                                    employment.city
+                                  }
+                                  onChange={(e) =>
+                                    updateEmployment(
+                                      index,
+                                      "city",
+                                      e.target.value
+                                    )
+                                  }
+                                />
+                              </td>
+
+                              <td>
+                                <input
+                                  type="text"
+                                  value={
+                                    employment.state
+                                  }
+                                  onChange={(e) =>
+                                    updateEmployment(
+                                      index,
+                                      "state",
+                                      e.target.value
+                                    )
+                                  }
+                                />
+                              </td>
+
+                              <td>
+                                <input
+                                  type="text"
+                                  value={
+                                    employment.zip
+                                  }
+                                  onChange={(e) =>
+                                    updateEmployment(
+                                      index,
+                                      "zip",
+                                      e.target.value
+                                    )
+                                  }
+                                />
+                              </td>
+
+                              <td colSpan={3}>
+                                <input
+                                  type="text"
+                                  placeholder="Additional employment information"
+                                />
+                              </td>
+
+                            </tr>
+
+                          </React.Fragment>
+                        )
+                      )}
+
+                    </tbody>
+
+                  </table>
+
+                </div>
+
+                <div className="employment-actions">
+                  <button
+                    type="button"
+                    className="small-add-btn"
+                    onClick={
+                      addEmploymentRow
+                    }
+                  >
+                    <Plus size={12} />
+                    Add Employment
+                  </button>
+                </div>
+
+              </section>
+
+              {/* =================================
+                  FOOTER
+              ================================= */}
+
+              <div className="application-footer">
+
+                <button
+                  type="button"
+                  className="application-cancel"
+                  onClick={
+                    closeAddPage
+                  }
+                >
+                  Cancel
+                </button>
+
+                <button
+                  type="submit"
+                  className="application-save"
+                >
+                  Save User
+                </button>
+
+              </div>
+
+            </form>
+
+          </div>
+        </div>
+      </>
+    );
+  }
+
+  /* =========================================
+     USERS LIST PAGE
+  ========================================= */
 
   return (
     <>
-      {/* =====================================
-          SAME FILE CSS
-      ===================================== */}
-
       <style>
         {`
         .users-page {
@@ -980,10 +2972,6 @@ const Users: React.FC = () => {
           color: #10203f;
           font-family: "Inter","Segoe UI",sans-serif;
         }
-
-        /* ==============================
-           HEADER
-        ============================== */
 
         .users-page-header {
           display: flex;
@@ -1033,10 +3021,6 @@ const Users: React.FC = () => {
         .users-add-btn:hover {
           background: #b58430;
         }
-
-        /* ==============================
-           CARD
-        ============================== */
 
         .users-card {
           width: 100%;
@@ -1096,10 +3080,6 @@ const Users: React.FC = () => {
           width: 178px;
         }
 
-        /* ==============================
-           TOOLBAR
-        ============================== */
-
         .users-toolbar {
           min-height: 61px;
           padding: 10px 16px;
@@ -1143,10 +3123,6 @@ const Users: React.FC = () => {
         .users-search::placeholder {
           color: #8c97a9;
         }
-
-        /* ==============================
-           TABLE
-        ============================== */
 
         .users-table-wrapper {
           width: 100%;
@@ -1204,8 +3180,6 @@ const Users: React.FC = () => {
           font-size: 10px;
         }
 
-        /* USER */
-
         .users-user-cell {
           display: flex;
           align-items: center;
@@ -1238,10 +3212,6 @@ const Users: React.FC = () => {
           font-weight: 500;
         }
 
-        /* ==============================
-           ROLE BADGE
-        ============================== */
-
         .users-role-badge {
           min-height: 32px;
           padding: 0 9px;
@@ -1262,10 +3232,6 @@ const Users: React.FC = () => {
           background: #f0ddf3;
           color: #bc46c6;
         }
-
-        /* ==============================
-           STATUS
-        ============================== */
 
         .users-status {
           height: 19px;
@@ -1303,10 +3269,6 @@ const Users: React.FC = () => {
           background: #fff !important;
         }
 
-        /* ==============================
-           ACTIONS
-        ============================== */
-
         .users-actions {
           display: inline-flex;
           align-items: center;
@@ -1329,10 +3291,6 @@ const Users: React.FC = () => {
         .users-action-btn:hover {
           color: #17233f;
         }
-
-        /* ==============================
-           TABLE FOOTER
-        ============================== */
 
         .users-table-footer {
           height: 57px;
@@ -1381,9 +3339,9 @@ const Users: React.FC = () => {
           font-size: 12px;
         }
 
-        /* =========================================
-           MODAL OVERLAY
-        ========================================= */
+        /* =================================
+           EDIT MODAL
+        ================================= */
 
         .users-modal-overlay {
           position: fixed;
@@ -1395,10 +3353,6 @@ const Users: React.FC = () => {
           align-items: center;
           justify-content: center;
         }
-
-        /* =========================================
-           ADD / EDIT MODAL
-        ========================================= */
 
         .users-form-modal {
           width: 800px;
@@ -1413,11 +3367,7 @@ const Users: React.FC = () => {
         .users-modal-header {
           height: 64px;
           padding: 0 17px;
-          position: sticky;
-          top: 0;
-          z-index: 10;
           border-bottom: 1px solid #e3e7eb;
-          background: #fff;
           display: flex;
           align-items: center;
           justify-content: space-between;
@@ -1437,16 +3387,8 @@ const Users: React.FC = () => {
           border: 0;
           background: transparent;
           color: #667085;
-          display: flex;
-          align-items: center;
-          justify-content: center;
           font-size: 24px;
-          line-height: 1;
           cursor: pointer;
-        }
-
-        .users-modal-close:hover {
-          color: #172033;
         }
 
         .users-modal-body {
@@ -1467,11 +3409,6 @@ const Users: React.FC = () => {
           font-weight: 500;
         }
 
-        .users-required {
-          color: #e53935;
-          margin-left: 2px;
-        }
-
         .users-form-group input,
         .users-form-group select {
           width: 100%;
@@ -1485,50 +3422,13 @@ const Users: React.FC = () => {
           font-size: 13px;
         }
 
-        .users-form-group input:focus,
-        .users-form-group select:focus,
-        .users-about:focus {
-          border-color: #c39237;
-          box-shadow: 0 0 0 2px rgba(195,146,55,.08);
+        .users-required {
+          color: #e53935;
+          margin-left: 2px;
         }
-
-        .users-form-group select {
-          cursor: pointer;
-        }
-
-        /* PASSWORD */
-
-        .users-password-wrap {
-          position: relative;
-        }
-
-        .users-password-wrap input {
-          padding-right: 40px;
-        }
-
-        .users-password-eye {
-          width: 35px;
-          height: 39px;
-          position: absolute;
-          right: 0;
-          top: 0;
-          padding: 0;
-          border: 0;
-          background: transparent;
-          color: #697587;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          cursor: pointer;
-        }
-
-        /* =========================================
-           ABOUT
-        ========================================= */
 
         .users-about-group {
           grid-column: 1 / -1;
-          margin-top: 0;
         }
 
         .users-about {
@@ -1539,31 +3439,15 @@ const Users: React.FC = () => {
           border: 1px solid #dce1e7;
           border-radius: 5px;
           outline: none;
-          background: #fff;
-          color: #26344d;
           font-family: inherit;
-          font-size: 13px;
-          line-height: 1.5;
         }
-
-        .users-about::placeholder {
-          color: #9aa3b2;
-        }
-
-        /* =========================================
-           MODAL FOOTER
-        ========================================= */
 
         .users-modal-footer {
           min-height: 64px;
           padding: 10px 20px;
-          position: sticky;
-          bottom: 0;
-          z-index: 10;
           border-top: 1px solid #e4e7eb;
           background: #fff;
           display: flex;
-          align-items: center;
           justify-content: flex-end;
           gap: 10px;
         }
@@ -1580,11 +3464,6 @@ const Users: React.FC = () => {
         .users-modal-cancel {
           border: 1px solid #dfe3e8;
           background: #fff;
-          color: #172033;
-        }
-
-        .users-modal-cancel:hover {
-          background: #f7f8fa;
         }
 
         .users-modal-save {
@@ -1594,14 +3473,9 @@ const Users: React.FC = () => {
           font-weight: 600;
         }
 
-        .users-modal-save:hover {
-          background: #b58430;
-          border-color: #b58430;
-        }
-
-        /* =========================================
+        /* =================================
            DELETE
-        ========================================= */
+        ================================= */
 
         .users-delete-modal {
           width: 400px;
@@ -1668,10 +3542,6 @@ const Users: React.FC = () => {
           font-weight: 600;
         }
 
-        /* =========================================
-           RESPONSIVE
-        ========================================= */
-
         @media(max-width:900px) {
           .users-card-header {
             flex-direction: column;
@@ -1707,39 +3577,36 @@ const Users: React.FC = () => {
             width: 100%;
           }
 
+          .users-filters {
+            flex-direction: column;
+          }
+
           .users-date-filter,
           .users-role-filter,
           .users-status-filter,
           .users-sort-filter {
             width: 100%;
           }
-
-          .users-filters {
-            flex-direction: column;
-          }
-
-          .users-form-modal {
-            max-height: calc(100vh - 20px);
-          }
         }
         `}
       </style>
 
-      {/* =========================================
-          PAGE
-      ========================================= */}
-
       <div className="users-page">
 
-        {/* HEADER */}
+        {/* =====================================
+            HEADER
+        ===================================== */}
 
         <div className="users-page-header">
+
           <div>
+
             <h1 className="users-page-title">
               Users
             </h1>
 
             <div className="users-breadcrumb">
+
               <Link to="/admin/dashboard">
                 <i className="ti ti-home" />
               </Link>
@@ -1749,40 +3616,38 @@ const Users: React.FC = () => {
               <span>
                 Users
               </span>
+
             </div>
+
           </div>
 
           <button
             type="button"
             className="users-add-btn"
             onClick={
-              openAddModal
+              openAddPage
             }
           >
-            <CirclePlus
-              size={15}
-            />
+            <CirclePlus size={15} />
 
             Add User
           </button>
+
         </div>
 
-        {/* =========================================
+        {/* =====================================
             USERS CARD
-        ========================================= */}
+        ===================================== */}
 
         <div className="users-card">
 
-          {/* CARD HEADER */}
-
           <div className="users-card-header">
+
             <h5>
               Users List
             </h5>
 
             <div className="users-filters">
-
-              {/* DATE */}
 
               <select
                 className="users-filter users-date-filter"
@@ -1801,8 +3666,6 @@ const Users: React.FC = () => {
                 </option>
               </select>
 
-              {/* ROLE */}
-
               <select
                 className="users-filter users-role-filter"
                 value={
@@ -1812,7 +3675,6 @@ const Users: React.FC = () => {
                   setRoleFilter(
                     e.target.value
                   );
-
                   setCurrentPage(1);
                 }}
               >
@@ -1829,8 +3691,6 @@ const Users: React.FC = () => {
                 </option>
               </select>
 
-              {/* STATUS */}
-
               <select
                 className="users-filter users-status-filter"
                 value={
@@ -1840,7 +3700,6 @@ const Users: React.FC = () => {
                   setStatusFilter(
                     e.target.value
                   );
-
                   setCurrentPage(1);
                 }}
               >
@@ -1857,8 +3716,6 @@ const Users: React.FC = () => {
                 </option>
               </select>
 
-              {/* SORT */}
-
               <select
                 className="users-filter users-sort-filter"
                 value={sortBy}
@@ -1866,7 +3723,6 @@ const Users: React.FC = () => {
                   setSortBy(
                     e.target.value
                   );
-
                   setCurrentPage(1);
                 }}
               >
@@ -1890,13 +3746,19 @@ const Users: React.FC = () => {
                   Last Month
                 </option>
               </select>
+
             </div>
+
           </div>
 
-          {/* TOOLBAR */}
+          {/* =====================================
+              TOOLBAR
+          ===================================== */}
 
           <div className="users-toolbar">
+
             <div className="users-row-control">
+
               <span>
                 Row Per Page
               </span>
@@ -1912,7 +3774,6 @@ const Users: React.FC = () => {
                       e.target.value
                     )
                   );
-
                   setCurrentPage(1);
                 }}
               >
@@ -1936,6 +3797,7 @@ const Users: React.FC = () => {
               <span>
                 Entries
               </span>
+
             </div>
 
             <input
@@ -1947,18 +3809,24 @@ const Users: React.FC = () => {
                 setSearch(
                   e.target.value
                 );
-
                 setCurrentPage(1);
               }}
             />
+
           </div>
 
-          {/* TABLE */}
+          {/* =====================================
+              TABLE
+          ===================================== */}
 
           <div className="users-table-wrapper">
+
             <table className="users-table">
+
               <thead>
+
                 <tr>
+
                   <th className="users-check-col">
                     <input
                       type="checkbox"
@@ -1974,7 +3842,6 @@ const Users: React.FC = () => {
 
                   <th>
                     Name
-
                     <span className="users-sort">
                       ↑↓
                     </span>
@@ -1982,7 +3849,6 @@ const Users: React.FC = () => {
 
                   <th>
                     Email
-
                     <span className="users-sort">
                       ↑↓
                     </span>
@@ -1990,7 +3856,6 @@ const Users: React.FC = () => {
 
                   <th>
                     Created Date
-
                     <span className="users-sort">
                       ↑↓
                     </span>
@@ -1998,7 +3863,6 @@ const Users: React.FC = () => {
 
                   <th>
                     Role
-
                     <span className="users-sort">
                       ↑↓
                     </span>
@@ -2006,7 +3870,6 @@ const Users: React.FC = () => {
 
                   <th>
                     Status
-
                     <span className="users-sort">
                       ↑↓
                     </span>
@@ -2017,15 +3880,16 @@ const Users: React.FC = () => {
                       ↑↓
                     </span>
                   </th>
+
                 </tr>
+
               </thead>
 
               <tbody>
+
                 {visibleUsers.map(
                   (user) => (
                     <tr key={user.id}>
-
-                      {/* CHECKBOX */}
 
                       <td className="users-check-col">
                         <input
@@ -2042,25 +3906,23 @@ const Users: React.FC = () => {
                         />
                       </td>
 
-                      {/* NAME */}
-
                       <td>
+
                         <div className="users-user-cell">
+
                           <div className="users-avatar" />
 
                           <div className="users-name">
                             {user.name}
                           </div>
-                        </div>
-                      </td>
 
-                      {/* EMAIL */}
+                        </div>
+
+                      </td>
 
                       <td>
                         {user.email}
                       </td>
-
-                      {/* CREATED */}
 
                       <td>
                         {
@@ -2068,9 +3930,8 @@ const Users: React.FC = () => {
                         }
                       </td>
 
-                      {/* ROLE */}
-
                       <td>
+
                         <span
                           className={`users-role-badge ${
                             user.role ===
@@ -2081,11 +3942,11 @@ const Users: React.FC = () => {
                         >
                           {user.role}
                         </span>
+
                       </td>
 
-                      {/* STATUS */}
-
                       <td>
+
                         <span
                           className={`users-status ${
                             user.status ===
@@ -2094,15 +3955,17 @@ const Users: React.FC = () => {
                               : "users-status-inactive"
                           }`}
                         >
+
                           <span className="users-status-dot" />
 
                           {user.status}
+
                         </span>
+
                       </td>
 
-                      {/* ACTION */}
-
                       <td>
+
                         <div className="users-actions">
 
                           <button
@@ -2110,9 +3973,7 @@ const Users: React.FC = () => {
                             className="users-action-btn"
                             title="Permissions"
                           >
-                            <Shield
-                              size={15}
-                            />
+                            <Shield size={15} />
                           </button>
 
                           <button
@@ -2125,9 +3986,7 @@ const Users: React.FC = () => {
                               )
                             }
                           >
-                            <Pencil
-                              size={15}
-                            />
+                            <Pencil size={15} />
                           </button>
 
                           <button
@@ -2140,13 +3999,13 @@ const Users: React.FC = () => {
                               )
                             }
                           >
-                            <Trash2
-                              size={15}
-                            />
+                            <Trash2 size={15} />
                           </button>
 
                         </div>
+
                       </td>
+
                     </tr>
                   )
                 )}
@@ -2154,6 +4013,7 @@ const Users: React.FC = () => {
                 {visibleUsers.length ===
                   0 && (
                   <tr>
+
                     <td
                       colSpan={7}
                       style={{
@@ -2165,17 +4025,26 @@ const Users: React.FC = () => {
                     >
                       No users found
                     </td>
+
                   </tr>
                 )}
+
               </tbody>
+
             </table>
+
           </div>
 
-          {/* FOOTER */}
+          {/* =====================================
+              FOOTER
+          ===================================== */}
 
           <div className="users-table-footer">
+
             <div>
+
               Showing{" "}
+
               {filteredUsers.length ===
               0
                 ? 0
@@ -2183,17 +4052,23 @@ const Users: React.FC = () => {
                     1) *
                     rowsPerPage +
                   1}
+
               {" - "}
+
               {Math.min(
                 safeCurrentPage *
                   rowsPerPage,
                 filteredUsers.length
-              )}{" "}
-              of{" "}
+              )}
+
+              {" of "}
+
               {
                 filteredUsers.length
-              }{" "}
-              entries
+              }
+
+              {" entries"}
+
             </div>
 
             <div className="users-pagination">
@@ -2215,9 +4090,7 @@ const Users: React.FC = () => {
                   )
                 }
               >
-                <ChevronLeft
-                  size={16}
-                />
+                <ChevronLeft size={16} />
               </button>
 
               <span className="users-current-page">
@@ -2243,359 +4116,26 @@ const Users: React.FC = () => {
                   )
                 }
               >
-                <ChevronRight
-                  size={16}
-                />
+                <ChevronRight size={16} />
               </button>
 
             </div>
+
           </div>
+
         </div>
+
       </div>
 
-      {/* =============================================
-          ADD USER MODAL
-      ============================================= */}
-
-      {addOpen && (
-        <div className="users-modal-overlay">
-
-          <div className="users-form-modal">
-
-            {/* HEADER */}
-
-            <div className="users-modal-header">
-
-              <h3>
-                Add New User
-              </h3>
-
-              <button
-                type="button"
-                className="users-modal-close"
-                onClick={
-                  closeAddModal
-                }
-              >
-                ×
-              </button>
-
-            </div>
-
-            <form
-              onSubmit={
-                handleAddUser
-              }
-            >
-
-              <div className="users-modal-body">
-
-                <div className="users-form-grid">
-
-                  {/* FIRST NAME */}
-
-                  <UserInput
-                    label="First Name"
-                    required
-                    value={
-                      form.firstName
-                    }
-                    onChange={(value) =>
-                      updateForm(
-                        "firstName",
-                        value
-                      )
-                    }
-                  />
-
-                  {/* LAST NAME */}
-
-                  <UserInput
-                    label="Last Name"
-                    value={
-                      form.lastName
-                    }
-                    onChange={(value) =>
-                      updateForm(
-                        "lastName",
-                        value
-                      )
-                    }
-                  />
-
-                  {/* USERNAME */}
-
-                  <UserInput
-                    label="Username"
-                    required
-                    value={
-                      form.username
-                    }
-                    onChange={(value) =>
-                      updateForm(
-                        "username",
-                        value
-                      )
-                    }
-                  />
-
-                  {/* EMAIL */}
-
-                  <UserInput
-                    label="Email"
-                    required
-                    value={
-                      form.email
-                    }
-                    onChange={(value) =>
-                      updateForm(
-                        "email",
-                        value
-                      )
-                    }
-                  />
-
-                  {/* PASSWORD */}
-
-                  <div className="users-form-group">
-
-                    <label>
-                      Password
-                    </label>
-
-                    <div className="users-password-wrap">
-
-                      <input
-                        type={
-                          showPassword
-                            ? "text"
-                            : "password"
-                        }
-                        value={
-                          form.password
-                        }
-                        onChange={(e) =>
-                          updateForm(
-                            "password",
-                            e.target
-                              .value
-                          )
-                        }
-                      />
-
-                      <button
-                        type="button"
-                        className="users-password-eye"
-                        onClick={() =>
-                          setShowPassword(
-                            !showPassword
-                          )
-                        }
-                      >
-                        {showPassword ? (
-                          <Eye
-                            size={16}
-                          />
-                        ) : (
-                          <EyeOff
-                            size={16}
-                          />
-                        )}
-                      </button>
-
-                    </div>
-                  </div>
-
-                  {/* CONFIRM PASSWORD */}
-
-                  <div className="users-form-group">
-
-                    <label>
-                      Confirm Password
-                    </label>
-
-                    <div className="users-password-wrap">
-
-                      <input
-                        type={
-                          showConfirmPassword
-                            ? "text"
-                            : "password"
-                        }
-                        value={
-                          form.confirmPassword
-                        }
-                        onChange={(e) =>
-                          updateForm(
-                            "confirmPassword",
-                            e.target
-                              .value
-                          )
-                        }
-                      />
-
-                      <button
-                        type="button"
-                        className="users-password-eye"
-                        onClick={() =>
-                          setShowConfirmPassword(
-                            !showConfirmPassword
-                          )
-                        }
-                      >
-                        {showConfirmPassword ? (
-                          <Eye
-                            size={16}
-                          />
-                        ) : (
-                          <EyeOff
-                            size={16}
-                          />
-                        )}
-                      </button>
-
-                    </div>
-                  </div>
-
-                  {/* PHONE */}
-
-                  <UserInput
-                    label="Phone Number"
-                    required
-                    value={
-                      form.phone
-                    }
-                    onChange={(value) =>
-                      updateForm(
-                        "phone",
-                        value
-                      )
-                    }
-                  />
-
-                  {/* COMPANY */}
-
-                  <UserInput
-                    label="Company"
-                    value={
-                      form.company
-                    }
-                    onChange={(value) =>
-                      updateForm(
-                        "company",
-                        value
-                      )
-                    }
-                  />
-
-                  {/* DEPARTMENT */}
-
-                  <SelectInput
-                    label="Department"
-                    required
-                    value={
-                      form.department
-                    }
-                    placeholder="Select Department"
-                    options={
-                      departments
-                    }
-                    onChange={(value) =>
-                      updateForm(
-                        "department",
-                        value
-                      )
-                    }
-                  />
-
-                  {/* DESIGNATION */}
-
-                  <SelectInput
-                    label="Designation"
-                    required
-                    value={
-                      form.designation
-                    }
-                    placeholder="Select Designation"
-                    options={
-                      designations
-                    }
-                    onChange={(value) =>
-                      updateForm(
-                        "designation",
-                        value
-                      )
-                    }
-                  />
-
-                  {/* ABOUT */}
-
-                  <div className="users-form-group users-about-group">
-
-                    <label>
-                      About
-                    </label>
-
-                    <textarea
-                      className="users-about"
-                      rows={3}
-                      placeholder="Write something about the user..."
-                      value={
-                        form.about
-                      }
-                      onChange={(e) =>
-                        updateForm(
-                          "about",
-                          e.target
-                            .value
-                        )
-                      }
-                    />
-
-                  </div>
-
-                </div>
-              </div>
-
-              {/* FOOTER */}
-
-              <div className="users-modal-footer">
-
-                <button
-                  type="button"
-                  className="users-modal-cancel"
-                  onClick={
-                    closeAddModal
-                  }
-                >
-                  Cancel
-                </button>
-
-                <button
-                  type="submit"
-                  className="users-modal-save"
-                >
-                  Save User
-                </button>
-
-              </div>
-
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* =============================================
+      {/* =========================================
           EDIT USER MODAL
-      ============================================= */}
+      ========================================= */}
 
       {editOpen &&
         editingUser && (
           <div className="users-modal-overlay">
 
             <div className="users-form-modal">
-
-              {/* HEADER */}
 
               <div className="users-modal-header">
 
@@ -2625,8 +4165,6 @@ const Users: React.FC = () => {
 
                   <div className="users-form-grid">
 
-                    {/* FIRST NAME */}
-
                     <UserInput
                       label="First Name"
                       required
@@ -2641,8 +4179,6 @@ const Users: React.FC = () => {
                       }
                     />
 
-                    {/* LAST NAME */}
-
                     <UserInput
                       label="Last Name"
                       value={
@@ -2655,8 +4191,6 @@ const Users: React.FC = () => {
                         )
                       }
                     />
-
-                    {/* USERNAME */}
 
                     <UserInput
                       label="Username"
@@ -2672,8 +4206,6 @@ const Users: React.FC = () => {
                       }
                     />
 
-                    {/* EMAIL */}
-
                     <UserInput
                       label="Email"
                       required
@@ -2688,113 +4220,8 @@ const Users: React.FC = () => {
                       }
                     />
 
-                    {/* PASSWORD */}
-
-                    <div className="users-form-group">
-
-                      <label>
-                        Password
-                      </label>
-
-                      <div className="users-password-wrap">
-
-                        <input
-                          type={
-                            showPassword
-                              ? "text"
-                              : "password"
-                          }
-                          value={
-                            form.password
-                          }
-                          onChange={(e) =>
-                            updateForm(
-                              "password",
-                              e.target
-                                .value
-                            )
-                          }
-                        />
-
-                        <button
-                          type="button"
-                          className="users-password-eye"
-                          onClick={() =>
-                            setShowPassword(
-                              !showPassword
-                            )
-                          }
-                        >
-                          {showPassword ? (
-                            <Eye
-                              size={16}
-                            />
-                          ) : (
-                            <EyeOff
-                              size={16}
-                            />
-                          )}
-                        </button>
-
-                      </div>
-                    </div>
-
-                    {/* CONFIRM PASSWORD */}
-
-                    <div className="users-form-group">
-
-                      <label>
-                        Confirm Password
-                      </label>
-
-                      <div className="users-password-wrap">
-
-                        <input
-                          type={
-                            showConfirmPassword
-                              ? "text"
-                              : "password"
-                          }
-                          value={
-                            form.confirmPassword
-                          }
-                          onChange={(e) =>
-                            updateForm(
-                              "confirmPassword",
-                              e.target
-                                .value
-                            )
-                          }
-                        />
-
-                        <button
-                          type="button"
-                          className="users-password-eye"
-                          onClick={() =>
-                            setShowConfirmPassword(
-                              !showConfirmPassword
-                            )
-                          }
-                        >
-                          {showConfirmPassword ? (
-                            <Eye
-                              size={16}
-                            />
-                          ) : (
-                            <EyeOff
-                              size={16}
-                            />
-                          )}
-                        </button>
-
-                      </div>
-                    </div>
-
-                    {/* PHONE */}
-
                     <UserInput
                       label="Phone Number"
-                      required
                       value={
                         form.phone
                       }
@@ -2805,8 +4232,6 @@ const Users: React.FC = () => {
                         )
                       }
                     />
-
-                    {/* COMPANY */}
 
                     <UserInput
                       label="Company"
@@ -2821,11 +4246,8 @@ const Users: React.FC = () => {
                       }
                     />
 
-                    {/* DEPARTMENT */}
-
                     <SelectInput
                       label="Department"
-                      required
                       value={
                         form.department
                       }
@@ -2841,11 +4263,8 @@ const Users: React.FC = () => {
                       }
                     />
 
-                    {/* DESIGNATION */}
-
                     <SelectInput
                       label="Designation"
-                      required
                       value={
                         form.designation
                       }
@@ -2861,8 +4280,6 @@ const Users: React.FC = () => {
                       }
                     />
 
-                    {/* ABOUT */}
-
                     <div className="users-form-group users-about-group">
 
                       <label>
@@ -2872,15 +4289,13 @@ const Users: React.FC = () => {
                       <textarea
                         className="users-about"
                         rows={3}
-                        placeholder="Write something about the user..."
                         value={
                           form.about
                         }
                         onChange={(e) =>
                           updateForm(
                             "about",
-                            e.target
-                              .value
+                            e.target.value
                           )
                         }
                       />
@@ -2888,9 +4303,8 @@ const Users: React.FC = () => {
                     </div>
 
                   </div>
-                </div>
 
-                {/* FOOTER */}
+                </div>
 
                 <div className="users-modal-footer">
 
@@ -2914,13 +4328,15 @@ const Users: React.FC = () => {
                 </div>
 
               </form>
+
             </div>
+
           </div>
         )}
 
-      {/* =============================================
+      {/* =========================================
           DELETE MODAL
-      ============================================= */}
+      ========================================= */}
 
       {deleteOpen && (
         <div className="users-modal-overlay">
@@ -2970,26 +4386,23 @@ const Users: React.FC = () => {
             </div>
 
           </div>
+
         </div>
       )}
+
     </>
   );
 };
 
 /* =========================================
-   REUSABLE TEXT INPUT
+   REUSABLE INPUT
 ========================================= */
 
 interface UserInputProps {
   label: string;
-
   value: string;
-
   required?: boolean;
-
-  onChange: (
-    value: string
-  ) => void;
+  onChange: (value: string) => void;
 }
 
 const UserInput = ({
@@ -3026,23 +4439,16 @@ const UserInput = ({
 };
 
 /* =========================================
-   REUSABLE SELECT INPUT
+   REUSABLE SELECT
 ========================================= */
 
 interface SelectInputProps {
   label: string;
-
   value: string;
-
   placeholder: string;
-
   options: string[];
-
   required?: boolean;
-
-  onChange: (
-    value: string
-  ) => void;
+  onChange: (value: string) => void;
 }
 
 const SelectInput = ({
@@ -3074,6 +4480,7 @@ const SelectInput = ({
           )
         }
       >
+
         <option value="">
           {placeholder}
         </option>
@@ -3088,6 +4495,7 @@ const SelectInput = ({
             </option>
           )
         )}
+
       </select>
 
     </div>

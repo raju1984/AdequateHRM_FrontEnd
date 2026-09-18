@@ -2140,6 +2140,56 @@ export const getAdminDashboard = async (
   }
 };
 
+
+/* =====================================================
+   ATTENDANCE LOGOUT
+   POST /api/Attendance/logout
+===================================================== */
+
+export const logoutAttendance = async () => {
+  const token = getToken();
+
+  try {
+    const response = await axios.post(
+      `${BASE_URL}/Attendance/logout`,
+      null,
+      {
+        headers: {
+          ...getAuthHeaders(token),
+          Accept: "application/json",
+        },
+      }
+    );
+
+    console.log(
+      "ATTENDANCE LOGOUT RESPONSE:",
+      response.data
+    );
+
+    return response.data;
+  } catch (error) {
+    console.error(
+      "ATTENDANCE LOGOUT ERROR:",
+      error
+    );
+
+    console.error(
+      "ATTENDANCE LOGOUT STATUS:",
+      (error as AxiosError)?.response?.status
+    );
+
+    console.error(
+      "ATTENDANCE LOGOUT ERROR RESPONSE:",
+      (error as AxiosError)?.response?.data
+    );
+
+    throw new Error(
+      getApiErrorMessage(error)
+    );
+  }
+};
+
+
 /* =====================================================
    DEFAULT EXPORT
 ===================================================== */
@@ -2173,7 +2223,7 @@ export default {
   updateDesignation,
   deleteDesignation,
 
-  /* HOLIDAY */
+  /* HOLIDAY */  
   getHolidays,
   addHoliday,
   updateHoliday,
@@ -2204,5 +2254,9 @@ getAdminDashboard,
   /* ADMIN ATTENDANCE */
   getAdminAttendance,
   updateAdminAttendance,
+
+  /* ATTENDANCE */
+logoutAttendance,
+
 };
 

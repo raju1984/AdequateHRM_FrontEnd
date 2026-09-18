@@ -3,18 +3,14 @@ import axios from "axios";
 const BASE_URL =
   "http://jupiterapi.adequateshop.com/api";
 
-// =====================================================
 // AUTH HEADERS
-// =====================================================
 
 const getAuthHeaders = (token: string) => ({
   Authorization: `Bearer ${token}`,
   Accept: "*/*",
 });
 
-// =====================================================
 // GET TOKEN
-// =====================================================
 
 const getToken = (): string => {
   const token = localStorage.getItem("token");
@@ -28,18 +24,9 @@ const getToken = (): string => {
   return token;
 };
 
-// =====================================================
 // EMPLOYEE PROFILE
-// =====================================================
 
-/**
- * GET EMPLOYEE PROFILE
- *
- * API:
- * GET /api/Profile/Get-Profile
- *
- * No ID parameter required.
- */
+
 export const getEmployeeProfile = async (
   token: string
 ) => {
@@ -61,21 +48,7 @@ export const getEmployeeProfile = async (
     response.data
   );
 
-  /*
-   * Supports both:
-   *
-   * {
-   *   data: {...}
-   * }
-   *
-   * and:
-   *
-   * {
-   *   data: {
-   *      profile: {...}
-   *   }
-   * }
-   */
+
 
   const responseData = response.data;
 
@@ -102,9 +75,7 @@ export const getEmployeeProfile = async (
   return responseData;
 };
 
-// =====================================================
 // UPDATE EMPLOYEE PROFILE
-// =====================================================
 
 export interface UpdateEmployeeProfileData {
   id?: string;
@@ -125,14 +96,7 @@ export interface UpdateEmployeeProfileData {
   profilePicture?: File | null;
 }
 
-/**
- * UPDATE EMPLOYEE PROFILE
- *
- * API:
- * PUT /api/Profile/Update-Profile
- *
- * Uses multipart/form-data.
- */
+
 export const updateEmployeeProfile = async (
   data: UpdateEmployeeProfileData,
   token: string
@@ -210,12 +174,7 @@ export const updateEmployeeProfile = async (
     data.confirmPassword || ""
   );
 
-  /*
-   * ProfilePicture is binary.
-   *
-   * Only append a File when the user has
-   * selected a new profile picture.
-   */
+ 
   if (
     data.profilePicture &&
     data.profilePicture instanceof File
@@ -238,11 +197,7 @@ export const updateEmployeeProfile = async (
       headers: {
         ...getAuthHeaders(token),
 
-        /*
-         * IMPORTANT:
-         * Do NOT manually set Content-Type for FormData.
-         * Axios/browser will automatically add the boundary.
-         */
+        
       },
     }
   );
@@ -255,9 +210,7 @@ export const updateEmployeeProfile = async (
   return response.data;
 };
 
-// =====================================================
 // HOLIDAY PAGE PARAMS
-// =====================================================
 
 export type HolidayPageParams = {
   Year?: number;
@@ -269,9 +222,7 @@ export type HolidayPageParams = {
   PageSize?: number;
 };
 
-// =====================================================
 // GET HOLIDAYS
-// =====================================================
 
 export const getHolidays = async (
   token: string,
@@ -294,9 +245,7 @@ export const getHolidays = async (
   return response;
 };
 
-// =====================================================
 // GET HOLIDAY BY ID
-// =====================================================
 
 export const getHolidayById = async (
   holidayId: string,
@@ -324,9 +273,7 @@ export const getHolidayById = async (
   return response;
 };
 
-// =====================================================
 // OLD HOLIDAY API
-// =====================================================
 
 export const getOldHolidays = async (
   token: string
@@ -345,9 +292,7 @@ export const getOldHolidays = async (
   );
 };
 
-// =====================================================
 // GET ALL EMPLOYEES
-// =====================================================
 
 export const getAllEmployees = async () => {
   const token = getToken();
@@ -366,9 +311,7 @@ export const getAllEmployees = async () => {
   return response.data;
 };
 
-// =====================================================
 // ADD EMPLOYEE
-// =====================================================
 
 export const addEmployee = async (
   data: FormData
@@ -386,9 +329,7 @@ export const addEmployee = async (
   return response.data;
 };
 
-// =====================================================
 // GET DESIGNATIONS
-// =====================================================
 
 export const getDesignations = async () => {
   const token = getToken();
@@ -411,9 +352,7 @@ export const getDesignations = async () => {
   return response.data;
 };
 
-// =====================================================
 // ATTENDANCE PAGE PARAMS
-// =====================================================
 
 export type AttendancePageParams = {
   FromDate?: string;
@@ -424,24 +363,7 @@ export type AttendancePageParams = {
   PageSize?: number;
 };
 
-// =====================================================
-// GET EMPLOYEE ATTENDANCE
-//
-// API RESPONSE:
-//
-// {
-//   statusCode: 200,
-//   message: "",
-//   data: {
-//     employee: {...},
-//     todayAttendance: {...},
-//     attendanceSummary: {...},
-//     attendanceList: [...],
-//     pagination: {...}
-//   },
-//   isSuccess: true
-// }
-// =====================================================
+
 
 export const getEmployeeAttendance = async (
   params: AttendancePageParams = {}
@@ -464,9 +386,7 @@ export const getEmployeeAttendance = async (
   return response.data;
 };
 
-// =====================================================
 // GET EMPLOYEE ATTENDANCE BY ID
-// =====================================================
 
 export const getEmployeeAttendanceById = async (
   attendanceId: string
@@ -489,9 +409,7 @@ export const getEmployeeAttendanceById = async (
   return response.data;
 };
 
-// =====================================================
 // ATTENDANCE LOGOUT / PUNCH OUT
-// =====================================================
 
 export const logoutAttendance = async () => {
   const token = getToken();
@@ -510,13 +428,8 @@ export const logoutAttendance = async () => {
   return response.data;
 };
 
-// =====================================================
-// LEAVE MODULE
-// =====================================================
 
-// =====================================================
 // LEAVE TYPES
-// =====================================================
 
 export const getLeaveTypes = async (
   token: string
@@ -537,9 +450,7 @@ export const getLeaveTypes = async (
   return response.data;
 };
 
-// =====================================================
 // MY LEAVES
-// =====================================================
 
 export type MyLeavesParams = {
   FromDate?: string;
@@ -573,9 +484,7 @@ export const getMyLeaves = async (
   return response.data;
 };
 
-// =====================================================
 // GET LEAVE BY ID
-// =====================================================
 
 export const getLeaveById = async (
   leaveId: string,
@@ -603,9 +512,7 @@ export const getLeaveById = async (
   return response.data;
 };
 
-// =====================================================
 // LEAVE PAYLOAD
-// =====================================================
 
 export interface LeavePayload {
   UserId?: string;
@@ -617,9 +524,7 @@ export interface LeavePayload {
   Attachment?: File | null;
 }
 
-// =====================================================
 // BUILD LEAVE FORM DATA
-// =====================================================
 
 const buildLeaveFormData = (
   payload: LeavePayload
@@ -668,9 +573,7 @@ const buildLeaveFormData = (
   return formData;
 };
 
-// =====================================================
 // ADD LEAVE
-// =====================================================
 
 export const addLeave = async (
   payload: LeavePayload,
@@ -692,10 +595,7 @@ export const addLeave = async (
       headers: {
         ...getAuthHeaders(token),
 
-        /*
-         * Do not manually set multipart/form-data.
-         * Axios will automatically add the boundary.
-         */
+
       },
     }
   );
@@ -703,9 +603,7 @@ export const addLeave = async (
   return response.data;
 };
 
-// =====================================================
 // UPDATE LEAVE
-// =====================================================
 
 export const updateLeave = async (
   leaveId: string,
@@ -734,10 +632,6 @@ export const updateLeave = async (
       headers: {
         ...getAuthHeaders(token),
 
-        /*
-         * Do not manually set multipart/form-data.
-         * Axios will automatically add the boundary.
-         */
       },
     }
   );
@@ -745,9 +639,7 @@ export const updateLeave = async (
   return response.data;
 };
 
-// =====================================================
 // DELETE LEAVE
-// =====================================================
 
 export const deleteLeave = async (
   leaveId: string,
@@ -776,9 +668,7 @@ export const deleteLeave = async (
 };
 
 
-// =====================================================
 // EMPLOYEE LEAVES
-// =====================================================
 
 export type EmployeeLeavesParams = {
   FromDate?: string;
@@ -817,9 +707,7 @@ export const getEmployeeLeaves = async (
   return response.data;
 };
 
-// =====================================================
 // REVIEW LEAVE
-// =====================================================
 
 export interface ReviewLeavePayload {
   status: number;
@@ -865,9 +753,7 @@ export const reviewLeave = async (
   return response.data;
 };
 
-// =====================================================
 // EMPLOYEE DASHBOARD
-// =====================================================
 
 export const getEmployeeDashboard = async () => {
   const token = getToken();
@@ -878,7 +764,7 @@ export const getEmployeeDashboard = async () => {
   const response = await axios.get(
     `${BASE_URL}/employee/dashboard`,
     {
-      headers: {
+      headers: {  
         Authorization: `Bearer ${token}`,
         Accept: "*/*",
       },

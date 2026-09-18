@@ -1,10 +1,45 @@
+
 import React from "react";
-import { NavLink } from "react-router-dom";
+import { NavLink, useNavigate } from "react-router-dom";
 
 import logo from "../../assets/img/logo.webp";
+import { logoutAttendance } from "../../services/employeservices";
 
-const EmployeeSidebar = () => {
-  const navStyle = ({ isActive }: { isActive: boolean }) => ({
+const EmployeeSidebar: React.FC = () => {
+  const navigate = useNavigate(); 
+
+  // =====================================================
+  // LOGOUT
+  // =====================================================
+
+  const handleLogout = async (
+    e: React.MouseEvent<HTMLAnchorElement>
+  ) => {
+    e.preventDefault();
+
+    try {
+      // Call Attendance Logout / Punch Out API
+      await logoutAttendance();
+    } catch (error) {
+      // Even if API fails, logout locally
+      console.error("Attendance logout API failed:", error);
+    } finally {
+      // Clear authentication/session data
+      localStorage.removeItem("token");
+      localStorage.removeItem("userId");
+
+      // Redirect to Employee Login
+      navigate("/Employee/EmployeLogin", {
+        replace: true,
+      });
+    }
+  };
+
+  const navStyle = ({
+    isActive,
+  }: {
+    isActive: boolean;
+  }): React.CSSProperties => ({
     height: "48px",
     padding: "0 14px",
     display: "flex",
@@ -41,7 +76,10 @@ const EmployeeSidebar = () => {
         overflow: "hidden",
       }}
     >
-      {/* Logo */}
+      {/* =====================================================
+          LOGO
+      ===================================================== */}
+
       <div
         className="sidebar-logo"
         style={{
@@ -55,7 +93,10 @@ const EmployeeSidebar = () => {
           zIndex: 10,
         }}
       >
-        <NavLink to="/Employee/EmployeDashboard" className="logo logo-normal">
+        <NavLink
+          to="/Employee/EmployeDashboard"
+          className="logo logo-normal"
+        >
           <img
             src={logo}
             alt="Logo"
@@ -67,7 +108,10 @@ const EmployeeSidebar = () => {
         </NavLink>
       </div>
 
-      {/* Menu */}
+      {/* =====================================================
+          MENU
+      ===================================================== */}
+
       <div
         className="sidebar-inner slimscroll"
         style={{
@@ -77,7 +121,10 @@ const EmployeeSidebar = () => {
           overflowX: "hidden",
         }}
       >
-        <div id="sidebar-menu" className="sidebar-menu">
+        <div
+          id="sidebar-menu"
+          className="sidebar-menu"
+        >
           <ul
             style={{
               listStyle: "none",
@@ -85,57 +132,79 @@ const EmployeeSidebar = () => {
               margin: 0,
             }}
           >
-            {/* Dashboard */}
+            {/* DASHBOARD */}
             <li style={{ marginBottom: "6px" }}>
-              <NavLink to="/Employee/EmployeDashboard" style={navStyle}>
+              <NavLink
+                to="/Employee/EmployeDashboard"
+                style={navStyle}
+              >
                 <i className="ti ti-category-2"></i>
                 <span>Dashboard</span>
               </NavLink>
             </li>
 
-            {/* Leave */}
+            {/* LEAVE */}
             <li style={{ marginBottom: "6px" }}>
-              <NavLink to="/Employee/leave" style={navStyle}>
+              <NavLink
+                to="/Employee/leave"
+                style={navStyle}
+              >
                 <i className="ti ti-calendar-month"></i>
                 <span>Leave</span>
               </NavLink>
             </li>
 
-            {/* Attendance */}
+            {/* ATTENDANCE */}
             <li style={{ marginBottom: "6px" }}>
-              <NavLink to="/Employee/Attendance" style={navStyle}>
+              <NavLink
+                to="/Employee/Attendance"
+                style={navStyle}
+              >
                 <i className="ti ti-calendar-month"></i>
                 <span>Attendance</span>
               </NavLink>
             </li>
 
-            {/* Payslip */}
+            {/* PAYSLIP */}
             <li style={{ marginBottom: "6px" }}>
-              <NavLink to="/Employee/Payslip" style={navStyle}>
+              <NavLink
+                to="/Employee/Payslip"
+                style={navStyle}
+              >
                 <i className="ti ti-calendar-month"></i>
                 <span>Payslip</span>
               </NavLink>
             </li>
 
-            {/* Holidays */}
+            {/* HOLIDAYS */}
             <li style={{ marginBottom: "6px" }}>
-              <NavLink to="/Employee/Holidays" style={navStyle}>
+              <NavLink
+                to="/Employee/Holidays"
+                style={navStyle}
+              >
                 <i className="ti ti-calendar-event"></i>
                 <span>Holidays</span>
               </NavLink>
             </li>
 
-            {/* Profile */}
+            {/* PROFILE */}
             <li style={{ marginBottom: "6px" }}>
-              <NavLink to="/Employee/profiles" style={navStyle}>
+              <NavLink
+                to="/Employee/profiles"
+                style={navStyle}
+              >
                 <i className="ti ti-user-circle"></i>
                 <span>Profile</span>
               </NavLink>
             </li>
 
-            {/* Logout */}
+            {/* LOGOUT */}
             <li style={{ marginBottom: "6px" }}>
-              <NavLink to="/Employee/EmployeLogin" style={navStyle}>
+              <NavLink
+                to="/Employee/EmployeLogin"
+                onClick={handleLogout}
+                style={navStyle}
+              >
                 <i className="ti ti-logout"></i>
                 <span>Logout</span>
               </NavLink>
@@ -148,3 +217,4 @@ const EmployeeSidebar = () => {
 };
 
 export default EmployeeSidebar;
+

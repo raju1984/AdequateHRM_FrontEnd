@@ -1,12 +1,66 @@
 
-// Sidebar.tsx
-
-import React from "react";
-import { NavLink } from "react-router-dom";
+import React, { useState } from "react";
+import { NavLink, useNavigate } from "react-router-dom";
 
 import logo from "../../assets/img/logo.webp";
+import { logoutAttendance } from "../../services/adminservices";
 
 const Sidebar = () => {
+  const navigate = useNavigate();
+
+  const [loggingOut, setLoggingOut] = useState(false);
+
+  /* =====================================================
+     LOGOUT
+  ===================================================== */
+
+  const handleLogout = async () => {
+    if (loggingOut) return;
+
+    setLoggingOut(true);
+
+    try {
+      /*
+        Call Attendance Logout API
+
+        POST
+        /api/Attendance/logout
+
+        No parameters/body required.
+        Bearer token is automatically sent
+        from logoutAttendance().
+      */
+      await logoutAttendance();
+
+      console.log("Logout API successful");
+
+      /*
+        Clear authentication data
+      */
+      localStorage.removeItem("token");
+      localStorage.removeItem("userId");
+
+      /*
+        Redirect to login/home page
+      */
+      navigate("/", { replace: true });
+    } catch (error) {
+      console.error("LOGOUT ERROR:", error);
+
+      /*
+        Even if API fails, clear local session
+        so the user is not left in an authenticated
+        frontend state.
+      */
+      localStorage.removeItem("token");
+      localStorage.removeItem("userId");
+
+      navigate("/", { replace: true });
+    } finally {
+      setLoggingOut(false);
+    }
+  };
+
   return (
     <>
       <style>
@@ -78,6 +132,7 @@ const Sidebar = () => {
           }
 
           /* Small logo hidden for now */
+
           .sidebar-logo .logo-small {
             display: none;
           }
@@ -245,6 +300,80 @@ const Sidebar = () => {
           }
 
           /* =========================================================
+             LOGOUT BUTTON
+          ========================================================= */
+
+          .sidebar-menu .sidebar-logout-btn {
+            width: 100%;
+            height: 43px;
+
+            padding: 0 16px;
+
+            display: flex;
+            align-items: center;
+
+            gap: 10px;
+
+            border: 0;
+            border-radius: 5px;
+
+            box-sizing: border-box;
+
+            background: transparent;
+
+            color: #536174;
+
+            font-family: inherit;
+            font-size: 15px;
+            font-weight: 400;
+
+            text-align: left;
+
+            cursor: pointer;
+
+            transition:
+              background-color 0.15s ease,
+              color 0.15s ease;
+          }
+
+          .sidebar-menu .sidebar-logout-btn i {
+            width: 16px;
+            min-width: 16px;
+
+            color: #31738a;
+
+            font-size: 17px;
+            line-height: 1;
+
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+
+            flex-shrink: 0;
+          }
+
+          .sidebar-menu .sidebar-logout-btn span {
+            white-space: nowrap;
+
+            overflow: hidden;
+            text-overflow: ellipsis;
+          }
+
+          .sidebar-menu .sidebar-logout-btn:hover {
+            background: #f6f6f6;
+            color: #334155;
+          }
+
+          .sidebar-menu .sidebar-logout-btn:hover i {
+            color: #31738a;
+          }
+
+          .sidebar-menu .sidebar-logout-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+          }
+
+          /* =========================================================
              MOBILE
           ========================================================= */
 
@@ -270,6 +399,7 @@ const Sidebar = () => {
         ===================================================== */}
 
         <div className="sidebar-logo">
+
           <NavLink
             to="/admin/dashboard"
             className="logo logo-normal"
@@ -289,6 +419,7 @@ const Sidebar = () => {
               alt="Adequate Infosoft"
             />
           </NavLink>
+
         </div>
 
         {/* =====================================================
@@ -297,10 +428,12 @@ const Sidebar = () => {
         ===================================================== */}
 
         <div className="sidebar-inner">
+
           <div
             id="sidebar-menu"
             className="sidebar-menu"
           >
+
             <ul>
 
               {/* =================================================
@@ -539,30 +672,36 @@ const Sidebar = () => {
                 </NavLink>
               </li>
 
-              {/* LOGOUT */}
+              {/* =================================================
+                  LOGOUT
+              ================================================= */}
 
               <li>
-                <NavLink
-                  to="/"
-                  className={({ isActive }) =>
-                    isActive ? "active" : ""
-                  }
+                <button
+                  type="button"
+                  onClick={handleLogout}
+                  disabled={loggingOut}
+                  className="sidebar-logout-btn"
                 >
                   <i className="ti ti-logout" />
 
                   <span>
-                    Logout
+                    {loggingOut
+                      ? "Logging out..."
+                      : "Logout"}
                   </span>
-                </NavLink>
+                </button>
               </li>
 
             </ul>
+
           </div>
+
         </div>
+
       </div>
     </>
   );
 };
 
 export default Sidebar;
-

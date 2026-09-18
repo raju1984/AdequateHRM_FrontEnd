@@ -15,6 +15,14 @@ import {
   Trash2,
   Plus,
   X,
+  BriefcaseBusiness,
+  GraduationCap,
+  UsersRound,
+  UserRound,
+  CalendarDays,
+  Mail,
+  Phone,
+  MapPin,
 } from "lucide-react";
 
 /* =========================================
@@ -1082,64 +1090,119 @@ const Users: React.FC = () => {
             box-sizing: border-box;
           }
 
+          :root {
+            --ochre: #c49332;
+            --ochre-dark: #ae812b;
+            --ochre-light: #fbf6e9;
+            --navy: #14213d;
+            --text: #3d4758;
+            --muted: #687386;
+            --border: #d9dee5;
+            --soft-bg: #f7f8fa;
+          }
+
           .application-page {
             width: 100%;
             min-height: calc(100vh - 50px);
-            padding: 24px 25px 35px;
-            background: #f8f9fb;
-            color: #17243d;
+            padding: 28px 28px 40px;
+            background: #f7f8fa;
+            color: var(--navy);
             font-family: "Inter", "Segoe UI", Arial, sans-serif;
           }
+
+          /* =================================
+             HEADER
+          ================================= */
 
           .application-top {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            margin-bottom: 18px;
+            gap: 20px;
+            margin-bottom: 22px;
+          }
+
+          .application-heading-wrapper {
+            display: flex;
+            align-items: flex-start;
+            gap: 14px;
+          }
+
+          .application-heading-icon {
+            width: 44px;
+            height: 44px;
+            flex: 0 0 44px;
+            border-radius: 11px;
+            background: var(--ochre-light);
+            color: var(--ochre);
+            display: flex;
+            align-items: center;
+            justify-content: center;
           }
 
           .application-heading {
             margin: 0;
-            color: #0f1e3c;
-            font-size: 24px;
-            font-weight: 700;
+            color: #14213d;
+            font-size: 28px;
+            line-height: 1.2;
+            font-weight: 750;
+            letter-spacing: -0.3px;
+          }
+
+          .application-subtitle {
+            margin: 5px 0 0;
+            color: #778196;
+            font-size: 14px;
+            line-height: 1.5;
           }
 
           .application-breadcrumb {
             display: flex;
             align-items: center;
             gap: 8px;
-            margin-top: 5px;
-            color: #697487;
-            font-size: 12px;
+            margin-top: 7px;
+            color: #7b8595;
+            font-size: 13px;
           }
 
           .application-breadcrumb a {
-            color: #315c75;
+            color: var(--ochre);
             text-decoration: none;
           }
 
           .application-back-btn {
-            height: 38px;
-            padding: 0 15px;
+            min-height: 42px;
+            padding: 0 16px;
             border: 1px solid #d9dee5;
-            border-radius: 5px;
+            border-radius: 8px;
             background: #fff;
             color: #26344d;
             cursor: pointer;
-            font-size: 13px;
+            font-size: 14px;
+            font-weight: 500;
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            transition: .2s ease;
           }
 
           .application-back-btn:hover {
-            background: #f3f5f7;
+            border-color: var(--ochre);
+            color: var(--ochre-dark);
+            background: #fffdf8;
           }
+
+          /* =================================
+             MAIN CARD
+          ================================= */
 
           .application-card {
             width: 100%;
-            border: 1px solid #d8dde3;
-            border-radius: 5px;
+            border: 1px solid #dfe3e8;
+            border-radius: 12px;
             background: #fff;
             overflow: hidden;
+            box-shadow: 0 4px 18px rgba(20, 33, 61, .045);
           }
 
           .application-form {
@@ -1147,28 +1210,39 @@ const Users: React.FC = () => {
           }
 
           /* =================================
-             SECTION
+             SECTIONS
           ================================= */
 
           .application-section {
-            padding: 18px 10px 24px;
+            padding: 22px 20px 26px;
           }
 
           .application-section + .application-section {
-            border-top: 1px solid #e0e4e8;
+            border-top: 1px solid #e3e7eb;
           }
 
           .application-section-title {
-            height: 37px;
-            margin: 0 0 0;
-            padding: 0 12px;
+            min-height: 46px;
+            margin: 0 0 18px;
+            padding: 0 16px;
             display: flex;
             align-items: center;
-            background: #75a0c2;
+            gap: 10px;
+            border-radius: 8px;
+            background: var(--ochre);
             color: #fff;
-            font-size: 16px;
-            font-weight: 600;
+            font-size: 17px;
+            font-weight: 700;
             letter-spacing: .1px;
+            box-shadow: 0 3px 8px rgba(196, 147, 50, .15);
+          }
+
+          .application-section-title::before {
+            content: "";
+            width: 4px;
+            height: 20px;
+            border-radius: 4px;
+            background: rgba(255,255,255,.85);
           }
 
           /* =================================
@@ -1177,27 +1251,42 @@ const Users: React.FC = () => {
 
           .application-table {
             width: 100%;
-            border-collapse: collapse;
+            border-collapse: separate;
+            border-spacing: 0;
             table-layout: fixed;
+            overflow: hidden;
+            border: 1px solid var(--border);
+            border-radius: 8px;
           }
 
           .application-table th,
           .application-table td {
-            border: 1px solid #bfc5ca;
+            border-right: 1px solid var(--border);
+            border-bottom: 1px solid var(--border);
+          }
+
+          .application-table tr:last-child td,
+          .application-table tr:last-child th {
+            border-bottom: 0;
+          }
+
+          .application-table th:last-child,
+          .application-table td:last-child {
+            border-right: 0;
           }
 
           .application-table th {
-            height: 29px;
-            padding: 5px 8px;
-            background: #fafafa;
-            color: #5d6570;
-            font-size: 10px;
-            font-weight: 500;
+            height: 35px;
+            padding: 7px 10px;
+            background: #f8f9fb;
+            color: #5c6675;
+            font-size: 12px;
+            font-weight: 650;
             text-align: left;
           }
 
           .application-table td {
-            height: 38px;
+            height: 46px;
             padding: 0;
             background: #fff;
           }
@@ -1205,87 +1294,68 @@ const Users: React.FC = () => {
           .application-table input,
           .application-table select {
             width: 100%;
-            height: 37px;
-            padding: 5px 8px;
+            height: 45px;
+            padding: 7px 11px;
             border: 0;
             outline: none;
             background: transparent;
             color: #26344d;
             font-family: inherit;
-            font-size: 12px;
+            font-size: 13px;
+          }
+
+          .application-table input::placeholder {
+            color: #a0a8b5;
           }
 
           .application-table input:focus,
           .application-table select:focus {
-            background: #fffdf6;
-            box-shadow: inset 0 0 0 1px #c39237;
-          }
-
-          .application-label {
-            display: block;
-            padding: 5px 9px 2px;
-            color: #5f6771;
-            font-size: 10px;
+            background: #fffdf7;
+            box-shadow: inset 0 0 0 1.5px var(--ochre);
           }
 
           /* =================================
              PERSONAL INFORMATION
           ================================= */
 
-          .personal-row-1 th:nth-child(1) {
-            width: 38%;
-          }
-
-          .personal-row-1 th:nth-child(2) {
-            width: 23%;
-          }
-
-          .personal-row-1 th:nth-child(3) {
-            width: 17%;
-          }
-
-          .personal-row-1 th:nth-child(4) {
-            width: 12%;
-          }
-
-          .personal-row-1 th:nth-child(5) {
-            width: 10%;
-          }
-
           .personal-input {
-            height: 37px;
+            height: 45px !important;
           }
 
           .question-cell {
-            padding: 7px 9px !important;
-            height: 45px !important;
+            padding: 10px 12px !important;
+            height: 65px !important;
           }
 
           .question-text {
             display: block;
-            margin-bottom: 6px;
-            color: #5d6570;
-            font-size: 10px;
+            margin-bottom: 8px;
+            color: #5c6675;
+            font-size: 12px;
+            line-height: 1.35;
+            font-weight: 500;
           }
 
           .radio-group {
             display: flex;
             align-items: center;
-            gap: 15px;
+            gap: 20px;
           }
 
           .radio-option {
             display: inline-flex;
             align-items: center;
-            gap: 4px;
+            gap: 6px;
             color: #4f5967;
-            font-size: 10px;
+            font-size: 12px;
+            cursor: pointer;
           }
 
           .radio-option input {
-            width: 12px;
-            height: 12px;
+            width: 14px;
+            height: 14px;
             margin: 0;
+            accent-color: var(--ochre);
           }
 
           /* =================================
@@ -1295,65 +1365,91 @@ const Users: React.FC = () => {
           .position-grid {
             display: grid;
             grid-template-columns: 1.7fr 1fr 1fr;
-            border-left: 1px solid #bfc5ca;
-            border-top: 1px solid #bfc5ca;
+            border: 1px solid var(--border);
+            border-radius: 8px 8px 0 0;
+            overflow: hidden;
           }
 
           .position-field {
-            min-height: 62px;
-            border-right: 1px solid #bfc5ca;
-            border-bottom: 1px solid #bfc5ca;
+            min-height: 82px;
+            border-right: 1px solid var(--border);
+            background: #fff;
+          }
+
+          .position-field:last-child {
+            border-right: 0;
           }
 
           .position-label {
-            height: 25px;
-            padding: 6px 8px 0;
-            color: #5d6570;
-            font-size: 10px;
+            height: 34px;
+            padding: 10px 11px 4px;
+            color: #5c6675;
+            font-size: 12px;
+            font-weight: 600;
           }
 
-          .position-field input {
+          .position-field input,
+          .position-field select {
             width: 100%;
-            height: 36px;
-            padding: 0 8px;
+            height: 46px;
+            padding: 0 11px;
             border: 0;
             outline: none;
             color: #26344d;
-            font-size: 12px;
+            background: transparent;
+            font-family: inherit;
+            font-size: 13px;
+          }
+
+          .position-field select {
+            cursor: pointer;
+          }
+
+          .position-field input:focus,
+          .position-field select:focus {
+            background: #fffdf7;
+            box-shadow: inset 0 0 0 1.5px var(--ochre);
           }
 
           .employment-type-row {
-            min-height: 46px;
-            padding: 9px 8px;
-            border-right: 1px solid #bfc5ca;
-            border-bottom: 1px solid #bfc5ca;
-            border-left: 1px solid #bfc5ca;
+            min-height: 58px;
+            padding: 12px 13px;
+            border-right: 1px solid var(--border);
+            border-bottom: 1px solid var(--border);
+            border-left: 1px solid var(--border);
+            border-radius: 0 0 8px 8px;
             display: flex;
             align-items: center;
-            gap: 30px;
+            flex-wrap: wrap;
+            gap: 22px;
+            background: #fbfcfd;
           }
 
           .employment-type-title {
-            color: #5d6570;
-            font-size: 10px;
+            color: #4d5869;
+            font-size: 12px;
+            font-weight: 650;
+            margin-right: 5px;
           }
 
           .employment-checkbox {
             display: inline-flex;
             align-items: center;
-            gap: 5px;
+            gap: 7px;
             color: #596270;
-            font-size: 10px;
+            font-size: 12px;
+            cursor: pointer;
           }
 
           .employment-checkbox input {
-            width: 12px;
-            height: 12px;
+            width: 14px;
+            height: 14px;
             margin: 0;
+            accent-color: var(--ochre);
           }
 
           /* =================================
-             EDUCATION
+             ADD BUTTONS
           ================================= */
 
           .education-actions,
@@ -1361,52 +1457,59 @@ const Users: React.FC = () => {
           .employment-actions {
             display: flex;
             justify-content: flex-end;
-            margin-top: 8px;
+            margin-top: 11px;
           }
 
           .small-add-btn {
-            height: 29px;
-            padding: 0 10px;
+            min-height: 35px;
+            padding: 0 13px;
             display: inline-flex;
             align-items: center;
-            gap: 5px;
-            border: 1px solid #d8dde3;
-            border-radius: 4px;
+            gap: 6px;
+            border: 1px solid #d7dde4;
+            border-radius: 7px;
             background: #fff;
             color: #4d5969;
             cursor: pointer;
-            font-size: 10px;
+            font-size: 12px;
+            font-weight: 600;
+            transition: .2s ease;
           }
 
           .small-add-btn:hover {
-            background: #f7f8fa;
+            border-color: var(--ochre);
+            background: var(--ochre-light);
+            color: var(--ochre-dark);
           }
 
           .row-delete-btn {
-            width: 25px;
-            height: 25px;
+            width: 29px;
+            height: 29px;
             padding: 0;
-            border: 0;
-            border-radius: 3px;
-            background: #fff0f0;
-            color: #e32929;
+            border: 1px solid #f2d5d5;
+            border-radius: 6px;
+            background: #fff5f5;
+            color: #dc3545;
             display: inline-flex;
             align-items: center;
             justify-content: center;
             cursor: pointer;
+            transition: .2s ease;
           }
 
           .row-delete-btn:hover {
-            background: #ffe0e0;
+            border-color: #dc3545;
+            background: #ffe9e9;
           }
 
           .table-with-actions {
             width: 100%;
             overflow-x: auto;
+            border-radius: 8px;
           }
 
           .table-with-actions .application-table {
-            min-width: 760px;
+            min-width: 850px;
           }
 
           /* =================================
@@ -1415,68 +1518,52 @@ const Users: React.FC = () => {
 
           .reference-table th:last-child,
           .reference-table td:last-child {
-            width: 45px;
+            width: 52px;
+            min-width: 52px;
             text-align: center;
           }
 
           .reference-table td:last-child {
-            padding: 5px;
+            padding: 7px;
           }
 
           /* =================================
              EMPLOYMENT HISTORY
           ================================= */
 
-         .employment-table {
-  width: 100%;
-  min-width: 0;
-  table-layout: fixed;
-}
+          .employment-wrapper {
+            width: 100%;
+            max-width: 100%;
+            overflow-x: auto;
+            overflow-y: hidden;
+            border-radius: 8px;
+          }
 
-.employment-table th:last-child,
-.employment-table td:last-child {
-  width: 45px;
-  min-width: 45px;
-  max-width: 45px;
-  text-align: center;
-}
-
-.employment-table td:last-child {
-  padding: 5px !important;
-}
-
-.employment-table td:last-child .row-delete-btn {
-  width: 25px;
-  height: 25px;
-  margin: 0 auto;
-}
-         .employment-wrapper {
-  width: 100%;
-  max-width: 100%;
-  overflow-x: auto;
-  overflow-y: hidden;
-  padding-bottom: 2px;
-} }
+          .employment-table {
+            width: 100%;
+            min-width: 1050px;
+            table-layout: fixed;
+          }
 
           .employment-table th {
-            height: 32px;
-            font-size: 10px;
+            height: 40px;
+            font-size: 12px;
           }
 
           .employment-table td {
-            height: 38px;
+            height: 46px;
           }
 
           .employment-table th:nth-child(1) {
-            width: 22%;
+            width: 20%;
           }
 
           .employment-table th:nth-child(2) {
-            width: 18%;
+            width: 17%;
           }
 
           .employment-table th:nth-child(3) {
-            width: 16%;
+            width: 15%;
           }
 
           .employment-table th:nth-child(4) {
@@ -1484,58 +1571,78 @@ const Users: React.FC = () => {
           }
 
           .employment-table th:nth-child(5) {
-            width: 15%;
+            width: 13%;
           }
 
           .employment-table th:nth-child(6) {
-            width: 14%;
+            width: 13%;
           }
 
-          .employment-bottom-table {
-            margin-top: 0;
-            min-width: 900px;
+          .employment-table th:last-child,
+          .employment-table td:last-child {
+            width: 55px;
+            min-width: 55px;
+            max-width: 55px;
+            text-align: center;
+          }
+
+          .employment-table td:last-child {
+            padding: 7px !important;
+          }
+
+          .employment-table td:last-child .row-delete-btn {
+            margin: 0 auto;
           }
 
           /* =================================
-             BUTTONS
+             FOOTER
           ================================= */
 
           .application-footer {
-            min-height: 70px;
-            padding: 15px 28px;
+            min-height: 78px;
+            padding: 17px 24px;
             border-top: 1px solid #dde2e7;
             background: #fff;
             display: flex;
             justify-content: flex-end;
             align-items: center;
-            gap: 10px;
+            gap: 11px;
+          }
+
+          .application-cancel,
+          .application-save {
+            min-height: 42px;
+            padding: 0 21px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 13px;
+            font-weight: 600;
+            transition: .2s ease;
           }
 
           .application-cancel {
-            height: 39px;
-            padding: 0 18px;
-            border: 1px solid #d9dee5;
-            border-radius: 5px;
+            border: 1px solid #d8dee5;
             background: #fff;
-            color: #26344d;
-            cursor: pointer;
-            font-size: 13px;
+            color: #384458;
+          }
+
+          .application-cancel:hover {
+            background: #f6f7f8;
+            border-color: #cbd2da;
           }
 
           .application-save {
-            height: 39px;
-            padding: 0 20px;
-            border: 1px solid #c39237;
-            border-radius: 5px;
-            background: #c39237;
+            border: 1px solid var(--ochre);
+            background: var(--ochre);
             color: #fff;
-            cursor: pointer;
-            font-size: 13px;
-            font-weight: 600;
+            box-shadow: 0 4px 10px rgba(196, 147, 50, .2);
           }
 
           .application-save:hover {
-            background: #b58430;
+            background: var(--ochre-dark);
+            border-color: var(--ochre-dark);
+            transform: translateY(-1px);
           }
 
           /* =================================
@@ -1547,7 +1654,8 @@ const Users: React.FC = () => {
             inset: 0;
             z-index: 99999;
             padding: 15px;
-            background: rgba(0,0,0,.42);
+            background: rgba(15, 25, 42, .48);
+            backdrop-filter: blur(2px);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -1558,14 +1666,14 @@ const Users: React.FC = () => {
             max-width: calc(100vw - 30px);
             max-height: calc(100vh - 30px);
             overflow-y: auto;
-            border-radius: 5px;
+            border-radius: 10px;
             background: #fff;
-            box-shadow: 0 15px 45px rgba(0,0,0,.22);
+            box-shadow: 0 20px 55px rgba(0,0,0,.22);
           }
 
           .users-modal-header {
-            height: 64px;
-            padding: 0 17px;
+            height: 68px;
+            padding: 0 20px;
             border-bottom: 1px solid #e3e7eb;
             display: flex;
             align-items: center;
@@ -1576,27 +1684,33 @@ const Users: React.FC = () => {
             margin: 0;
             color: #1e2b49;
             font-size: 20px;
-            font-weight: 600;
+            font-weight: 700;
           }
 
           .users-modal-close {
-            width: 28px;
-            height: 28px;
+            width: 32px;
+            height: 32px;
             border: 0;
-            background: transparent;
+            border-radius: 7px;
+            background: #f5f6f8;
             color: #667085;
             cursor: pointer;
-            font-size: 24px;
+            font-size: 22px;
+          }
+
+          .users-modal-close:hover {
+            background: #f0f1f3;
+            color: #14213d;
           }
 
           .users-modal-body {
-            padding: 20px;
+            padding: 23px;
           }
 
           .users-form-grid {
             display: grid;
             grid-template-columns: repeat(2,minmax(0,1fr));
-            gap: 16px 24px;
+            gap: 18px 24px;
           }
 
           .users-form-group label {
@@ -1604,25 +1718,33 @@ const Users: React.FC = () => {
             margin-bottom: 7px;
             color: #263452;
             font-size: 13px;
-            font-weight: 500;
+            font-weight: 600;
           }
 
           .users-required {
             color: #e53935;
-            margin-left: 2px;
+            margin-left: 3px;
           }
 
           .users-form-group input,
           .users-form-group select {
             width: 100%;
-            height: 39px;
-            padding: 0 10px;
+            height: 42px;
+            padding: 0 11px;
             border: 1px solid #dce1e7;
-            border-radius: 5px;
+            border-radius: 7px;
             outline: none;
             background: #fff;
             color: #26344d;
             font-size: 13px;
+            font-family: inherit;
+          }
+
+          .users-form-group input:focus,
+          .users-form-group select:focus,
+          .users-about:focus {
+            border-color: var(--ochre);
+            box-shadow: 0 0 0 3px rgba(196,147,50,.1);
           }
 
           .users-about-group {
@@ -1631,18 +1753,19 @@ const Users: React.FC = () => {
 
           .users-about {
             width: 100%;
-            min-height: 78px;
-            padding: 10px;
+            min-height: 85px;
+            padding: 11px;
             resize: vertical;
             border: 1px solid #dce1e7;
-            border-radius: 5px;
+            border-radius: 7px;
             outline: none;
             font-family: inherit;
+            font-size: 13px;
           }
 
           .users-modal-footer {
-            min-height: 64px;
-            padding: 10px 20px;
+            min-height: 68px;
+            padding: 11px 23px;
             border-top: 1px solid #e4e7eb;
             background: #fff;
             display: flex;
@@ -1652,9 +1775,9 @@ const Users: React.FC = () => {
 
           .users-modal-cancel,
           .users-modal-save {
-            height: 39px;
-            padding: 0 17px;
-            border-radius: 5px;
+            min-height: 40px;
+            padding: 0 18px;
+            border-radius: 7px;
             font-size: 13px;
             cursor: pointer;
           }
@@ -1662,13 +1785,18 @@ const Users: React.FC = () => {
           .users-modal-cancel {
             border: 1px solid #dfe3e8;
             background: #fff;
+            color: #26344d;
           }
 
           .users-modal-save {
-            border: 1px solid #c39237;
-            background: #c39237;
+            border: 1px solid var(--ochre);
+            background: var(--ochre);
             color: #fff;
             font-weight: 600;
+          }
+
+          .users-modal-save:hover {
+            background: var(--ochre-dark);
           }
 
           /* =================================
@@ -1678,106 +1806,560 @@ const Users: React.FC = () => {
           .users-delete-modal {
             width: 400px;
             max-width: calc(100vw - 30px);
-            padding: 25px 30px;
-            border-radius: 5px;
+            padding: 28px 30px;
+            border-radius: 11px;
             background: #fff;
             text-align: center;
-            box-shadow: 0 15px 45px rgba(0,0,0,.2);
+            box-shadow: 0 20px 55px rgba(0,0,0,.22);
           }
 
           .users-delete-icon {
-            width: 58px;
-            height: 58px;
-            margin: 0 auto 14px;
-            border-radius: 4px;
-            background: #f6cccc;
-            color: #f10f18;
+            width: 62px;
+            height: 62px;
+            margin: 0 auto 15px;
+            border-radius: 10px;
+            background: #fbe4e4;
+            color: #e32929;
             display: flex;
             align-items: center;
             justify-content: center;
           }
 
           .users-delete-modal h3 {
-            margin: 0 0 6px;
+            margin: 0 0 7px;
             color: #1d2b48;
-            font-size: 19px;
+            font-size: 20px;
           }
 
           .users-delete-modal p {
-            margin: 0 auto 17px;
-            color: #3e4654;
+            max-width: 330px;
+            margin: 0 auto 19px;
+            color: #596375;
             font-size: 13px;
-            line-height: 1.5;
+            line-height: 1.6;
           }
 
           .users-delete-actions {
             display: flex;
+            align-items: center;
             justify-content: center;
-            gap: 16px;
+            gap: 10px;
           }
 
           .users-delete-cancel,
           .users-delete-confirm {
-            height: 39px;
-            padding: 0 16px;
+            min-height: 40px;
+            padding: 0 18px;
             border: 0;
-            border-radius: 5px;
+            border-radius: 7px;
+            font-size: 13px;
             cursor: pointer;
           }
 
           .users-delete-cancel {
-            background: #f6f7f8;
+            background: #f4f5f7;
+            color: #172033;
           }
 
           .users-delete-confirm {
-            background: #f10d16;
+            background: #e32929;
             color: #fff;
             font-weight: 600;
           }
 
           /* =================================
-             RESPONSIVE
+             RESPONSIVE - ADD USER
           ================================= */
 
-          @media(max-width: 800px) {
+          @media(max-width: 900px) {
             .application-page {
-              padding: 18px 12px 25px;
-            }
-
-            .application-section {
-              padding: 15px;
+              padding: 22px 16px 30px;
             }
 
             .application-top {
               align-items: flex-start;
-              gap: 15px;
-            }
-
-            .application-heading {
-              font-size: 20px;
             }
 
             .position-grid {
               grid-template-columns: 1fr;
             }
 
+            .position-field {
+              border-right: 0;
+              border-bottom: 1px solid var(--border);
+            }
+
+            .position-field:last-child {
+              border-bottom: 0;
+            }
+
             .employment-type-row {
-              flex-wrap: wrap;
-              gap: 12px 20px;
+              gap: 12px 18px;
             }
           }
 
-          @media(max-width: 600px) {
+          @media(max-width: 650px) {
+            .application-page {
+              padding: 18px 10px 25px;
+            }
+
             .application-top {
               flex-direction: column;
+            }
+
+            .application-heading-wrapper {
+              width: 100%;
+            }
+
+            .application-heading {
+              font-size: 23px;
             }
 
             .application-back-btn {
               align-self: flex-start;
             }
 
+            .application-section {
+              padding: 16px 12px 21px;
+            }
+
+            .application-section-title {
+              font-size: 15px;
+            }
+
             .application-footer {
-              padding: 12px 15px;
+              padding: 13px 14px;
+            }
+
+            .application-cancel,
+            .application-save {
+              flex: 1;
+            }
+          }
+
+          /* =================================
+             USERS LIST
+          ================================= */
+
+          .users-page {
+            width: 100%;
+            min-height: calc(100vh - 50px);
+            padding: 24px 25px 25px;
+            background: #f8f9fb;
+            color: #10203f;
+            font-family: "Inter","Segoe UI",sans-serif;
+          }
+
+          .users-page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 26px;
+          }
+
+          .users-page-title {
+            margin: 0 0 5px;
+            color: #0f1e3c;
+            font-size: 24px;
+            line-height: 1.2;
+            font-weight: 700;
+          }
+
+          .users-breadcrumb {
+            display: flex;
+            align-items: center;
+            gap: 9px;
+            color: #677386;
+            font-size: 12px;
+          }
+
+          .users-breadcrumb a {
+            color: #315c75;
+            display: inline-flex;
+            text-decoration: none;
+          }
+
+          .users-add-btn {
+            height: 39px;
+            padding: 0 15px;
+            border: 0;
+            border-radius: 5px;
+            background: #c39237;
+            color: white;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 7px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+          }
+
+          .users-add-btn:hover {
+            background: #b58430;
+          }
+
+          .users-card {
+            width: 100%;
+            overflow: hidden;
+            border: 1px solid #dde2e8;
+            border-radius: 5px;
+            background: #fff;
+          }
+
+          .users-card-header {
+            min-height: 71px;
+            padding: 14px 20px;
+            border-bottom: 1px solid #dde2e8;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 18px;
+          }
+
+          .users-card-header h5 {
+            margin: 0;
+            color: #0d1c38;
+            font-size: 15px;
+            font-weight: 600;
+          }
+
+          .users-filters {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+          }
+
+          .users-filter {
+            height: 38px;
+            padding: 0 11px;
+            border: 1px solid #dce1e7;
+            border-radius: 5px;
+            outline: none;
+            background: #fff;
+            color: #14213b;
+            font-size: 13px;
+          }
+
+          .users-date-filter {
+            width: 195px;
+          }
+
+          .users-role-filter {
+            width: 77px;
+          }
+
+          .users-status-filter {
+            width: 91px;
+          }
+
+          .users-sort-filter {
+            width: 178px;
+          }
+
+          .users-toolbar {
+            min-height: 61px;
+            padding: 10px 16px;
+            border-bottom: 1px solid #e2e5e9;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+          }
+
+          .users-row-control {
+            display: flex;
+            align-items: center;
+            gap: 9px;
+            color: #26354d;
+            font-size: 13px;
+          }
+
+          .users-row-select {
+            width: 49px;
+            height: 29px;
+            padding: 0 5px;
+            border: 1px solid #dce1e7;
+            border-radius: 6px;
+            outline: none;
+            background: #fff;
+            font-size: 12px;
+          }
+
+          .users-search {
+            width: 160px;
+            height: 30px;
+            padding: 0 14px;
+            border: 1px solid #dce1e7;
+            border-radius: 5px;
+            outline: none;
+            background: #fff;
+            color: #26344d;
+            font-size: 12px;
+          }
+
+          .users-search::placeholder {
+            color: #8c97a9;
+          }
+
+          .users-table-wrapper {
+            width: 100%;
+            overflow-x: auto;
+          }
+
+          .users-table {
+            width: 100%;
+            min-width: 950px;
+            margin: 0;
+            border-collapse: collapse;
+          }
+
+          .users-table thead {
+            background: #e1e4e9;
+          }
+
+          .users-table th {
+            height: 43px;
+            padding: 0 14px;
+            vertical-align: middle;
+            color: #06142e;
+            font-size: 13px;
+            font-weight: 600;
+            white-space: nowrap;
+          }
+
+          .users-table td {
+            height: 53px;
+            padding: 0 14px;
+            vertical-align: middle;
+            border-bottom: 1px solid #dfe3e8;
+            background: #fff;
+            color: #596679;
+            font-size: 13px;
+            white-space: nowrap;
+          }
+
+          .users-check-col {
+            width: 58px;
+            text-align: center;
+          }
+
+          .users-checkbox {
+            width: 17px;
+            height: 17px;
+            margin: 0;
+            cursor: pointer;
+          }
+
+          .users-sort {
+            float: right;
+            margin-left: 8px;
+            color: #cbd1d9;
+            font-size: 10px;
+          }
+
+          .users-user-cell {
+            display: flex;
+            align-items: center;
+            gap: 9px;
+          }
+
+          .users-avatar {
+            width: 33px;
+            height: 33px;
+            flex: 0 0 33px;
+            position: relative;
+            border-radius: 50%;
+            background: #d7d7d7;
+          }
+
+          .users-avatar::after {
+            content: "...";
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #aaa;
+            font-size: 8px;
+          }
+
+          .users-name {
+            color: #06142e;
+            font-size: 13px;
+            font-weight: 500;
+          }
+
+          .users-role-badge {
+            min-height: 32px;
+            padding: 0 9px;
+            border-radius: 4px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            font-weight: 500;
+          }
+
+          .users-role-employee {
+            background: #ffedf5;
+            color: #ff3486;
+          }
+
+          .users-role-hr {
+            background: #f0ddf3;
+            color: #bc46c6;
+          }
+
+          .users-status {
+            height: 19px;
+            min-width: 57px;
+            padding: 0 7px;
+            border-radius: 4px;
+            color: #fff;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            font-size: 10px;
+            line-height: 1;
+            font-weight: 600;
+          }
+
+          .users-status-active {
+            background: #00bd61;
+          }
+
+          .users-status-inactive {
+            min-width: 64px;
+            background: #ef0b0b;
+          }
+
+          .users-status-dot {
+            width: 4px !important;
+            height: 4px !important;
+            min-width: 4px !important;
+            min-height: 4px !important;
+            flex: 0 0 4px !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            border-radius: 50% !important;
+            background: #fff !important;
+          }
+
+          .users-actions {
+            display: inline-flex;
+            align-items: center;
+            gap: 13px;
+          }
+
+          .users-action-btn {
+            width: 20px;
+            height: 25px;
+            padding: 0;
+            border: 0;
+            background: transparent;
+            color: #647286;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+          }
+
+          .users-action-btn:hover {
+            color: #17233f;
+          }
+
+          .users-table-footer {
+            height: 57px;
+            padding: 0 16px;
+            border-top: 1px solid #dfe3e8;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            color: #596679;
+            font-size: 13px;
+          }
+
+          .users-pagination {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+          }
+
+          .users-page-arrow {
+            width: 22px;
+            height: 28px;
+            padding: 0;
+            border: 0;
+            background: transparent;
+            color: #a2a9b4;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+          }
+
+          .users-page-arrow:disabled {
+            opacity: .4;
+            cursor: default;
+          }
+
+          .users-current-page {
+            width: 27px;
+            height: 27px;
+            border-radius: 50%;
+            background: #c39237;
+            color: #fff;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+          }
+
+          @media(max-width:900px) {
+            .users-card-header {
+              flex-direction: column;
+              align-items: flex-start;
+            }
+
+            .users-filters {
+              width: 100%;
+              flex-wrap: wrap;
+            }
+          }
+
+          @media(max-width:650px) {
+            .users-page {
+              padding: 18px 12px;
+            }
+
+            .users-form-grid {
+              grid-template-columns: 1fr;
+            }
+
+            .users-about-group {
+              grid-column: auto;
+            }
+
+            .users-toolbar {
+              flex-direction: column;
+              align-items: stretch;
+              gap: 10px;
+            }
+
+            .users-search {
+              width: 100%;
+            }
+
+            .users-filters {
+              flex-direction: column;
+            }
+
+            .users-date-filter,
+            .users-role-filter,
+            .users-status-filter,
+            .users-sort-filter {
+              width: 100%;
             }
           }
           `}
@@ -1789,44 +2371,56 @@ const Users: React.FC = () => {
               PAGE HEADER
           ===================================== */}
 
+          <div className="application-top">
 
- <h1 className="application-heading">
-                Add New User
-              </h1>
+            <div className="application-heading-wrapper">
 
-          {/* <div className="application-top">
-            <div>
-              <h1 className="application-heading">
-                Add User
-              </h1>
-
-              <div className="application-breadcrumb">
-                <Link to="/admin/dashboard">
-                  <i className="ti ti-home" />
-                </Link>
-
-                <span>/</span>
-
-                <button
-                  type="button"
-                  onClick={closeAddPage}
-                  style={{
-                    border: 0,
-                    background:
-                      "transparent",
-                    padding: 0,
-                    color: "#315c75",
-                    cursor: "pointer",
-                    fontSize: "12px",
-                  }}
-                >
-                  Users
-                </button>
-
-                <span>/</span>
-
-                <span>Add User</span>
+              <div className="application-heading-icon">
+                <UserRound size={23} />
               </div>
+
+              <div>
+
+                <h1 className="application-heading">
+                  Add New User
+                </h1>
+
+                <p className="application-subtitle">
+                  Add employee information, education,
+                  references and employment history.
+                </p>
+
+                <div className="application-breadcrumb">
+
+                  {/* <Link to="/admin/dashboard">
+                    <i className="ti ti-home" />
+                  </Link> */}
+
+                  {/* <span>/</span>
+
+                  <button
+                    type="button"
+                    onClick={closeAddPage}
+                    style={{
+                      border: 0,
+                      background: "transparent",
+                      padding: 0,
+                      color: "#c49332",
+                      cursor: "pointer",
+                      fontSize: "13px",
+                    }}
+                  >
+                    Users
+                  </button>
+
+                  <span>/</span>
+
+                  <span>Add User</span> */}
+
+                </div>
+
+              </div>
+
             </div>
 
             <button
@@ -1834,9 +2428,11 @@ const Users: React.FC = () => {
               className="application-back-btn"
               onClick={closeAddPage}
             >
-              ← Back to Users
+              <ChevronLeft size={16} />
+              Back to Users
             </button>
-          </div> */}
+
+          </div>
 
           {/* =====================================
               APPLICATION CARD
@@ -1858,6 +2454,7 @@ const Users: React.FC = () => {
               <section className="application-section">
 
                 <h2 className="application-section-title">
+                  <UserRound size={18} />
                   Personal Information
                 </h2>
 
@@ -1895,6 +2492,7 @@ const Users: React.FC = () => {
                       <td>
                         <input
                           type="text"
+                          placeholder="Address"
                           value={
                             applicationForm.address
                           }
@@ -1910,6 +2508,7 @@ const Users: React.FC = () => {
                       <td>
                         <input
                           type="text"
+                          placeholder="City"
                           value={
                             applicationForm.city
                           }
@@ -1925,6 +2524,7 @@ const Users: React.FC = () => {
                       <td>
                         <input
                           type="text"
+                          placeholder="State"
                           value={
                             applicationForm.state
                           }
@@ -1960,6 +2560,7 @@ const Users: React.FC = () => {
                       <td>
                         <input
                           type="text"
+                          placeholder="Zip code"
                           value={
                             applicationForm.zip
                           }
@@ -1975,6 +2576,7 @@ const Users: React.FC = () => {
                       <td>
                         <input
                           type="text"
+                          placeholder="Phone number"
                           value={
                             applicationForm.phoneNumber
                           }
@@ -1990,6 +2592,7 @@ const Users: React.FC = () => {
                       <td colSpan={2}>
                         <input
                           type="email"
+                          placeholder="Email address"
                           value={
                             applicationForm.emailAddress
                           }
@@ -2005,21 +2608,24 @@ const Users: React.FC = () => {
                       <td>
                         <input
                           type="text"
-                          placeholder="India"
+                          defaultValue="India"
                         />
                       </td>
                     </tr>
 
                     <tr>
+
                       <td
                         colSpan={2}
                         className="question-cell"
                       >
+
                         <span className="question-text">
                           Are you legally eligible to work in the US?
                         </span>
 
                         <div className="radio-group">
+
                           <label className="radio-option">
                             <input
                               type="radio"
@@ -2055,18 +2661,21 @@ const Users: React.FC = () => {
                             />
                             No
                           </label>
+
                         </div>
+
                       </td>
 
                       <td
-                        colSpan={1}
                         className="question-cell"
                       >
+
                         <span className="question-text">
                           Are you a veteran?
                         </span>
 
                         <div className="radio-group">
+
                           <label className="radio-option">
                             <input
                               type="radio"
@@ -2102,18 +2711,22 @@ const Users: React.FC = () => {
                             />
                             No
                           </label>
+
                         </div>
+
                       </td>
 
                       <td
                         colSpan={2}
                         className="question-cell"
                       >
+
                         <span className="question-text">
                           If selected for employment are you willing to be subject to a background check?
                         </span>
 
                         <div className="radio-group">
+
                           <label className="radio-option">
                             <input
                               type="radio"
@@ -2149,11 +2762,15 @@ const Users: React.FC = () => {
                             />
                             No
                           </label>
+
                         </div>
+
                       </td>
+
                     </tr>
 
                   </tbody>
+
                 </table>
 
               </section>
@@ -2165,18 +2782,20 @@ const Users: React.FC = () => {
               <section className="application-section">
 
                 <h2 className="application-section-title">
+                  <BriefcaseBusiness size={18} />
                   Position
                 </h2>
 
                 <div className="position-grid">
 
+                  {/* POSITION DROPDOWN */}
                   <div className="position-field">
+
                     <div className="position-label">
                       Position you are applying for
                     </div>
 
-                    <input
-                      type="text"
+                    <select
                       value={
                         applicationForm.positionDesired
                       }
@@ -2186,10 +2805,29 @@ const Users: React.FC = () => {
                           e.target.value
                         )
                       }
-                    />
+                    >
+
+                      <option value="">
+                        Select Position
+                      </option>
+
+                      {designations.map(
+                        (designation) => (
+                          <option
+                            key={designation}
+                            value={designation}
+                          >
+                            {designation}
+                          </option>
+                        )
+                      )}
+
+                    </select>
+
                   </div>
 
                   <div className="position-field">
+
                     <div className="position-label">
                       Available start date
                     </div>
@@ -2206,15 +2844,18 @@ const Users: React.FC = () => {
                         )
                       }
                     />
+
                   </div>
 
                   <div className="position-field">
+
                     <div className="position-label">
                       Desired pay
                     </div>
 
                     <input
                       type="text"
+                      placeholder="Enter desired pay"
                       value={
                         applicationForm.desiredPay
                       }
@@ -2225,6 +2866,7 @@ const Users: React.FC = () => {
                         )
                       }
                     />
+
                   </div>
 
                 </div>
@@ -2236,6 +2878,7 @@ const Users: React.FC = () => {
                   </span>
 
                   <label className="employment-checkbox">
+
                     <input
                       type="checkbox"
                       checked={
@@ -2251,10 +2894,13 @@ const Users: React.FC = () => {
                         )
                       }
                     />
+
                     Full time
+
                   </label>
 
                   <label className="employment-checkbox">
+
                     <input
                       type="checkbox"
                       checked={
@@ -2270,10 +2916,13 @@ const Users: React.FC = () => {
                         )
                       }
                     />
+
                     Part time
+
                   </label>
 
                   <label className="employment-checkbox">
+
                     <input
                       type="checkbox"
                       checked={
@@ -2289,7 +2938,9 @@ const Users: React.FC = () => {
                         )
                       }
                     />
-                    Seasonal/Temporary
+
+                    Seasonal / Temporary
+
                   </label>
 
                 </div>
@@ -2303,6 +2954,7 @@ const Users: React.FC = () => {
               <section className="application-section">
 
                 <h2 className="application-section-title">
+                  <GraduationCap size={18} />
                   Education
                 </h2>
 
@@ -2311,7 +2963,9 @@ const Users: React.FC = () => {
                   <table className="application-table">
 
                     <thead>
+
                       <tr>
+
                         <th>
                           School name
                         </th>
@@ -2332,23 +2986,32 @@ const Users: React.FC = () => {
                           Major
                         </th>
 
-                        <th style={{ width: "45px" }}>
+                        <th
+                          style={{
+                            width: "52px",
+                          }}
+                        >
                           #
                         </th>
+
                       </tr>
+
                     </thead>
 
                     <tbody>
+
                       {applicationForm.education.map(
                         (
                           education,
                           index
                         ) => (
+
                           <tr key={index}>
 
                             <td>
                               <input
                                 type="text"
+                                placeholder="School name"
                                 value={
                                   education.schoolName
                                 }
@@ -2365,6 +3028,7 @@ const Users: React.FC = () => {
                             <td>
                               <input
                                 type="text"
+                                placeholder="Location"
                                 value={
                                   education.location
                                 }
@@ -2381,6 +3045,7 @@ const Users: React.FC = () => {
                             <td>
                               <input
                                 type="text"
+                                placeholder="Years"
                                 value={
                                   education.yearsAttended
                                 }
@@ -2397,6 +3062,7 @@ const Users: React.FC = () => {
                             <td>
                               <input
                                 type="text"
+                                placeholder="Degree"
                                 value={
                                   education.degreeReceived
                                 }
@@ -2413,6 +3079,7 @@ const Users: React.FC = () => {
                             <td>
                               <input
                                 type="text"
+                                placeholder="Major"
                                 value={
                                   education.major
                                 }
@@ -2431,9 +3098,10 @@ const Users: React.FC = () => {
                                 textAlign:
                                   "center",
                                 padding:
-                                  "5px",
+                                  "7px",
                               }}
                             >
+
                               <button
                                 type="button"
                                 className="row-delete-btn"
@@ -2443,13 +3111,16 @@ const Users: React.FC = () => {
                                   )
                                 }
                               >
-                                <X size={13} />
+                                <X size={14} />
                               </button>
+
                             </td>
 
                           </tr>
+
                         )
                       )}
+
                     </tbody>
 
                   </table>
@@ -2457,6 +3128,7 @@ const Users: React.FC = () => {
                 </div>
 
                 <div className="education-actions">
+
                   <button
                     type="button"
                     className="small-add-btn"
@@ -2464,9 +3136,10 @@ const Users: React.FC = () => {
                       addEducationRow
                     }
                   >
-                    <Plus size={12} />
+                    <Plus size={14} />
                     Add Education
                   </button>
+
                 </div>
 
               </section>
@@ -2478,6 +3151,7 @@ const Users: React.FC = () => {
               <section className="application-section">
 
                 <h2 className="application-section-title">
+                  <UsersRound size={18} />
                   References
                 </h2>
 
@@ -2486,7 +3160,9 @@ const Users: React.FC = () => {
                   <table className="application-table reference-table">
 
                     <thead>
+
                       <tr>
+
                         <th>
                           Name
                         </th>
@@ -2506,20 +3182,25 @@ const Users: React.FC = () => {
                         <th>
                           #
                         </th>
+
                       </tr>
+
                     </thead>
 
                     <tbody>
+
                       {applicationForm.references.map(
                         (
                           reference,
                           index
                         ) => (
+
                           <tr key={index}>
 
                             <td>
                               <input
                                 type="text"
+                                placeholder="Reference name"
                                 value={
                                   reference.name
                                 }
@@ -2536,6 +3217,7 @@ const Users: React.FC = () => {
                             <td>
                               <input
                                 type="text"
+                                placeholder="Title"
                                 value={
                                   reference.title
                                 }
@@ -2552,6 +3234,7 @@ const Users: React.FC = () => {
                             <td>
                               <input
                                 type="text"
+                                placeholder="Company"
                                 value={
                                   reference.company
                                 }
@@ -2568,6 +3251,7 @@ const Users: React.FC = () => {
                             <td>
                               <input
                                 type="text"
+                                placeholder="Phone"
                                 value={
                                   reference.phone
                                 }
@@ -2582,6 +3266,7 @@ const Users: React.FC = () => {
                             </td>
 
                             <td>
+
                               <button
                                 type="button"
                                 className="row-delete-btn"
@@ -2591,13 +3276,16 @@ const Users: React.FC = () => {
                                   )
                                 }
                               >
-                                <X size={13} />
+                                <X size={14} />
                               </button>
+
                             </td>
 
                           </tr>
+
                         )
                       )}
+
                     </tbody>
 
                   </table>
@@ -2605,6 +3293,7 @@ const Users: React.FC = () => {
                 </div>
 
                 <div className="reference-actions">
+
                   <button
                     type="button"
                     className="small-add-btn"
@@ -2612,9 +3301,10 @@ const Users: React.FC = () => {
                       addReferenceRow
                     }
                   >
-                    <Plus size={12} />
+                    <Plus size={14} />
                     Add Reference
                   </button>
+
                 </div>
 
               </section>
@@ -2626,6 +3316,7 @@ const Users: React.FC = () => {
               <section className="application-section">
 
                 <h2 className="application-section-title">
+                  <BriefcaseBusiness size={18} />
                   Employment History
                 </h2>
 
@@ -2634,7 +3325,9 @@ const Users: React.FC = () => {
                   <table className="application-table employment-table">
 
                     <thead>
+
                       <tr>
+
                         <th>
                           Employer
                         </th>
@@ -2662,7 +3355,9 @@ const Users: React.FC = () => {
                         <th>
                           #
                         </th>
+
                       </tr>
+
                     </thead>
 
                     <tbody>
@@ -2672,6 +3367,7 @@ const Users: React.FC = () => {
                           employment,
                           index
                         ) => (
+
                           <React.Fragment
                             key={index}
                           >
@@ -2681,6 +3377,7 @@ const Users: React.FC = () => {
                               <td>
                                 <input
                                   type="text"
+                                  placeholder="Employer"
                                   value={
                                     employment.employer
                                   }
@@ -2697,6 +3394,7 @@ const Users: React.FC = () => {
                               <td>
                                 <input
                                   type="text"
+                                  placeholder="Job title"
                                   value={
                                     employment.jobTitle
                                   }
@@ -2713,6 +3411,7 @@ const Users: React.FC = () => {
                               <td>
                                 <input
                                   type="text"
+                                  placeholder="e.g. 2022 - 2025"
                                   value={
                                     employment.datesEmployed
                                   }
@@ -2729,6 +3428,7 @@ const Users: React.FC = () => {
                               <td>
                                 <input
                                   type="text"
+                                  placeholder="Work phone"
                                   value={
                                     employment.workPhone
                                   }
@@ -2745,6 +3445,7 @@ const Users: React.FC = () => {
                               <td>
                                 <input
                                   type="text"
+                                  placeholder="Starting rate"
                                   value={
                                     employment.startingPayRate
                                   }
@@ -2761,6 +3462,7 @@ const Users: React.FC = () => {
                               <td>
                                 <input
                                   type="text"
+                                  placeholder="Ending rate"
                                   value={
                                     employment.endingPayRate
                                   }
@@ -2777,13 +3479,14 @@ const Users: React.FC = () => {
                               <td
                                 style={{
                                   width:
-                                    "45px",
+                                    "55px",
                                   textAlign:
                                     "center",
                                   padding:
-                                    "5px",
+                                    "7px",
                                 }}
                               >
+
                                 <button
                                   type="button"
                                   className="row-delete-btn"
@@ -2793,8 +3496,9 @@ const Users: React.FC = () => {
                                     )
                                   }
                                 >
-                                  <X size={13} />
+                                  <X size={14} />
                                 </button>
+
                               </td>
 
                             </tr>
@@ -2828,6 +3532,7 @@ const Users: React.FC = () => {
                               <td>
                                 <input
                                   type="text"
+                                  placeholder="Address"
                                   value={
                                     employment.address
                                   }
@@ -2844,6 +3549,7 @@ const Users: React.FC = () => {
                               <td>
                                 <input
                                   type="text"
+                                  placeholder="City"
                                   value={
                                     employment.city
                                   }
@@ -2860,6 +3566,7 @@ const Users: React.FC = () => {
                               <td>
                                 <input
                                   type="text"
+                                  placeholder="State"
                                   value={
                                     employment.state
                                   }
@@ -2876,6 +3583,7 @@ const Users: React.FC = () => {
                               <td>
                                 <input
                                   type="text"
+                                  placeholder="Zip"
                                   value={
                                     employment.zip
                                   }
@@ -2890,15 +3598,18 @@ const Users: React.FC = () => {
                               </td>
 
                               <td colSpan={3}>
+
                                 <input
                                   type="text"
                                   placeholder="Additional employment information"
                                 />
+
                               </td>
 
                             </tr>
 
                           </React.Fragment>
+
                         )
                       )}
 
@@ -2909,6 +3620,7 @@ const Users: React.FC = () => {
                 </div>
 
                 <div className="employment-actions">
+
                   <button
                     type="button"
                     className="small-add-btn"
@@ -2916,9 +3628,10 @@ const Users: React.FC = () => {
                       addEmploymentRow
                     }
                   >
-                    <Plus size={12} />
+                    <Plus size={14} />
                     Add Employment
                   </button>
+
                 </div>
 
               </section>
@@ -2951,6 +3664,7 @@ const Users: React.FC = () => {
             </form>
 
           </div>
+
         </div>
       </>
     );
@@ -3339,208 +4053,7 @@ const Users: React.FC = () => {
           font-size: 12px;
         }
 
-        /* =================================
-           EDIT MODAL
-        ================================= */
-
-        .users-modal-overlay {
-          position: fixed;
-          inset: 0;
-          z-index: 99999;
-          padding: 15px;
-          background: rgba(0,0,0,.42);
-          display: flex;
-          align-items: center;
-          justify-content: center;
-        }
-
-        .users-form-modal {
-          width: 800px;
-          max-width: calc(100vw - 30px);
-          max-height: calc(100vh - 30px);
-          overflow-y: auto;
-          border-radius: 5px;
-          background: #fff;
-          box-shadow: 0 15px 45px rgba(0,0,0,.22);
-        }
-
-        .users-modal-header {
-          height: 64px;
-          padding: 0 17px;
-          border-bottom: 1px solid #e3e7eb;
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-        }
-
-        .users-modal-header h3 {
-          margin: 0;
-          color: #1e2b49;
-          font-size: 20px;
-          font-weight: 600;
-        }
-
-        .users-modal-close {
-          width: 28px;
-          height: 28px;
-          padding: 0;
-          border: 0;
-          background: transparent;
-          color: #667085;
-          font-size: 24px;
-          cursor: pointer;
-        }
-
-        .users-modal-body {
-          padding: 20px;
-        }
-
-        .users-form-grid {
-          display: grid;
-          grid-template-columns: repeat(2,minmax(0,1fr));
-          gap: 16px 24px;
-        }
-
-        .users-form-group label {
-          display: block;
-          margin-bottom: 7px;
-          color: #263452;
-          font-size: 13px;
-          font-weight: 500;
-        }
-
-        .users-form-group input,
-        .users-form-group select {
-          width: 100%;
-          height: 39px;
-          padding: 0 10px;
-          border: 1px solid #dce1e7;
-          border-radius: 5px;
-          outline: none;
-          background: #fff;
-          color: #26344d;
-          font-size: 13px;
-        }
-
-        .users-required {
-          color: #e53935;
-          margin-left: 2px;
-        }
-
-        .users-about-group {
-          grid-column: 1 / -1;
-        }
-
-        .users-about {
-          width: 100%;
-          min-height: 78px;
-          padding: 10px;
-          resize: vertical;
-          border: 1px solid #dce1e7;
-          border-radius: 5px;
-          outline: none;
-          font-family: inherit;
-        }
-
-        .users-modal-footer {
-          min-height: 64px;
-          padding: 10px 20px;
-          border-top: 1px solid #e4e7eb;
-          background: #fff;
-          display: flex;
-          justify-content: flex-end;
-          gap: 10px;
-        }
-
-        .users-modal-cancel,
-        .users-modal-save {
-          height: 39px;
-          padding: 0 17px;
-          border-radius: 5px;
-          font-size: 13px;
-          cursor: pointer;
-        }
-
-        .users-modal-cancel {
-          border: 1px solid #dfe3e8;
-          background: #fff;
-        }
-
-        .users-modal-save {
-          border: 1px solid #c39237;
-          background: #c39237;
-          color: #fff;
-          font-weight: 600;
-        }
-
-        /* =================================
-           DELETE
-        ================================= */
-
-        .users-delete-modal {
-          width: 400px;
-          max-width: calc(100vw - 30px);
-          padding: 17px 30px;
-          border-radius: 5px;
-          background: #fff;
-          text-align: center;
-          box-shadow: 0 15px 45px rgba(0,0,0,.2);
-        }
-
-        .users-delete-icon {
-          width: 58px;
-          height: 58px;
-          margin: 0 auto 14px;
-          border-radius: 4px;
-          background: #f6cccc;
-          color: #f10f18;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-        }
-
-        .users-delete-modal h3 {
-          margin: 0 0 6px;
-          color: #1d2b48;
-          font-size: 19px;
-          font-weight: 600;
-        }
-
-        .users-delete-modal p {
-          max-width: 330px;
-          margin: 0 auto 17px;
-          color: #3e4654;
-          font-size: 13px;
-          line-height: 1.5;
-        }
-
-        .users-delete-actions {
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          gap: 16px;
-        }
-
-        .users-delete-cancel,
-        .users-delete-confirm {
-          height: 39px;
-          padding: 0 16px;
-          border: 0;
-          border-radius: 5px;
-          font-size: 13px;
-          cursor: pointer;
-        }
-
-        .users-delete-cancel {
-          background: #f6f7f8;
-          color: #172033;
-        }
-
-        .users-delete-confirm {
-          background: #f10d16;
-          color: #fff;
-          font-weight: 600;
-        }
+        
 
         @media(max-width:900px) {
           .users-card-header {
@@ -3629,7 +4142,6 @@ const Users: React.FC = () => {
             }
           >
             <CirclePlus size={15} />
-
             Add User
           </button>
 
@@ -3828,6 +4340,7 @@ const Users: React.FC = () => {
                 <tr>
 
                   <th className="users-check-col">
+
                     <input
                       type="checkbox"
                       className="users-checkbox"
@@ -3838,6 +4351,7 @@ const Users: React.FC = () => {
                         handleSelectAll
                       }
                     />
+
                   </th>
 
                   <th>
@@ -3889,9 +4403,11 @@ const Users: React.FC = () => {
 
                 {visibleUsers.map(
                   (user) => (
+
                     <tr key={user.id}>
 
                       <td className="users-check-col">
+
                         <input
                           type="checkbox"
                           className="users-checkbox"
@@ -3904,6 +4420,7 @@ const Users: React.FC = () => {
                             )
                           }
                         />
+
                       </td>
 
                       <td>
@@ -3925,9 +4442,7 @@ const Users: React.FC = () => {
                       </td>
 
                       <td>
-                        {
-                          user.createdDate
-                        }
+                        {user.createdDate}
                       </td>
 
                       <td>
@@ -4007,11 +4522,13 @@ const Users: React.FC = () => {
                       </td>
 
                     </tr>
+
                   )
                 )}
 
                 {visibleUsers.length ===
                   0 && (
+
                   <tr>
 
                     <td
@@ -4027,6 +4544,7 @@ const Users: React.FC = () => {
                     </td>
 
                   </tr>
+
                 )}
 
               </tbody>
@@ -4063,9 +4581,7 @@ const Users: React.FC = () => {
 
               {" of "}
 
-              {
-                filteredUsers.length
-              }
+              {filteredUsers.length}
 
               {" entries"}
 
@@ -4094,9 +4610,7 @@ const Users: React.FC = () => {
               </button>
 
               <span className="users-current-page">
-                {
-                  safeCurrentPage
-                }
+                {safeCurrentPage}
               </span>
 
               <button
@@ -4133,6 +4647,7 @@ const Users: React.FC = () => {
 
       {editOpen &&
         editingUser && (
+
           <div className="users-modal-overlay">
 
             <div className="users-form-modal">
@@ -4332,6 +4847,7 @@ const Users: React.FC = () => {
             </div>
 
           </div>
+
         )}
 
       {/* =========================================
@@ -4339,15 +4855,18 @@ const Users: React.FC = () => {
       ========================================= */}
 
       {deleteOpen && (
+
         <div className="users-modal-overlay">
 
           <div className="users-delete-modal">
 
             <div className="users-delete-icon">
+
               <Trash2
                 size={31}
                 strokeWidth={2.2}
               />
+
             </div>
 
             <h3>
@@ -4388,6 +4907,7 @@ const Users: React.FC = () => {
           </div>
 
         </div>
+
       )}
 
     </>
@@ -4415,6 +4935,7 @@ const UserInput = ({
     <div className="users-form-group">
 
       <label>
+
         {label}
 
         {required && (
@@ -4422,6 +4943,7 @@ const UserInput = ({
             *
           </span>
         )}
+
       </label>
 
       <input
@@ -4463,6 +4985,7 @@ const SelectInput = ({
     <div className="users-form-group">
 
       <label>
+
         {label}
 
         {required && (
@@ -4470,6 +4993,7 @@ const SelectInput = ({
             *
           </span>
         )}
+
       </label>
 
       <select
@@ -4487,12 +5011,14 @@ const SelectInput = ({
 
         {options.map(
           (option) => (
+
             <option
               key={option}
               value={option}
             >
               {option}
             </option>
+
           )
         )}
 

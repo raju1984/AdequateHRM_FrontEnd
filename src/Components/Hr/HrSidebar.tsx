@@ -1,8 +1,11 @@
 import React from "react";
-import { NavLink } from "react-router-dom";
+import { NavLink, useNavigate } from "react-router-dom";
 import logo from "../../assets/img/logo.webp";
+import { attendanceLogout } from "../../services/hrservices";
 
 const HrSidebar: React.FC = () => {
+  const navigate = useNavigate();
+
   const GOLD = "#c5963b";
   const TEXT = "#526072";
   const ICON = "#34788d";
@@ -49,6 +52,34 @@ const HrSidebar: React.FC = () => {
     fontWeight: 600,
     textTransform: "uppercase",
     letterSpacing: "0px",
+  };
+
+  /* =====================================================
+     LOGOUT
+  ===================================================== */
+
+  const handleLogout = async (
+    e: React.MouseEvent<HTMLAnchorElement>
+  ) => {
+    e.preventDefault();
+
+    try {
+      // Call attendance logout API
+      await attendanceLogout();
+    } catch (error) {
+      // Even if API fails, continue with local logout
+      console.error(
+        "Attendance logout API failed:",
+        error
+      );
+    } finally {
+      // Clear authentication/session data
+      localStorage.removeItem("token");
+      localStorage.removeItem("userId");
+
+      // Redirect to login page
+      navigate("/HR/HrLogin", { replace: true });
+    }
   };
 
   return (
@@ -124,7 +155,10 @@ const HrSidebar: React.FC = () => {
           boxSizing: "border-box",
         }}
       >
-        {/* Logo */}
+        {/* =====================================================
+            LOGO
+        ===================================================== */}
+
         <div
           style={{
             height: "68px",
@@ -158,7 +192,10 @@ const HrSidebar: React.FC = () => {
           </NavLink>
         </div>
 
-        {/* Scroll Area */}
+        {/* =====================================================
+            SCROLL AREA
+        ===================================================== */}
+
         <div
           className="sidebar-scroll"
           style={{
@@ -176,12 +213,17 @@ const HrSidebar: React.FC = () => {
               margin: 0,
             }}
           >
-            {/* Dashboard */}
+            {/* =================================================
+                DASHBOARD
+            ================================================= */}
+
             <li style={menuItemStyle}>
               <NavLink
                 to="/Hr/HrDashboard"
                 className={({ isActive }) =>
-                  `hr-menu-link ${isActive ? "active" : ""}`
+                  `hr-menu-link ${
+                    isActive ? "active" : ""
+                  }`
                 }
                 style={navStyle}
               >
@@ -190,15 +232,21 @@ const HrSidebar: React.FC = () => {
               </NavLink>
             </li>
 
-            {/* Employees Section */}
+            {/* =================================================
+                EMPLOYEES SECTION
+            ================================================= */}
+
             <li style={sectionStyle}>EMPLOYEES</li>
 
             {/* Employees */}
+
             <li style={menuItemStyle}>
               <NavLink
                 to="/Hr/Employee"
                 className={({ isActive }) =>
-                  `hr-menu-link ${isActive ? "active" : ""}`
+                  `hr-menu-link ${
+                    isActive ? "active" : ""
+                  }`
                 }
                 style={navStyle}
               >
@@ -208,11 +256,14 @@ const HrSidebar: React.FC = () => {
             </li>
 
             {/* Departments */}
+
             <li style={menuItemStyle}>
               <NavLink
                 to="/HR/Departments"
                 className={({ isActive }) =>
-                  `hr-menu-link ${isActive ? "active" : ""}`
+                  `hr-menu-link ${
+                    isActive ? "active" : ""
+                  }`
                 }
                 style={navStyle}
               >
@@ -222,11 +273,14 @@ const HrSidebar: React.FC = () => {
             </li>
 
             {/* Designations */}
+
             <li style={menuItemStyle}>
               <NavLink
                 to="/HR/Designation"
                 className={({ isActive }) =>
-                  `hr-menu-link ${isActive ? "active" : ""}`
+                  `hr-menu-link ${
+                    isActive ? "active" : ""
+                  }`
                 }
                 style={navStyle}
               >
@@ -236,11 +290,14 @@ const HrSidebar: React.FC = () => {
             </li>
 
             {/* Holidays */}
+
             <li style={menuItemStyle}>
               <NavLink
                 to="/HR/Holiday"
                 className={({ isActive }) =>
-                  `hr-menu-link ${isActive ? "active" : ""}`
+                  `hr-menu-link ${
+                    isActive ? "active" : ""
+                  }`
                 }
                 style={navStyle}
               >
@@ -249,15 +306,21 @@ const HrSidebar: React.FC = () => {
               </NavLink>
             </li>
 
-            {/* Leaves Section */}
+            {/* =================================================
+                LEAVES SECTION
+            ================================================= */}
+
             <li style={sectionStyle}>LEAVES</li>
 
             {/* Leaves */}
+
             <li style={menuItemStyle}>
               <NavLink
                 to="/HR/Leave"
                 className={({ isActive }) =>
-                  `hr-menu-link ${isActive ? "active" : ""}`
+                  `hr-menu-link ${
+                    isActive ? "active" : ""
+                  }`
                 }
                 style={navStyle}
               >
@@ -267,11 +330,14 @@ const HrSidebar: React.FC = () => {
             </li>
 
             {/* Leave Type */}
+
             <li style={menuItemStyle}>
               <NavLink
                 to="/HR/LeaveTyp"
                 className={({ isActive }) =>
-                  `hr-menu-link ${isActive ? "active" : ""}`
+                  `hr-menu-link ${
+                    isActive ? "active" : ""
+                  }`
                 }
                 style={navStyle}
               >
@@ -281,11 +347,14 @@ const HrSidebar: React.FC = () => {
             </li>
 
             {/* Attendance */}
+
             <li style={menuItemStyle}>
               <NavLink
                 to="/HR/Atendance"
                 className={({ isActive }) =>
-                  `hr-menu-link ${isActive ? "active" : ""}`
+                  `hr-menu-link ${
+                    isActive ? "active" : ""
+                  }`
                 }
                 style={navStyle}
               >
@@ -295,11 +364,14 @@ const HrSidebar: React.FC = () => {
             </li>
 
             {/* Employee Salary */}
+
             <li style={menuItemStyle}>
               <NavLink
                 to="/HR/EmployeeSalary"
                 className={({ isActive }) =>
-                  `hr-menu-link ${isActive ? "active" : ""}`
+                  `hr-menu-link ${
+                    isActive ? "active" : ""
+                  }`
                 }
                 style={navStyle}
               >
@@ -308,7 +380,10 @@ const HrSidebar: React.FC = () => {
               </NavLink>
             </li>
 
-            {/* User Management Section */}
+            {/* =================================================
+                USER MANAGEMENT SECTION
+            ================================================= */}
+
             <li
               style={{
                 ...sectionStyle,
@@ -319,11 +394,14 @@ const HrSidebar: React.FC = () => {
             </li>
 
             {/* Users */}
+
             <li style={menuItemStyle}>
               <NavLink
                 to="/HR/User"
                 className={({ isActive }) =>
-                  `hr-menu-link ${isActive ? "active" : ""}`
+                  `hr-menu-link ${
+                    isActive ? "active" : ""
+                  }`
                 }
                 style={navStyle}
               >
@@ -333,11 +411,14 @@ const HrSidebar: React.FC = () => {
             </li>
 
             {/* Roles & Permissions */}
+
             <li style={menuItemStyle}>
               <NavLink
                 to="/HR/Roles"
                 className={({ isActive }) =>
-                  `hr-menu-link ${isActive ? "active" : ""}`
+                  `hr-menu-link ${
+                    isActive ? "active" : ""
+                  }`
                 }
                 style={navStyle}
               >
@@ -347,11 +428,14 @@ const HrSidebar: React.FC = () => {
             </li>
 
             {/* Profile */}
+
             <li style={menuItemStyle}>
               <NavLink
                 to="/HR/Profilee"
                 className={({ isActive }) =>
-                  `hr-menu-link ${isActive ? "active" : ""}`
+                  `hr-menu-link ${
+                    isActive ? "active" : ""
+                  }`
                 }
                 style={navStyle}
               >
@@ -360,7 +444,10 @@ const HrSidebar: React.FC = () => {
               </NavLink>
             </li>
 
-            {/* Logout */}
+            {/* =================================================
+                LOGOUT
+            ================================================= */}
+
             <li
               style={{
                 ...menuItemStyle,
@@ -369,9 +456,12 @@ const HrSidebar: React.FC = () => {
             >
               <NavLink
                 to="/HR/HrLogin"
+                onClick={handleLogout}
                 className="hr-menu-link"
                 style={() => ({
-                  ...navStyle({ isActive: false }),
+                  ...navStyle({
+                    isActive: false,
+                  }),
                   background: "transparent",
                   color: TEXT,
                   fontWeight: 400,
@@ -389,3 +479,4 @@ const HrSidebar: React.FC = () => {
 };
 
 export default HrSidebar;
+

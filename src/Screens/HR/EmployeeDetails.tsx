@@ -46,16 +46,16 @@ type LeaveRow = {
 };
 
 const leaveRows: LeaveRow[] = [
-  { id: 1, reason: "Medical Leave", requestDate: "01 Jan 2024", from: "14 Jan 2024", to: "15 Jan 2024", approver: "Douglas", role: "Manager" },
-  { id: 2, reason: "Annual Leave", requestDate: "10 Jan 2024", from: "21 Jan 2024", to: "25 Jan 2024", approver: "Douglas", role: "Manager" },
-  { id: 3, reason: "Medical Leave", requestDate: "10 Jan 2024", from: "20 Jan 2024", to: "22 Feb 2024", approver: "Warren", role: "Admin" },
-  { id: 4, reason: "Annual Leave", requestDate: "01 Mar 2024", from: "15 Mar 2024", to: "17 Mar 2024", approver: "Douglas", role: "Manager" },
-  { id: 5, reason: "Casual Leave", requestDate: "15 Mar 2024", from: "12 Apr 2024", to: "16 Apr 2024", approver: "Douglas", role: "Manager" },
-  { id: 6, reason: "Medical Leave", requestDate: "01 May 2024", from: "20 May 2024", to: "21 Mar 2024", approver: "Warren", role: "Admin" },
-  { id: 7, reason: "Casual Leave", requestDate: "29 May 2024", from: "06 Jul 2024", to: "06 Jul 2024", approver: "Douglas", role: "Manager" },
-  { id: 8, reason: "Medical Leave", requestDate: "25 Aug 2024", from: "02 Sep 2024", to: "04 Sep 2024", approver: "Douglas", role: "Manager" },
-  { id: 9, reason: "Annual Leave", requestDate: "01 Nov 2024", from: "15 Nov 2024", to: "15 Nov 2024", approver: "Warren", role: "Admin" },
-  { id: 10, reason: "Casual Leave", requestDate: "01 Nov 2024", from: "10 Dec 2024", to: "11 Dec 2024", approver: "Douglas", role: "Manager" },
+  { id: 1, reason: "Medical Leave", requestDate: "01 Jan 2024", from: "14 Jan 2024", to: "15 Jan 2024", approver: "Raju Prasad", role: "Manager" },
+  { id: 2, reason: "Annual Leave", requestDate: "10 Jan 2024", from: "21 Jan 2024", to: "25 Jan 2024", approver: "Raju Prasad", role: "Manager" },
+  { id: 3, reason: "Medical Leave", requestDate: "10 Jan 2024", from: "20 Jan 2024", to: "22 Feb 2024", approver: "Ashok Patel", role: "Admin" },
+  { id: 4, reason: "Annual Leave", requestDate: "01 Mar 2024", from: "15 Mar 2024", to: "17 Mar 2024", approver: "Raju Prasad", role: "Manager" },
+  { id: 5, reason: "Casual Leave", requestDate: "15 Mar 2024", from: "12 Apr 2024", to: "16 Apr 2024", approver: "Raju Prasad", role: "Manager" },
+  { id: 6, reason: "Medical Leave", requestDate: "01 May 2024", from: "20 May 2024", to: "21 Mar 2024", approver: "Ashok Patel", role: "Admin" },
+  { id: 7, reason: "Casual Leave", requestDate: "29 May 2024", from: "06 Jul 2024", to: "06 Jul 2024", approver: "Raju Prasad", role: "Manager" },
+  { id: 8, reason: "Medical Leave", requestDate: "25 Aug 2024", from: "02 Sep 2024", to: "04 Sep 2024", approver: "Raju Prasad", role: "Manager" },
+  { id: 9, reason: "Annual Leave", requestDate: "01 Nov 2024", from: "15 Nov 2024", to: "15 Nov 2024", approver: "Ashok Patel", role: "Admin" },
+  { id: 10, reason: "Casual Leave", requestDate: "01 Nov 2024", from: "10 Dec 2024", to: "11 Dec 2024", approver: "Raju Prasad", role: "Manager" },
 ];
 
 const EmployeeDetails: React.FC = () => {
@@ -249,7 +249,7 @@ const EmployeeDetails: React.FC = () => {
               <div className="ed-filters">
                 <select className="ed-date-select"><option>08/27/2026 - 09/02/2026</option><option>Today</option><option>Yesterday</option><option>Last 7 Days</option><option>Last 30 Days</option><option>This Year</option><option>Next Year</option><option>Custom Range</option></select>
                 <select className="ed-select" value={leaveType} onChange={(e)=>setLeaveType(e.target.value)}><option value="">Leave Type</option><option>Medical Leave</option><option>Annual Leave</option><option>Casual Leave</option></select>
-                <select className="ed-select" value={approvedBy} onChange={(e)=>setApprovedBy(e.target.value)}><option value="">Approved By</option><option>Douglas</option><option>Warren</option></select>
+                <select className="ed-select" value={approvedBy} onChange={(e)=>setApprovedBy(e.target.value)}><option value="">Approved By</option><option>Raju Prasad</option><option>Ashok Patel</option></select>
                 <select className="ed-select" value={status} onChange={(e)=>setStatus(e.target.value)}><option value="">Select Status</option><option>Approved</option><option>Pending</option><option>Rejected</option></select>
                 <select className="ed-select" value={sort} onChange={(e)=>setSort(e.target.value)}><option value="7">Sort By : Last 7 Days</option><option value="30">Sort By : Last 30 Days</option></select>
               </div>

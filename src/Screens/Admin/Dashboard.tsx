@@ -36,61 +36,65 @@ const Dashboard = () => {
     >
       <style>{`
         .dashboard-exact {
-          color:#0f2348;
+          color: #0f2348;
         }
 
         .dashboard-exact .card {
-          border:1px solid #e6e9ee;
-          border-radius:6px;
-          box-shadow:0 1px 2px rgba(16,24,40,.04);
-          background:#fff;
+          border: 1px solid #e6e9ee;
+          border-radius: 6px;
+          box-shadow: 0 1px 2px rgba(16,24,40,.04);
+          background: #fff;
         }
 
         .dashboard-exact .card-header {
-          min-height:60px;
-          padding:16px 20px;
-          background:#fff;
-          border-bottom:1px solid #e6e9ee;
+          min-height: 60px;
+          padding: 16px 20px;
+          background: #fff;
+          border-bottom: 1px solid #e6e9ee;
         }
 
         .dashboard-exact .card-header h5 {
-          font-size:16px;
-          font-weight:600;
-          color:#09224b;
-          margin:0;
+          font-size: 16px;
+          font-weight: 600;
+          color: #09224b;
+          margin: 0;
         }
 
         .dashboard-exact .btn-filter {
-          min-height:30px;
-          padding:4px 10px;
-          border:1px solid #dfe3e8;
-          border-radius:5px;
-          background:#fff;
-          color:#0a2349;
-          font-size:12px;
-          line-height:20px;
+          min-height: 30px;
+          padding: 4px 10px;
+          border: 1px solid #dfe3e8;
+          border-radius: 5px;
+          background: #fff;
+          color: #0a2349;
+          font-size: 12px;
+          line-height: 20px;
+          white-space: nowrap;
+        }
+
+        .dashboard-exact .btn-filter:hover {
+          background: #f8f9fb;
         }
 
         .dashboard-exact .welcome-card .card-body {
-          min-height:98px;
-          padding:20px;
+          min-height: 98px;
+          padding: 20px;
         }
 
         .dashboard-exact .welcome-avatar {
-          width:58px;
-          height:58px;
-          border-radius:50%;
-          object-fit:cover;
-          background:#d9d9d9;
+          width: 58px;
+          height: 58px;
+          border-radius: 50%;
+          object-fit: cover;
+          background: #d9d9d9;
         }
 
         .dashboard-exact .metric-card {
-          min-height:173px;
+          min-height: 173px;
         }
 
-        /* CLICKABLE TOP CARDS */
         .dashboard-exact .clickable-metric-card {
-          cursor:pointer;
+          cursor: pointer;
           transition:
             transform 0.2s ease,
             box-shadow 0.2s ease,
@@ -98,297 +102,496 @@ const Dashboard = () => {
         }
 
         .dashboard-exact .clickable-metric-card:hover {
-          transform:translateY(-2px);
-          box-shadow:0 6px 18px rgba(16,24,40,.10);
-          border-color:#d5dbe4;
+          transform: translateY(-2px);
+          box-shadow: 0 6px 18px rgba(16,24,40,.10);
+          border-color: #d5dbe4;
         }
 
         .dashboard-exact .clickable-metric-card:active {
-          transform:translateY(0);
+          transform: translateY(0);
         }
 
         .dashboard-exact .metric-card .card-body {
-          padding:20px;
+          padding: 20px;
         }
 
         .dashboard-exact .metric-icon {
-          width:42px;
-          height:42px;
-          border-radius:50%;
-          display:inline-flex;
-          align-items:center;
-          justify-content:center;
-          color:#fff;
-          margin-bottom:10px;
+          width: 42px;
+          height: 42px;
+          border-radius: 50%;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          color: #fff;
+          margin-bottom: 10px;
         }
 
         .dashboard-exact .metric-title {
-          font-size:13px;
-          color:#5b6474;
-          margin-bottom:2px;
+          font-size: 13px;
+          color: #5b6474;
+          margin-bottom: 2px;
         }
 
         .dashboard-exact .metric-value {
-          font-size:21px;
-          font-weight:600;
-          color:#0b234b;
-          margin-bottom:0;
-        }
-
-        .dashboard-exact .section-gap {
-          margin-bottom:24px;
+          font-size: 21px;
+          font-weight: 600;
+          color: #0b234b;
+          margin-bottom: 0;
         }
 
         .dashboard-exact .dept-card .card-body {
-          padding:20px 20px 16px;
+          padding: 20px 20px 16px;
         }
 
         .dashboard-exact .dept-note {
-          font-size:13px;
-          color:#7b8495;
-          margin:7px 0 5px;
+          font-size: 13px;
+          color: #7b8495;
+          margin: 7px 0 5px;
         }
 
         .dashboard-exact .status-card .card-body {
-          padding:20px;
+          padding: 20px;
         }
 
         .dashboard-exact .status-total-label {
-          font-size:13px;
-          color:#6c7587;
+          font-size: 13px;
+          color: #6c7587;
         }
 
         .dashboard-exact .status-total-number {
-          font-size:20px;
-          font-weight:600;
-          color:#0b234b;
+          font-size: 20px;
+          font-weight: 600;
+          color: #0b234b;
         }
 
         .dashboard-exact .status-strip {
-          height:24px;
-          border-radius:6px;
-          overflow:hidden;
-          display:flex;
-          margin:14px 0 16px;
+          height: 24px;
+          border-radius: 6px;
+          overflow: hidden;
+          display: flex;
+          margin: 14px 0 16px;
         }
 
         .dashboard-exact .status-grid {
-          border:1px solid #dfe3e8;
+          border: 1px solid #dfe3e8;
         }
 
         .dashboard-exact .status-cell {
-          min-height:87px;
-          padding:10px 12px;
+          min-height: 87px;
+          padding: 10px 12px;
         }
 
         .dashboard-exact .status-cell:nth-child(1),
         .dashboard-exact .status-cell:nth-child(3) {
-          border-right:1px solid #dfe3e8;
+          border-right: 1px solid #dfe3e8;
         }
 
         .dashboard-exact .status-cell:nth-child(1),
         .dashboard-exact .status-cell:nth-child(2) {
-          border-bottom:1px solid #dfe3e8;
+          border-bottom: 1px solid #dfe3e8;
         }
 
         .dashboard-exact .status-label {
-          font-size:13px;
-          color:#5e6879;
-          margin-bottom:8px;
+          font-size: 13px;
+          color: #5e6879;
+          margin-bottom: 8px;
         }
 
         .dashboard-exact .status-big {
-          font-size:36px;
-          line-height:1;
-          font-weight:600;
-          color:#0b234b;
-          margin:0;
+          font-size: 36px;
+          line-height: 1;
+          font-weight: 600;
+          color: #0b234b;
+          margin: 0;
         }
 
         .dashboard-exact .performer-title {
-          font-size:13px;
-          font-weight:600;
-          color:#0b234b;
-          margin:14px 0 10px;
+          font-size: 13px;
+          font-weight: 600;
+          color: #0b234b;
+          margin: 14px 0 10px;
         }
 
         .dashboard-exact .performer-box {
-          border:1px solid #c89435;
-          border-radius:6px;
-          background:#fff3ea;
-          min-height:61px;
-          padding:8px 10px;
+          border: 1px solid #c89435;
+          border-radius: 6px;
+          background: #fff3ea;
+          min-height: 61px;
+          padding: 8px 10px;
         }
 
         .dashboard-exact .performer-box h6 {
-          font-size:13px;
-          margin-bottom:2px;
-          color:#0b234b;
+          font-size: 13px;
+          margin-bottom: 2px;
+          color: #0b234b;
         }
 
         .dashboard-exact .performer-box p {
-          font-size:12px;
-          margin:0;
-          color:#667085;
+          font-size: 12px;
+          margin: 0;
+          color: #667085;
         }
 
         .dashboard-exact .view-all-btn {
-          min-height:34px;
-          font-size:12px;
-          background:#f7f8fa;
-          color:#0b234b;
-          border:0;
+          min-height: 34px;
+          font-size: 12px;
+          background: #f7f8fa;
+          color: #0b234b;
+          border: 0;
         }
 
-        .dashboard-exact .attendance-card .card-body,
-        .dashboard-exact .clock-card .card-body {
-          padding:18px 20px 20px;
+        .dashboard-exact .view-all-btn:hover {
+          background: #eef0f3;
+          color: #0b234b;
         }
 
-        .dashboard-exact .gauge-wrap {
-          position:relative;
-          width:300px;
-          height:205px;
-          margin:0 auto 8px;
+        /* =====================================================
+           ATTENDANCE OVERVIEW
+        ===================================================== */
+
+        .dashboard-exact .attendance-card {
+          min-height: 100%;
         }
 
-        .dashboard-exact .gauge-text {
-          position:absolute;
-          left:0;
-          right:0;
-          top:103px;
-          text-align:center;
+        .dashboard-exact .attendance-card .card-body {
+          padding: 18px 20px 20px;
         }
 
-        .dashboard-exact .gauge-text p {
-          margin:0;
-          font-size:13px;
-          color:#7a8290;
+        .dashboard-exact .attendance-chart-wrap {
+          position: relative;
+          width: 100%;
+          height: 205px;
+          margin: 0 auto 3px;
+          overflow: hidden;
         }
 
-        .dashboard-exact .gauge-text strong {
-          display:block;
-          margin-top:2px;
-          font-size:21px;
-          color:#1f2d4d;
+        .dashboard-exact .attendance-chart {
+          width: 100%;
+          height: 175px;
+          display: block;
+        }
+
+        .dashboard-exact .attendance-chart path {
+          fill: none;
+          stroke-width: 52;
+          stroke-linecap: round;
+        }
+
+        .dashboard-exact .attendance-center-text {
+          position: absolute;
+          left: 0;
+          right: 0;
+          top: 103px;
+          text-align: center;
+          pointer-events: none;
+        }
+
+        .dashboard-exact .attendance-center-text p {
+          margin: 0;
+          font-size: 13px;
+          color: #7a8290;
+        }
+
+        .dashboard-exact .attendance-center-text h3 {
+          display: block;
+          margin: 2px 0 0;
+          font-size: 21px;
+          line-height: 1.2;
+          font-weight: 600;
+          color: #1f2d4d;
         }
 
         .dashboard-exact .attendance-status-title {
-          font-size:14px;
-          font-weight:600;
-          margin:0 0 12px;
-          color:#0b234b;
+          font-size: 14px;
+          font-weight: 600;
+          margin: 0 0 12px;
+          color: #0b234b;
         }
 
-        .dashboard-exact .status-row {
-          display:flex;
-          justify-content:space-between;
-          align-items:center;
-          margin-bottom:10px;
-          font-size:13px;
+        .dashboard-exact .attendance-status-row {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          margin-bottom: 10px;
+          font-size: 13px;
+        }
+
+        .dashboard-exact .attendance-status-row:last-of-type {
+          margin-bottom: 16px;
+        }
+
+        .dashboard-exact .attendance-status-left {
+          display: inline-flex;
+          align-items: center;
+          color: #5e6879;
+        }
+
+        .dashboard-exact .attendance-status-right {
+          color: #3f4858;
+          font-size: 13px;
+          font-weight: 500;
+        }
+
+        .dashboard-exact .attendance-dot {
+          width: 7px;
+          height: 7px;
+          border-radius: 50%;
+          display: inline-block;
+          margin-right: 7px;
+          flex-shrink: 0;
         }
 
         .dashboard-exact .absent-box {
-          background:#f8f9fb;
-          border-radius:5px;
-          min-height:42px;
-          padding:8px 10px;
+          background: #f8f9fb;
+          border-radius: 5px;
+          min-height: 42px;
+          padding: 8px 10px;
+        }
+
+        .dashboard-exact .absent-label {
+          font-size: 13px;
+          color: #5e6879;
+          margin-right: 8px;
+          white-space: nowrap;
+        }
+
+        .dashboard-exact .avatar-list-stacked {
+          display: flex;
+          align-items: center;
         }
 
         .dashboard-exact .stacked-avatar {
-          width:26px;
-          height:26px;
-          border-radius:50%;
-          border:2px solid #fff;
-          object-fit:cover;
-          margin-left:-7px;
+          width: 26px;
+          height: 26px;
+          border-radius: 50%;
+          border: 2px solid #fff;
+          object-fit: cover;
+          margin-left: -7px;
+          flex-shrink: 0;
         }
 
         .dashboard-exact .stacked-avatar:first-child {
-          margin-left:0;
+          margin-left: 0;
+        }
+
+        .dashboard-exact .stacked-more {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          background: #c49336;
+          color: #fff;
+          font-size: 10px;
+          font-weight: 500;
+        }
+
+        .dashboard-exact .attendance-details-link {
+          font-size: 13px;
+          color: #c49336;
+          text-decoration: underline;
+          white-space: nowrap;
+        }
+
+        /* =====================================================
+           CLOCK IN / OUT
+        ===================================================== */
+
+        .dashboard-exact .clock-card {
+          min-height: 100%;
+        }
+
+        .dashboard-exact .clock-card .card-body {
+          padding: 18px 20px 20px;
+        }
+
+        .dashboard-exact .clock-header-actions {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+
+        .dashboard-exact .department-filter {
+          border: 0;
+          background: transparent;
+          color: #0b234b;
+          font-size: 13px;
+          padding: 4px 0;
+          white-space: nowrap;
+        }
+
+        .dashboard-exact .department-filter:focus {
+          outline: none;
+          box-shadow: none;
         }
 
         .dashboard-exact .clock-person {
-          border:1px dashed #d9dee7;
-          border-radius:6px;
-          padding:8px 10px;
-          min-height:61px;
-          margin-bottom:14px;
+          border: 1px dashed #d9dee7;
+          border-radius: 6px;
+          padding: 8px 10px;
+          min-height: 61px;
+          margin-bottom: 14px;
         }
 
-        .dashboard-exact .clock-person img {
-          width:42px;
-          height:42px;
-          object-fit:cover;
+        .dashboard-exact .clock-person:last-of-type {
+          margin-bottom: 0;
+        }
+
+        .dashboard-exact .clock-avatar {
+          width: 42px;
+          height: 42px;
+          object-fit: cover;
+          flex-shrink: 0;
         }
 
         .dashboard-exact .clock-person h6 {
-          font-size:13px;
-          color:#0b234b;
-          margin:0 0 2px;
+          font-size: 14px;
+          line-height: 18px;
+          color: #0b234b;
+          margin: 0 0 2px;
+          font-weight: 500;
         }
 
         .dashboard-exact .clock-person p {
-          font-size:12px;
-          color:#6d7685;
-          margin:0;
+          font-size: 13px;
+          line-height: 17px;
+          color: #6d7685;
+          margin: 0;
+        }
+
+        .dashboard-exact .clock-right {
+          display: flex;
+          align-items: center;
+          flex-shrink: 0;
+        }
+
+        .dashboard-exact .clock-share-icon {
+          color: #687587;
+          font-size: 16px;
+          margin-right: 8px;
         }
 
         .dashboard-exact .time-pill {
-          min-width:51px;
-          height:20px;
-          border-radius:5px;
-          padding:1px 7px;
-          color:#fff;
-          font-size:11px;
-          font-weight:600;
-          display:inline-flex;
-          align-items:center;
-          justify-content:center;
+          min-width: 51px;
+          height: 20px;
+          border-radius: 5px;
+          padding: 1px 7px;
+          color: #fff;
+          font-size: 10px;
+          font-weight: 600;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          line-height: 18px;
+          white-space: nowrap;
         }
 
-        .dashboard-exact .clock-expanded {
-          border:1px solid #dfe3e8;
-          border-radius:6px;
-          padding:8px 10px 7px;
-          margin-top:8px;
+        .dashboard-exact .time-pill i {
+          font-size: 5px;
+          margin-right: 4px;
+        }
+
+        .dashboard-exact .clock-expanded-person {
+          border: 1px solid #dfe3e8;
+          border-radius: 6px;
+          padding: 8px 10px 7px;
+          margin-top: 8px;
         }
 
         .dashboard-exact .clock-stat p {
-          font-size:12px;
-          margin:0 0 2px;
-          color:#5d6675;
+          font-size: 12px;
+          margin: 0 0 2px;
+          color: #5d6675;
         }
 
         .dashboard-exact .clock-stat h6 {
-          font-size:12px;
-          margin:0;
-          color:#0b234b;
-          font-weight:500;
+          font-size: 12px;
+          margin: 0;
+          color: #0b234b;
+          font-weight: 500;
+        }
+
+        .dashboard-exact .clock-stat-dot {
+          font-size: 8px;
+          margin-right: 4px;
         }
 
         .dashboard-exact .late-title {
-          font-size:13px;
-          font-weight:600;
-          color:#0b234b;
-          margin:8px 0 10px;
+          font-size: 13px;
+          font-weight: 600;
+          color: #0b234b;
+          margin: 8px 0 10px;
         }
 
-        .dashboard-exact .tiny-dot {
-          width:5px;
-          height:5px;
-          border-radius:50%;
-          display:inline-block;
-          margin-right:6px;
+        .dashboard-exact .late-person {
+          margin-bottom: 14px;
         }
 
-        .dashboard-exact .top-row-card {
-          min-height:173px;
+        .dashboard-exact .late-name-row {
+          display: flex;
+          align-items: center;
+          gap: 7px;
         }
 
-        @media (min-width:1200px) {
+        .dashboard-exact .late-badge {
+          background: #08c85b;
+          color: #fff;
+          font-size: 10px;
+          font-weight: 600;
+          border-radius: 10px;
+          padding: 2px 7px;
+          line-height: 15px;
+          white-space: nowrap;
+        }
+
+        .dashboard-exact .late-badge i {
+          font-size: 9px;
+          margin-right: 3px;
+        }
+
+        @media (max-width: 1399px) {
+          .dashboard-exact .clock-header-actions {
+            gap: 4px;
+          }
+
+          .dashboard-exact .department-filter {
+            font-size: 12px;
+          }
+        }
+
+        @media (max-width: 575px) {
+          .dashboard-exact .attendance-card .card-header,
+          .dashboard-exact .clock-card .card-header {
+            padding: 14px 15px;
+          }
+
+          .dashboard-exact .attendance-card .card-body,
+          .dashboard-exact .clock-card .card-body {
+            padding: 15px;
+          }
+
+          .dashboard-exact .clock-header-actions {
+            flex-wrap: wrap;
+            justify-content: flex-end;
+          }
+
+          .dashboard-exact .department-filter {
+            max-width: 120px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+          }
+
+          .dashboard-exact .absent-box {
+            flex-wrap: wrap;
+            gap: 8px;
+          }
+
+          .dashboard-exact .attendance-chart-wrap {
+            height: 190px;
+          }
+        }
+
+        @media (min-width: 1200px) {
           .dashboard-exact .top-metric-col {
-            width:25%;
+            width: 25%;
           }
         }
       `}</style>
@@ -405,11 +608,7 @@ const Dashboard = () => {
 
           <nav>
             <ol className="breadcrumb mb-0">
-              <li className="breadcrumb-item">
-                {/* <a href="/">
-                  <i className="ti ti-smart-home" />
-                </a> */}
-              </li>
+              <li className="breadcrumb-item"></li>
 
               <li className="breadcrumb-item active">
                 Dashboard
@@ -480,7 +679,6 @@ const Dashboard = () => {
 
       {/* =========================================================
           TOP METRIC CARDS
-          Entire card is clickable
       ========================================================= */}
       <div className="row g-4 mb-4">
 
@@ -645,7 +843,9 @@ const Dashboard = () => {
         </div>
       </div>
 
-      {/* Employees by department */}
+      {/* =========================================================
+          EMPLOYEES BY DEPARTMENT
+      ========================================================= */}
       <div className="card dept-card mb-4">
         <div className="card-header d-flex align-items-center justify-content-between">
           <h5>Employees By Department</h5>
@@ -751,7 +951,9 @@ const Dashboard = () => {
         </div>
       </div>
 
-      {/* Employee status */}
+      {/* =========================================================
+          EMPLOYEE STATUS
+      ========================================================= */}
       <div className="card status-card mb-4">
         <div className="card-header d-flex align-items-center justify-content-between">
           <h5>Employee Status</h5>
@@ -924,148 +1126,167 @@ const Dashboard = () => {
         </div>
       </div>
 
-      {/* Bottom row */}
+      {/* =========================================================
+          BOTTOM ROW
+          Reference HTML uses col-xxl-4 / col-xl-6
+      ========================================================= */}
       <div className="row g-4">
 
-        {/* Attendance */}
-        <div className="col-xl-6 d-flex">
+        {/* =====================================================
+            ATTENDANCE OVERVIEW
+        ===================================================== */}
+        <div className="col-xxl-4 col-xl-6 d-flex">
           <div className="card attendance-card flex-fill">
-            <div className="card-header d-flex align-items-center justify-content-between">
-              <h5>Attendance Overview</h5>
 
-              <button className="btn-filter">
-                <i className="ti ti-calendar me-1" />
-                Today
-              </button>
+            {/* Header */}
+            <div className="card-header d-flex align-items-center justify-content-between flex-wrap">
+              <h5 className="mb-2 mb-xl-0">
+                Attendance Overview
+              </h5>
+
+              <div className="dropdown mb-0">
+                <button
+                  type="button"
+                  className="btn-filter"
+                >
+                  <i className="ti ti-calendar me-1" />
+                  Today
+                </button>
+              </div>
             </div>
 
+            {/* Body */}
             <div className="card-body">
-              <div className="gauge-wrap">
+
+              {/* Reference-style semi donut */}
+              <div className="attendance-chart-wrap"> 
                 <svg
-                  width="300"
-                  height="175"
+                  className="attendance-chart"
                   viewBox="0 0 300 175"
+                  preserveAspectRatio="xMidYMid meet"
                   aria-hidden="true"
                 >
+                  {/* Base / Late */}
                   <path
                     d="M 42 150 A 108 108 0 0 1 258 150"
                     pathLength="100"
-                    fill="none"
-                    stroke="#0b5666"
-                    strokeWidth="52"
-                    strokeLinecap="round"
+                    stroke="#347889"
                     strokeDasharray="30 70"
                     strokeDashoffset="0"
                   />
 
+                  {/* Present */}
                   <path
                     d="M 42 150 A 108 108 0 0 1 258 150"
                     pathLength="100"
-                    fill="none"
                     stroke="#08c85b"
-                    strokeWidth="52"
-                    strokeLinecap="round"
                     strokeDasharray="20 80"
                     strokeDashoffset="-33"
                   />
 
+                  {/* Permission */}
                   <path
                     d="M 42 150 A 108 108 0 0 1 258 150"
                     pathLength="100"
-                    fill="none"
                     stroke="#ffbd0a"
-                    strokeWidth="52"
-                    strokeLinecap="round"
                     strokeDasharray="27 73"
                     strokeDashoffset="-56"
                   />
 
+                  {/* Absent */}
                   <path
                     d="M 42 150 A 108 108 0 0 1 258 150"
                     pathLength="100"
-                    fill="none"
                     stroke="#f20d0d"
-                    strokeWidth="52"
-                    strokeLinecap="round"
                     strokeDasharray="10 90"
                     strokeDashoffset="-88"
                   />
                 </svg>
 
-                <div className="gauge-text">
+                <div className="attendance-center-text">
                   <p>Total Attendance</p>
-                  <strong>120</strong>
+                  <h3>120</h3>
                 </div>
               </div>
 
-              <div className="attendance-status-title">
+              {/* Status */}
+              <h6 className="attendance-status-title">
                 Status
-              </div>
+              </h6>
 
-              <div className="status-row">
-                <span>
+              <div className="attendance-status-row">
+                <span className="attendance-status-left">
                   <span
-                    className="tiny-dot"
-                    style={{ background: "#08c85b" }}
+                    className="attendance-dot"
+                    style={{
+                      background: "#08c85b",
+                    }}
                   />
                   Present
                 </span>
 
-                <strong>59%</strong>
+                <span className="attendance-status-right">
+                  59%
+                </span>
               </div>
 
-              <div className="status-row">
-                <span>
+              <div className="attendance-status-row">
+                <span className="attendance-status-left">
                   <span
-                    className="tiny-dot"
-                    style={{ background: "#347889" }}
+                    className="attendance-dot"
+                    style={{
+                      background: "#347889",
+                    }}
                   />
                   Late
                 </span>
 
-                <strong>21%</strong>
+                <span className="attendance-status-right">
+                  21%
+                </span>
               </div>
 
-              <div className="status-row">
-                <span>
+              <div className="attendance-status-row">
+                <span className="attendance-status-left">
                   <span
-                    className="tiny-dot"
-                    style={{ background: "#ffbd0a" }}
+                    className="attendance-dot"
+                    style={{
+                      background: "#ffbd0a",
+                    }}
                   />
                   Permission
                 </span>
 
-                <strong>2%</strong>
+                <span className="attendance-status-right">
+                  2%
+                </span>
               </div>
 
-              <div
-                className="status-row"
-                style={{ marginBottom: 16 }}
-              >
-                <span>
+              <div className="attendance-status-row">
+                <span className="attendance-status-left">
                   <span
-                    className="tiny-dot"
-                    style={{ background: "#f20d0d" }}
+                    className="attendance-dot"
+                    style={{
+                      background: "#f20d0d",
+                    }}
                   />
                   Absent
                 </span>
 
-                <strong>15%</strong>
+                <span className="attendance-status-right">
+                  15%
+                </span>
               </div>
 
-              <div className="absent-box d-flex align-items-center justify-content-between">
+              {/* Total Absenties */}
+              <div className="absent-box d-flex align-items-center justify-content-between flex-wrap">
+
                 <div className="d-flex align-items-center">
-                  <span
-                    style={{
-                      fontSize: 12,
-                      color: "#6b7585",
-                      marginRight: 8,
-                    }}
-                  >
+                  <span className="absent-label">
                     Total Absenties
                   </span>
 
-                  <div className="d-flex align-items-center">
+                  <div className="avatar-list-stacked">
                     <img
                       src={avatar27}
                       className="stacked-avatar"
@@ -1090,14 +1311,7 @@ const Dashboard = () => {
                       alt=""
                     />
 
-                    <span
-                      className="stacked-avatar d-inline-flex align-items-center justify-content-center"
-                      style={{
-                        background: "#c49336",
-                        color: "#fff",
-                        fontSize: 10,
-                      }}
-                    >
+                    <span className="stacked-avatar stacked-more">
                       +1
                     </span>
                   </div>
@@ -1105,11 +1319,7 @@ const Dashboard = () => {
 
                 <Link
                   to="/admin/leaves"
-                  style={{
-                    fontSize: 12,
-                    color: "#c49336",
-                    textDecoration: "underline",
-                  }}
+                  className="attendance-details-link"
                 >
                   View Details
                 </Link>
@@ -1118,229 +1328,282 @@ const Dashboard = () => {
           </div>
         </div>
 
-        {/* Clock In/Out */}
-        <div className="col-xl-6 d-flex">
+        {/* =====================================================
+            CLOCK-IN / OUT
+        ===================================================== */}
+        <div className="col-xxl-4 col-xl-6 d-flex">
           <div className="card clock-card flex-fill">
-            <div className="card-header d-flex align-items-center justify-content-between">
-              <h5>Clock-In/Out</h5>
 
-              <div className="d-flex align-items-center gap-3">
-                <button
-                  className="btn border-0 p-0"
-                  style={{
-                    fontSize: 13,
-                    color: "#0b234b",
-                    background: "transparent",
-                  }}
-                >
-                  All Departments
-                  <i className="ti ti-chevron-down ms-1" />
-                </button>
+            {/* Header */}
+            <div className="card-header d-flex align-items-center justify-content-between flex-wrap">
 
-                <button className="btn-filter">
-                  <i className="ti ti-calendar me-1" />
-                  Today
-                </button>
+              <h5 className="mb-2 mb-xl-0">
+                Clock-In/Out
+              </h5>
+
+              <div className="clock-header-actions mb-0">
+
+                <div className="dropdown">
+                  <button
+                    type="button"
+                    className="department-filter"
+                  >
+                    All Departments
+                    <i className="ti ti-chevron-down ms-1" />
+                  </button>
+                </div>
+
+                <div className="dropdown">
+                  <button
+                    type="button"
+                    className="btn-filter"
+                  >
+                    <i className="ti ti-calendar me-1" />
+                    Today
+                  </button>
+                </div>
+
               </div>
             </div>
 
+            {/* Body */}
             <div className="card-body">
 
+              {/* Daniel */}
               <div className="clock-person d-flex align-items-center justify-content-between">
-                <div className="d-flex align-items-center">
+
+                <div className="d-flex align-items-center overflow-hidden">
                   <img
                     src={avatar24}
-                    className="rounded-circle"
-                    alt=""
+                    className="clock-avatar rounded-circle"
+                    alt="Daniel Esbella"
                   />
 
-                  <div className="ms-2">
-                    <h6>Daniel Esbella</h6>
-                    <p>UI/UX Designer</p>
+                  <div className="ms-2 overflow-hidden">
+                    <h6 className="text-truncate">
+                      Daniel Esbella
+                    </h6>
+
+                    <p>
+                      UI/UX Designer
+                    </p>
                   </div>
                 </div>
 
-                <div className="d-flex align-items-center">
-                  <i
-                    className="ti ti-clock-share me-2"
-                    style={{
-                      color: "#687587",
-                      fontSize: 15,
-                    }}
-                  />
+                <div className="clock-right">
+                  <i className="ti ti-clock-share clock-share-icon" />
 
                   <span
                     className="time-pill"
-                    style={{ background: "#08c85b" }}
+                    style={{
+                      background: "#08c85b",
+                    }}
                   >
-                    • 09:15
+                    <i className="ti ti-circle-filled" />
+                    09:15
                   </span>
                 </div>
               </div>
 
+              {/* Doglas */}
               <div className="clock-person d-flex align-items-center justify-content-between">
-                <div className="d-flex align-items-center">
+
+                <div className="d-flex align-items-center overflow-hidden">
                   <img
                     src={avatar23}
-                    className="rounded-circle"
-                    alt=""
+                    className="clock-avatar rounded-circle"
+                    alt="Doglas Martini"
                   />
 
-                  <div className="ms-2">
-                    <h6>Doglas Martini</h6>
-                    <p>Project Manager</p>
+                  <div className="ms-2 overflow-hidden">
+                    <h6 className="text-truncate">
+                      Doglas Martini
+                    </h6>
+
+                    <p>
+                      Project Manager
+                    </p>
                   </div>
                 </div>
 
-                <div className="d-flex align-items-center">
-                  <i
-                    className="ti ti-clock-share me-2"
-                    style={{
-                      color: "#687587",
-                      fontSize: 15,
-                    }}
-                  />
+                <div className="clock-right">
+                  <i className="ti ti-clock-share clock-share-icon" />
 
                   <span
                     className="time-pill"
-                    style={{ background: "#08c85b" }}
+                    style={{
+                      background: "#08c85b",
+                    }}
                   >
-                    • 09:36
+                    <i className="ti ti-circle-filled" />
+                    09:36
                   </span>
                 </div>
               </div>
 
+              {/* Brian - Expanded */}
               <div
                 className="clock-person"
-                style={{ paddingBottom: 7 }}
+                style={{
+                  paddingBottom: 7,
+                }}
               >
+
                 <div className="d-flex align-items-center justify-content-between">
-                  <div className="d-flex align-items-center">
+
+                  <div className="d-flex align-items-center overflow-hidden">
                     <img
                       src={avatar27}
-                      className="rounded-circle"
-                      alt=""
+                      className="clock-avatar rounded-circle"
+                      alt="Brian Villalobos"
                     />
 
-                    <div className="ms-2">
-                      <h6>Brian Villalobos</h6>
-                      <p>PHP Developer</p>
+                    <div className="ms-2 overflow-hidden">
+                      <h6 className="text-truncate">
+                        Brian Villalobos
+                      </h6>
+
+                      <p>
+                        PHP Developer
+                      </p>
                     </div>
                   </div>
 
-                  <div className="d-flex align-items-center">
-                    <i
-                      className="ti ti-clock-share me-2"
-                      style={{
-                        color: "#687587",
-                        fontSize: 15,
-                      }}
-                    />
+                  <div className="clock-right">
+                    <i className="ti ti-clock-share clock-share-icon" />
 
                     <span
                       className="time-pill"
-                      style={{ background: "#08c85b" }}
+                      style={{
+                        background: "#08c85b",
+                      }}
                     >
-                      • 09:15
+                      <i className="ti ti-circle-filled" />
+                      09:15
                     </span>
                   </div>
+
                 </div>
 
-                <div className="clock-expanded">
+                {/* Expanded information */}
+                <div className="clock-expanded-person">
+
                   <div className="row gx-2">
+
                     <div className="col-4 clock-stat">
                       <p>
-                        <span style={{ color: "#08c85b" }}>
-                          •
-                        </span>{" "}
+                        <span
+                          className="clock-stat-dot"
+                          style={{
+                            color: "#08c85b",
+                          }}
+                        >
+                          <i className="ti ti-circle-filled" />
+                        </span>
                         Clock In
                       </p>
 
-                      <h6>10:30 AM</h6>
+                      <h6>
+                        10:30 AM
+                      </h6>
                     </div>
 
                     <div className="col-4 clock-stat">
                       <p>
-                        <span style={{ color: "#f20d0d" }}>
-                          •
-                        </span>{" "}
+                        <span
+                          className="clock-stat-dot"
+                          style={{
+                            color: "#f20d0d",
+                          }}
+                        >
+                          <i className="ti ti-circle-filled" />
+                        </span>
                         Clock Out
                       </p>
 
-                      <h6>09:45 AM</h6>
+                      <h6>
+                        09:45 AM
+                      </h6>
                     </div>
 
                     <div className="col-4 clock-stat">
                       <p>
-                        <span style={{ color: "#ffbd0a" }}>
-                          •
-                        </span>{" "}
+                        <span
+                          className="clock-stat-dot"
+                          style={{
+                            color: "#ffbd0a",
+                          }}
+                        >
+                          <i className="ti ti-circle-filled" />
+                        </span>
                         Production
                       </p>
 
-                      <h6>09:21 Hrs</h6>
+                      <h6>
+                        09:21 Hrs
+                      </h6>
                     </div>
+
                   </div>
                 </div>
               </div>
 
+              {/* Late */}
               <div className="late-title">
                 Late
               </div>
 
-              <div
-                className="clock-person d-flex align-items-center justify-content-between"
-                style={{ marginBottom: 14 }}
-              >
-                <div className="d-flex align-items-center">
+              <div className="clock-person late-person d-flex align-items-center justify-content-between">
+
+                <div className="d-flex align-items-center overflow-hidden">
+
                   <img
                     src={avatar29}
-                    className="rounded-circle"
-                    alt=""
+                    className="clock-avatar rounded-circle"
+                    alt="Anthony Lewis"
                   />
 
-                  <div className="ms-2">
-                    <div className="d-flex align-items-center gap-2">
-                      <h6>Anthony Lewis</h6>
+                  <div className="ms-2 overflow-hidden">
 
-                      <span
-                        style={{
-                          background: "#08c85b",
-                          color: "#fff",
-                          fontSize: 10,
-                          fontWeight: 600,
-                          borderRadius: 10,
-                          padding: "2px 7px",
-                        }}
-                      >
-                        <i className="ti ti-clock me-1" />
+                    <div className="late-name-row">
+
+                      <h6 className="text-truncate mb-0">
+                        Anthony Lewis
+                      </h6>
+
+                      <span className="late-badge">
+                        <i className="ti ti-clock-hour-11" />
                         30 Min
                       </span>
+
                     </div>
 
-                    <p>Marketing Head</p>
+                    <p>
+                      Marketing Head
+                    </p>
+
                   </div>
                 </div>
 
-                <div className="d-flex align-items-center">
-                  <i
-                    className="ti ti-clock-share me-2"
-                    style={{
-                      color: "#687587",
-                      fontSize: 15,
-                    }}
-                  />
+                <div className="clock-right">
+                  <i className="ti ti-clock-share clock-share-icon" />
 
                   <span
                     className="time-pill"
-                    style={{ background: "#f20d0d" }}
+                    style={{
+                      background: "#f20d0d",
+                    }}
                   >
-                    • 08:35
+                    <i className="ti ti-circle-filled" />
+                    08:35
                   </span>
                 </div>
+
               </div>
 
+              {/* View All */}
               <button
+                type="button"
                 onClick={() =>
                   navigate("/admin/attendance")
                 }
@@ -1348,6 +1611,7 @@ const Dashboard = () => {
               >
                 View All Attendance
               </button>
+
             </div>
           </div>
         </div>
@@ -1356,4 +1620,4 @@ const Dashboard = () => {
   );
 };
 
-export default Dashboard; 
+export default Dashboard;

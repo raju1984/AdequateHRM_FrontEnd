@@ -43,17 +43,7 @@ interface HolidayForm {
 }
 
 /* =====================================================
-   FINANCIAL YEAR STATIC HOLIDAY TYPE
-===================================================== */
-
-interface FinancialYearHoliday {
-  id: number;
-  date: string;
-  name: string;
-}
-
-/* =====================================================
-   EMPTY FORM
+   EMPTY HOLIDAY FORM
 ===================================================== */
 
 const emptyForm: HolidayForm = {
@@ -65,335 +55,26 @@ const emptyForm: HolidayForm = {
 };
 
 /* =====================================================
+   FINANCIAL YEAR HOLIDAY TYPE
+===================================================== */
+
+interface FinancialYearHoliday {
+  id: string;
+  date: string;
+  name: string;
+}
+
+/* =====================================================
    FINANCIAL YEAR LIST
 ===================================================== */
 
-const financialYears = [
-  "2026-27",
-  "2027-28",
-  "2028-29",
-  "2029-30",
-  "2030-31",
-];
-
-/* =====================================================
-   STATIC FINANCIAL YEAR HOLIDAYS
-===================================================== */
-
-const financialYearHolidayData: Record<
-  string,
-  FinancialYearHoliday[]
-> = {
-  "2026-27": [
-    {
-      id: 1,
-      date: "1 January 2026",
-      name: "New Year",
-    },
-    {
-      id: 2,
-      date: "14 January 2026",
-      name: "Makar Sankranti",
-    },
-    {
-      id: 3,
-      date: "26 January 2026",
-      name: "Republic Day",
-    },
-    {
-      id: 4,
-      date: "4 March 2026",
-      name: "Holi",
-    },
-    {
-      id: 5,
-      date: "3 April 2026",
-      name: "Good Friday",
-    },
-    {
-      id: 6,
-      date: "14 April 2026",
-      name: "Ambedkar Jayanti",
-    },
-    {
-      id: 7,
-      date: "1 May 2026",
-      name: "May Day",
-    },
-    {
-      id: 8,
-      date: "27 May 2026",
-      name: "Eid-ul-Fitr",
-    },
-    {
-      id: 9,
-      date: "15 August 2026",
-      name: "Independence Day",
-    },
-    {
-      id: 10,
-      date: "26 August 2026",
-      name: "Janmashtami",
-    },
-    {
-      id: 11,
-      date: "2 October 2026",
-      name: "Gandhi Jayanti",
-    },
-    {
-      id: 12,
-      date: "20 October 2026",
-      name: "Dussehra",
-    },
-    {
-      id: 13,
-      date: "8 November 2026",
-      name: "Diwali",
-    },
-    {
-      id: 14,
-      date: "25 December 2026",
-      name: "Christmas",
-    },
-  ],
-
-  "2027-28": [
-    {
-      id: 1,
-      date: "1 January 2027",
-      name: "New Year",
-    },
-    {
-      id: 2,
-      date: "14 January 2027",
-      name: "Makar Sankranti",
-    },
-    {
-      id: 3,
-      date: "26 January 2027",
-      name: "Republic Day",
-    },
-    {
-      id: 4,
-      date: "22 March 2027",
-      name: "Holi",
-    },
-    {
-      id: 5,
-      date: "26 March 2027",
-      name: "Good Friday",
-    },
-    {
-      id: 6,
-      date: "14 April 2027",
-      name: "Ambedkar Jayanti",
-    },
-    {
-      id: 7,
-      date: "1 May 2027",
-      name: "May Day",
-    },
-    {
-      id: 8,
-      date: "15 August 2027",
-      name: "Independence Day",
-    },
-    {
-      id: 9,
-      date: "2 October 2027",
-      name: "Gandhi Jayanti",
-    },
-    {
-      id: 10,
-      date: "9 October 2027",
-      name: "Dussehra",
-    },
-    {
-      id: 11,
-      date: "29 October 2027",
-      name: "Diwali",
-    },
-    {
-      id: 12,
-      date: "25 December 2027",
-      name: "Christmas",
-    },
-  ],
-
-  "2028-29": [
-    {
-      id: 1,
-      date: "1 January 2028",
-      name: "New Year",
-    },
-    {
-      id: 2,
-      date: "14 January 2028",
-      name: "Makar Sankranti",
-    },
-    {
-      id: 3,
-      date: "26 January 2028",
-      name: "Republic Day",
-    },
-    {
-      id: 4,
-      date: "11 March 2028",
-      name: "Holi",
-    },
-    {
-      id: 5,
-      date: "14 April 2028",
-      name: "Ambedkar Jayanti",
-    },
-    {
-      id: 6,
-      date: "1 May 2028",
-      name: "May Day",
-    },
-    {
-      id: 7,
-      date: "15 August 2028",
-      name: "Independence Day",
-    },
-    {
-      id: 8,
-      date: "2 October 2028",
-      name: "Gandhi Jayanti",
-    },
-    {
-      id: 9,
-      date: "20 October 2028",
-      name: "Dussehra",
-    },
-    {
-      id: 10,
-      date: "17 November 2028",
-      name: "Diwali",
-    },
-    {
-      id: 11,
-      date: "25 December 2028",
-      name: "Christmas",
-    },
-  ],
-
-  "2029-30": [
-    {
-      id: 1,
-      date: "1 January 2029",
-      name: "New Year",
-    },
-    {
-      id: 2,
-      date: "14 January 2029",
-      name: "Makar Sankranti",
-    },
-    {
-      id: 3,
-      date: "26 January 2029",
-      name: "Republic Day",
-    },
-    {
-      id: 4,
-      date: "30 March 2029",
-      name: "Holi",
-    },
-    {
-      id: 5,
-      date: "14 April 2029",
-      name: "Ambedkar Jayanti",
-    },
-    {
-      id: 6,
-      date: "1 May 2029",
-      name: "May Day",
-    },
-    {
-      id: 7,
-      date: "15 August 2029",
-      name: "Independence Day",
-    },
-    {
-      id: 8,
-      date: "2 October 2029",
-      name: "Gandhi Jayanti",
-    },
-    {
-      id: 9,
-      date: "7 October 2029",
-      name: "Dussehra",
-    },
-    {
-      id: 10,
-      date: "27 October 2029",
-      name: "Diwali",
-    },
-    {
-      id: 11,
-      date: "25 December 2029",
-      name: "Christmas",
-    },
-  ],
-
-  "2030-31": [
-    {
-      id: 1,
-      date: "1 January 2030",
-      name: "New Year",
-    },
-    {
-      id: 2,
-      date: "14 January 2030",
-      name: "Makar Sankranti",
-    },
-    {
-      id: 3,
-      date: "26 January 2030",
-      name: "Republic Day",
-    },
-    {
-      id: 4,
-      date: "18 March 2030",
-      name: "Holi",
-    },
-    {
-      id: 5,
-      date: "14 April 2030",
-      name: "Ambedkar Jayanti",
-    },
-    {
-      id: 6,
-      date: "1 May 2030",
-      name: "May Day",
-    },
-    {
-      id: 7,
-      date: "15 August 2030",
-      name: "Independence Day",
-    },
-    {
-      id: 8,
-      date: "2 October 2030",
-      name: "Gandhi Jayanti",
-    },
-    {
-      id: 9,
-      date: "17 October 2030",
-      name: "Dussehra",
-    },
-    {
-      id: 10,
-      date: "5 November 2030",
-      name: "Diwali",
-    },
-    {
-      id: 11,
-      date: "25 December 2030",
-      name: "Christmas",
-    },
-  ],
-};
+const financialYears = Array.from(
+  { length: 16 },
+  (_, index) => {
+    const startYear = 2026 + index;
+    return `${startYear}-${startYear + 1}`;
+  }
+);
 
 /* =====================================================
    HOLIDAY TYPE HELPERS
@@ -657,7 +338,7 @@ const Holidays: React.FC = () => {
   const [
     financialYear,
     setFinancialYear,
-  ] = useState("2026-27");
+  ] = useState("2026-2027");
 
  const [
   financialYearOpen,
@@ -754,17 +435,18 @@ const [
     useState("");
 
   /* ===================================================
-     STATIC FINANCIAL YEAR HOLIDAYS
+     FINANCIAL YEAR HOLIDAYS FROM API
   =================================================== */
 
-  const financialYearHolidays =
-    useMemo(() => {
-      return (
-        financialYearHolidayData[
-          financialYear
-        ] || []
-      );
-    }, [financialYear]);
+  const [
+    financialYearHolidays,
+    setFinancialYearHolidays,
+  ] = useState<FinancialYearHoliday[]>([]);
+
+  const [
+    financialYearLoading,
+    setFinancialYearLoading,
+  ] = useState(false);
 
   /* ===================================================
      FINANCIAL YEAR SELECT
@@ -774,12 +456,49 @@ const [
     year: string
   ) => {
     setFinancialYear(year);
-
+    setCurrentPage(1);
+    setSelected([]);
     setFinancialYearOpen(false);
+    setFinancialYearModalOpen(true);
 
-    setFinancialYearModalOpen(
-      true
-    );
+    loadFinancialYearHolidays(year);
+  };
+
+  const loadFinancialYearHolidays = async (
+    year: string = financialYear
+  ) => {
+    try {
+      setFinancialYearLoading(true);
+
+      const response = await getHolidays({
+        FinancialYear: year,
+        HolidayType: holidayTypeToNumber(activeTab),
+        PageNumber: 1,
+        PageSize: 1000,
+      });
+
+      const list = extractHolidayList(response);
+
+      const formatted = list.map((item) => {
+        const holiday = formatHoliday(item);
+
+        return {
+          id: holiday.id,
+          date: holiday.date,
+          name: holiday.title,
+        };
+      });
+
+      setFinancialYearHolidays(formatted);
+    } catch (err) {
+      console.error(
+        "GET FINANCIAL YEAR HOLIDAYS ERROR:",
+        err
+      );
+      setFinancialYearHolidays([]);
+    } finally {
+      setFinancialYearLoading(false);
+    }
   };
 
   const closeFinancialYearModal =
@@ -811,6 +530,9 @@ const [
               holidayTypeToNumber(
                 activeTab
               ),
+
+            FinancialYear:
+              financialYear,
 
             PageNumber: page,
 
@@ -893,6 +615,7 @@ const [
     entries,
     currentPage,
     sortBy,
+    financialYear,
   ]);
 
   /* ===================================================
@@ -1087,17 +810,20 @@ const [
         payload
       );
 
+      const addedType = form.type;
+
       await addHoliday(
         payload
       );
 
       closeAddModal();
 
-      setActiveTab(
-        form.type
-      );
-
+      setActiveTab(addedType);
       setCurrentPage(1);
+
+      await loadFinancialYearHolidays(
+        financialYear
+      );
     } catch (err: any) {
       console.error(
         "ADD HOLIDAY ERROR:",
@@ -1218,17 +944,20 @@ const [
         payload
       );
 
+      const updatedType = form.type;
+
       await updateHoliday(
         payload
       );
 
       closeEditModal();
 
-      setActiveTab(
-        form.type
-      );
+      setActiveTab(updatedType);
+      setCurrentPage(1);
 
-      // The filter/tab/page state change above triggers the data reload.
+      await loadFinancialYearHolidays(
+        financialYear
+      );
 
     } catch (err: any) {
       console.error(
@@ -1313,7 +1042,9 @@ const [
           nextPage
         );
 
-        // The page state change above triggers the data reload.
+        await loadFinancialYearHolidays(
+          financialYear
+        );
       } catch (err: any) {
         console.error(
           "DELETE HOLIDAY ERROR:",
@@ -2735,7 +2466,13 @@ const [
 
             <div className="holiday-financial-year-body">
 
-              {financialYearHolidays.length >
+              {financialYearLoading ? (
+
+                <div className="holiday-year-empty">
+                  Loading holidays...
+                </div>
+
+              ) : financialYearHolidays.length >
               0 ? (
 
                 <div className="holiday-year-table-wrapper">

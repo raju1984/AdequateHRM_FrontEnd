@@ -1,5 +1,6 @@
 import React, {
   FormEvent,
+  useEffect,
   useMemo,
   useState,
 } from "react";
@@ -25,16 +26,31 @@ import {
   MapPin,
 } from "lucide-react";
 
+import {
+  addUser,
+  deleteUser,
+  getDesignations,
+  getRoles,
+  getUserById,
+  getUsers,
+  unwrapApiArray,
+  unwrapApiValue,
+  updateUser,
+  type AddUserPayload,
+  type UserApiModel,
+} from "../../services/adminservices";
+
 /* =========================================
    TYPES
 ========================================= */
 
 type UserRole = "Employee" | "HR";
+type SelectedRole = "HR" | "Employee" | "Director";
 
 type UserStatus = "Active" | "Inactive";
 
 interface UserItem {
-  id: number;
+  id: string;
 
   firstName: string;
   lastName: string;
@@ -60,6 +76,12 @@ interface UserItem {
   role: UserRole;
 
   status: UserStatus;
+
+  roleId?: string;
+  designationId?: string;
+  userType?: number;
+  userStatus?: number;
+  apiUser?: UserApiModel;
 }
 
 interface UserForm {
@@ -109,6 +131,10 @@ interface EmploymentRow {
 }
 
 interface ApplicationForm {
+  fullName: string;
+  password: string;
+  confirmPassword: string;
+  country: string;
   address: string;
   city: string;
   state: string;
@@ -137,185 +163,7 @@ interface ApplicationForm {
 ========================================= */
 
 const initialUsers: UserItem[] = [
-  {
-    id: 1,
-    firstName: "Anthony",
-    lastName: "Lewis",
-    username: "anthony",
-    name: "Anthony Lewis",
-    email: "anthony@example.com",
-    phone: "988765544",
-    company: "Adequate",
-    department: "IT",
-    designation: "Developer",
-    about:
-      "Frontend developer working on HR management applications.",
-    createdDate: "12 Sep 2024",
-    role: "Employee",
-    status: "Active",
-  },
-
-  {
-    id: 2,
-    firstName: "Brian",
-    lastName: "Villalobos",
-    username: "brian",
-    name: "Brian Villalobos",
-    email: "brian@example.com",
-    phone: "987654321",
-    company: "Adequate",
-    department: "Sales",
-    designation: "Sales Executive",
-    about:
-      "Responsible for sales activities and customer relationships.",
-    createdDate: "24 Oct 2024",
-    role: "Employee",
-    status: "Active",
-  },
-
-  {
-    id: 3,
-    firstName: "Sophie",
-    lastName: "Headrick",
-    username: "sophie",
-    name: "Sophie Headrick",
-    email: "sophie@example.com",
-    phone: "987654322",
-    company: "Adequate",
-    department: "HR",
-    designation: "HR Executive",
-    about:
-      "Handles employee management and HR related activities.",
-    createdDate: "18 Feb 2024",
-    role: "HR",
-    status: "Active",
-  },
-
-  {
-    id: 4,
-    firstName: "Stephan",
-    lastName: "Peralt",
-    username: "stephan",
-    name: "Stephan Peralt",
-    email: "peral@example.com",
-    phone: "987654323",
-    company: "Adequate",
-    department: "Finance",
-    designation: "Accountant",
-    about:
-      "Handles accounting and financial operations.",
-    createdDate: "17 Oct 2024",
-    role: "Employee",
-    status: "Active",
-  },
-
-  {
-    id: 5,
-    firstName: "Thomas",
-    lastName: "Bordelon",
-    username: "thomas",
-    name: "Thomas Bordelon",
-    email: "thomas@example.com",
-    phone: "987654324",
-    company: "Adequate",
-    department: "HR",
-    designation: "HR Manager",
-    about:
-      "Manages HR operations and employee relations.",
-    createdDate: "20 Jul 2024",
-    role: "HR",
-    status: "Active",
-  },
-
-  {
-    id: 6,
-    firstName: "Doglas",
-    lastName: "Martini",
-    username: "doglas",
-    name: "Doglas Martini",
-    email: "martniwr@example.com",
-    phone: "987654325",
-    company: "Adequate",
-    department: "Operations",
-    designation: "Manager",
-    about:
-      "Manages daily business operations.",
-    createdDate: "10 Apr 2024",
-    role: "Employee",
-    status: "Active",
-  },
-
-  {
-    id: 7,
-    firstName: "Cameron",
-    lastName: "Drake",
-    username: "cameron",
-    name: "Cameron Drake",
-    email: "cameron@example.com",
-    phone: "987654326",
-    company: "Adequate",
-    department: "Marketing",
-    designation: "Marketing Executive",
-    about:
-      "Works on marketing campaigns and brand activities.",
-    createdDate: "29 Aug 2024",
-    role: "HR",
-    status: "Active",
-  },
-
-  {
-    id: 8,
-    firstName: "Harvey",
-    lastName: "Smith",
-    username: "harvey",
-    name: "Harvey Smith",
-    email: "harvey@example.com",
-    phone: "987654327",
-    company: "Adequate",
-    department: "IT",
-    designation: "Designer",
-    about:
-      "Works on UI and visual design requirements.",
-    createdDate: "22 Feb 2024",
-    role: "Employee",
-    status: "Inactive",
-  },
-
-  {
-    id: 9,
-    firstName: "Michael",
-    lastName: "Walker",
-    username: "michael",
-    name: "Michael Walker",
-    email: "michael@example.com",
-    phone: "987654328",
-    company: "Adequate",
-    department: "Sales",
-    designation: "Sales Manager",
-    about:
-      "Manages sales team and business development.",
-    createdDate: "03 Nov 2024",
-    role: "HR",
-    status: "Active",
-  },
-
-  {
-    id: 10,
-    firstName: "Doris",
-    lastName: "Crowley",
-    username: "doris",
-    name: "Doris Crowley",
-    email: "doris@example.com",
-    phone: "987654329",
-    company: "Adequate",
-    department: "Operations",
-    designation: "Manager",
-    about:
-      "Handles operations and team coordination.",
-    createdDate: "17 Dec 2024",
-    role: "HR",
-    status: "Active",
-  },
+ 
 ];
 
 /* =========================================
@@ -342,6 +190,10 @@ const emptyForm: UserForm = {
 
 const createEmptyApplicationForm =
   (): ApplicationForm => ({
+    fullName: "",
+    password: "",
+    confirmPassword: "",
+    country: "India",
     address: "",
     city: "",
     state: "",
@@ -459,7 +311,7 @@ const Users: React.FC = () => {
     useState(1);
 
   const [selected, setSelected] =
-    useState<number[]>([]);
+    useState<string[]>([]);
 
   /* =========================================
      PAGE STATE
@@ -467,6 +319,12 @@ const Users: React.FC = () => {
 
   const [showAddPage, setShowAddPage] =
     useState(false);
+
+  const [showRoleModal, setShowRoleModal] =
+    useState(false);
+
+  const [selectedRole, setSelectedRole] =
+    useState<SelectedRole | null>(null);
 
   /* =========================================
      MODALS
@@ -482,7 +340,7 @@ const Users: React.FC = () => {
     useState<UserItem | null>(null);
 
   const [deleteId, setDeleteId] =
-    useState<number | null>(null);
+    useState<string | null>(null);
 
   /* =========================================
      USER FORM
@@ -501,6 +359,11 @@ const Users: React.FC = () => {
   ] = useState<ApplicationForm>(
     createEmptyApplicationForm()
   );
+
+  const [loadingUsers, setLoadingUsers] = useState(true);
+  const [apiError, setApiError] = useState("");
+  const [roles, setRoles] = useState<any[]>([]);
+  const [apiDesignations, setApiDesignations] = useState<any[]>([]);
 
   /* =========================================
      FILTER / SEARCH / SORT
@@ -632,7 +495,7 @@ const Users: React.FC = () => {
     }
   };
 
-  const toggleSelect = (id: number) => {
+  const toggleSelect = (id: string) => {
     setSelected((prev) =>
       prev.includes(id)
         ? prev.filter(
@@ -647,19 +510,28 @@ const Users: React.FC = () => {
   ========================================= */
 
   const openAddPage = () => {
-    setApplicationForm(
-      createEmptyApplicationForm()
-    );
+    setApiError("");
+    setShowRoleModal(true);
+  };
 
-    setShowAddPage(true);
+  const handleRoleSelect = (role: SelectedRole) => {
+    setSelectedRole(role);
+    setShowRoleModal(false);
+
+    if (role === "HR" || role === "Employee") {
+      setApplicationForm(createEmptyApplicationForm());
+      setShowAddPage(true);
+    }
+  };
+
+  const closeRoleModal = () => {
+    setShowRoleModal(false);
   };
 
   const closeAddPage = () => {
     setShowAddPage(false);
-
-    setApplicationForm(
-      createEmptyApplicationForm()
-    );
+    setSelectedRole(null);
+    setApplicationForm(createEmptyApplicationForm());
   };
 
   /* =========================================
@@ -860,85 +732,306 @@ const Users: React.FC = () => {
   };
 
   /* =========================================
+     API HELPERS
+  ========================================= */
+
+  const findIdByName = (items: any[], name: string) => {
+    const normalized = name.trim().toLowerCase();
+    const match = items.find((item) =>
+      String(
+        item?.name ??
+        item?.roleName ??
+        item?.designationName ??
+        item?.Name ??
+        item?.RoleName ??
+        item?.DesignationName ??
+        ""
+      ).trim().toLowerCase() === normalized
+    );
+    return String(match?.id ?? match?.Id ?? "");
+  };
+
+  const parseFullName = (value: string) => {
+    const parts = value.trim().split(/\s+/).filter(Boolean);
+    return {
+      firstName: parts.shift() || "New",
+      lastName: parts.join(" "),
+    };
+  };
+
+  const toIsoDate = (value: string) => {
+    if (!value?.trim()) return "";
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? "" : date.toISOString();
+  };
+
+  const parseDateRange = (value: string) => {
+    if (!value?.trim()) return { fromDate: "", toDate: "" };
+    const parts = value.split(/\s*(?:-|to|–|—)\s*/i).map((x) => x.trim());
+    if (parts.length >= 2) {
+      return {
+        fromDate: toIsoDate(parts[0]),
+        toDate: toIsoDate(parts[1]),
+      };
+    }
+    const single = toIsoDate(value);
+    return { fromDate: single, toDate: single };
+  };
+
+  const mapApiUserToItem = (raw: any): UserItem => {
+    const firstName = String(raw?.firstName ?? raw?.FirstName ?? "");
+    const lastName = String(raw?.lastName ?? raw?.LastName ?? "");
+    const name = `${firstName} ${lastName}`.trim() ||
+      String(raw?.userName ?? raw?.UserName ?? raw?.name ?? raw?.Name ?? "User");
+    const userStatus = Number(raw?.userStatus ?? raw?.UserStatus ?? 1);
+    const userType = Number(raw?.userType ?? raw?.UserType ?? 0);
+    const roleName = String(
+      raw?.roleName ?? raw?.RoleName ?? raw?.role?.roleName ?? raw?.role?.name ??
+      raw?.Role?.roleName ?? raw?.Role?.name ?? (userType === 1 ? "HR" : "Employee")
+    );
+    const designationName = String(
+      raw?.designationName ?? raw?.DesignationName ?? raw?.designation?.designationName ??
+      raw?.designation?.name ?? raw?.Designation?.designationName ?? raw?.Designation?.name ?? ""
+    );
+
+    return {
+      id: String(raw?.id ?? raw?.Id ?? ""),
+      firstName,
+      lastName,
+      username: String(raw?.userName ?? raw?.UserName ?? ""),
+      name,
+      email: String(raw?.email ?? raw?.Email ?? ""),
+      phone: String(raw?.phoneNumber ?? raw?.PhoneNumber ?? raw?.phone ?? raw?.Phone ?? ""),
+      company: String(raw?.company ?? raw?.Company ?? "Adequate"),
+      department: String(
+        raw?.departmentName ?? raw?.DepartmentName ?? raw?.department?.departmentName ??
+        raw?.department?.name ?? raw?.Department?.departmentName ?? raw?.Department?.name ?? ""
+      ),
+      designation: designationName,
+      about: String(raw?.about ?? raw?.About ?? ""),
+      createdDate: raw?.createdAt || raw?.CreatedAt
+        ? new Date(raw?.createdAt ?? raw?.CreatedAt).toLocaleDateString("en-GB", {
+            day: "2-digit", month: "short", year: "numeric",
+          })
+        : "",
+      role: roleName.toLowerCase().includes("hr") ? "HR" : "Employee",
+      status: userStatus === 0 ? "Inactive" : "Active",
+      roleId: String(raw?.roleId ?? raw?.RoleId ?? raw?.role?.id ?? raw?.Role?.id ?? ""),
+      designationId: String(raw?.designationId ?? raw?.DesignationId ?? raw?.designation?.id ?? raw?.Designation?.id ?? ""),
+      userType,
+      userStatus,
+      apiUser: raw as UserApiModel,
+    };
+  };
+
+  /* =========================================
+     LOAD USERS / ROLES / DESIGNATIONS
+  ========================================= */
+
+  useEffect(() => {
+    let mounted = true;
+
+    const loadUsers = async () => {
+      setLoadingUsers(true);
+      try {
+        const response = await getUsers({ PageNumber: 1, PageSize: 100 });
+        const rows = unwrapApiArray(response);
+        if (mounted) {
+          setUsers(rows.map(mapApiUserToItem).filter((item) => item.id));
+          setApiError("");
+        }
+      } catch (error) {
+        if (mounted) {
+          setApiError(error instanceof Error ? error.message : "Unable to load users.");
+        }
+      } finally {
+        if (mounted) setLoadingUsers(false);
+      }
+    };
+
+    const loadLookups = async () => {
+      try {
+        const [roleResponse, designationResponse] = await Promise.all([
+          getRoles({ PageNumber: 1, PageSize: 100 }),
+          getDesignations({ PageNumber: 1, PageSize: 100 }),
+        ]);
+        if (!mounted) return;
+        setRoles(unwrapApiArray(roleResponse));
+        setApiDesignations(unwrapApiArray(designationResponse));
+      } catch {
+        // The existing local dropdowns remain usable when lookup APIs fail.
+      }
+    };
+
+    void loadUsers();
+    void loadLookups();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  /* =========================================
      SAVE APPLICATION
   ========================================= */
 
-  const handleApplicationSubmit = (
-    e: FormEvent
-  ) => {
+  const handleApplicationSubmit = async (e: FormEvent) => {
     e.preventDefault();
+    setApiError("");
 
-    const fullName =
-      applicationForm.positionDesired.trim() ||
-      "New User";
+    const { firstName, lastName } = parseFullName(applicationForm.fullName);
+    const designationId = findIdByName(apiDesignations, applicationForm.positionDesired);
+    const selectedRoleName = selectedRole === "HR" ? "HR" : "Employee";
+    const selectedRoleId =
+      findIdByName(roles, selectedRoleName) ||
+      (selectedRoleName === "Employee"
+        ? findIdByName(roles, "User")
+        : "") ||
+      String(roles[0]?.id ?? roles[0]?.Id ?? "");
 
-    const newUser: UserItem = {
-      id:
-        users.length > 0
-          ? Math.max(
-              ...users.map(
-                (item) => item.id
-              )
-            ) + 1
-          : 1,
+    if (!applicationForm.fullName.trim()) {
+      setApiError("Full name is required.");
+      return;
+    }
+    if (!applicationForm.emailAddress.trim()) {
+      setApiError("Email address is required.");
+      return;
+    }
+    if (!applicationForm.password) {
+      setApiError("Password is required.");
+      return;
+    }
+    if (applicationForm.password !== applicationForm.confirmPassword) {
+      setApiError("Password and confirm password do not match.");
+      return;
+    }
+    if (!selectedRoleId) {
+      setApiError(`${selectedRoleName} role ID could not be found. Please check the Roles API.`);
+      return;
+    }
+    if (!designationId) {
+      setApiError("Designation ID could not be found for the selected position.");
+      return;
+    }
 
-      firstName: fullName,
-      lastName: "",
+    const educations = applicationForm.education
+      .filter((row) => row.schoolName.trim() || row.degreeReceived.trim() || row.major.trim())
+      .map((row) => {
+        const range = parseDateRange(row.yearsAttended);
+        return {
+          institutionName: row.schoolName.trim(),
+          location: row.location.trim(),
+          startDate: range.fromDate,
+          endDate: range.toDate,
+          degreeOrCourse: row.degreeReceived.trim(),
+          specialization: row.major.trim(),
+        };
+      });
 
-      username:
-        fullName
-          .toLowerCase()
-          .replace(/\s+/g, ""),
+    const references = applicationForm.references
+      .filter((row) => row.name.trim() || row.title.trim() || row.company.trim())
+      .map((row) => ({
+        name: row.name.trim(),
+        title: row.title.trim(),
+        company: row.company.trim(),
+        phoneNumber: row.phone.trim(),
+      }));
 
-      name: fullName,
+    const experiences = applicationForm.employmentHistory
+      .filter((row) => row.employer.trim() || row.jobTitle.trim())
+      .map((row) => {
+        const range = parseDateRange(row.datesEmployed);
+        return {
+          companyName: row.employer.trim(),
+          jobTitle: row.jobTitle.trim(),
+          fromDate: range.fromDate,
+          toDate: range.toDate,
+          isCurrentlyWorking: false,
+          workPhone: row.workPhone.trim(),
+          startingPayRate: Number(row.startingPayRate) || 0,
+          endingPayRate: Number(row.endingPayRate) || 0,
+          address: row.address.trim(),
+          city: row.city.trim(),
+          state: row.state.trim(),
+          postalCode: row.zip.trim(),
+          description: "",
+        };
+      });
 
-      email:
-        applicationForm.emailAddress.trim(),
-
-      phone:
-        applicationForm.phoneNumber.trim(),
-
-      company: "",
-
-      department: "",
-
-      designation:
-        applicationForm.positionDesired.trim(),
-
-      about: "",
-
-      createdDate:
-        new Date().toLocaleDateString(
-          "en-GB",
-          {
-            day: "2-digit",
-            month: "short",
-            year: "numeric",
-          }
-        ),
-
-      role: "Employee",
-
-      status: "Active",
+    const payload: AddUserPayload = {
+      firstName: firstName.trim(),
+      lastName: lastName.trim(),
+      userName: applicationForm.fullName.trim().toLowerCase().replace(/\s+/g, ""),
+      email: applicationForm.emailAddress.trim(),
+      phoneNumber: applicationForm.phoneNumber.trim(),
+      password: applicationForm.password,
+      confirmPassword: applicationForm.confirmPassword,
+      userType: selectedRoleName === "HR" ? 1 : 0,
+      roleId: selectedRoleId,
+      address: applicationForm.address.trim(),
+      city: applicationForm.city.trim(),
+      state: applicationForm.state.trim(),
+      postalCode: applicationForm.zip.trim(),
+      country: applicationForm.country.trim(),
+      isLegallyEligibleToWork: applicationForm.eligibleToWork === "Yes",
+      isVeteran: applicationForm.veteran === "Yes",
+      isWillingForBackgroundCheck: applicationForm.convicted === "Yes",
+      designationId,
+      availableStartDate: toIsoDate(applicationForm.availableStartDate),
+      desiredPay: Number(applicationForm.desiredPay) || 0,
+      isFullTimeDesired: applicationForm.employmentType === "Full time",
+      isPartTimeDesired: applicationForm.employmentType === "Part time",
+      isSeasonalOrTemporaryDesired: applicationForm.employmentType === "Seasonal/Temporary",
+      educations,
+      references,
+      experiences,
+      permissions: [],
     };
 
-    setUsers((prev) => [
-      ...prev,
-      newUser,
-    ]);
+    try {
+      const response = await addUser(payload);
+      const createdRaw = unwrapApiValue(response);
+      const created = createdRaw && typeof createdRaw === "object" ? mapApiUserToItem(createdRaw) : null;
 
-    closeAddPage();
+      if (created?.id) {
+        setUsers((prev) => [...prev, created]);
+      } else {
+        const localUser: UserItem = {
+          id: `local-${Date.now()}`,
+          firstName: payload.firstName,
+          lastName: payload.lastName,
+          username: payload.userName,
+          name: `${payload.firstName} ${payload.lastName}`.trim(),
+          email: payload.email,
+          phone: payload.phoneNumber,
+          company: "Adequate",
+          department: "",
+          designation: applicationForm.positionDesired,
+          about: "",
+          createdDate: new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }),
+          role: selectedRoleName,
+          status: "Active",
+          roleId: payload.roleId,
+          designationId: payload.designationId,
+          userType: selectedRoleName === "HR" ? 1 : 0,
+          userStatus: 1,
+          apiUser: payload,
+        };
+        setUsers((prev) => [...prev, localUser]);
+      }
+
+      closeAddPage();
+    } catch (error) {
+      setApiError(error instanceof Error ? error.message : "Unable to create user.");
+    }
   };
 
   /* =========================================
      EDIT USER
   ========================================= */
 
-  const openEditModal = (
-    user: UserItem
-  ) => {
+  const openEditModal = async (user: UserItem) => {
     setEditingUser(user);
-
     setForm({
       firstName: user.firstName,
       lastName: user.lastName,
@@ -952,93 +1045,123 @@ const Users: React.FC = () => {
       designation: user.designation,
       about: user.about,
     });
-
     setEditOpen(true);
+    setApiError("");
+
+    try {
+      const response = await getUserById(user.id);
+      const raw = unwrapApiValue(response);
+      if (raw && typeof raw === "object") {
+        const freshUser = mapApiUserToItem(raw);
+        setEditingUser(freshUser);
+        setForm({
+          firstName: freshUser.firstName,
+          lastName: freshUser.lastName,
+          username: freshUser.username,
+          email: freshUser.email,
+          password: "",
+          confirmPassword: "",
+          phone: freshUser.phone,
+          company: freshUser.company,
+          department: freshUser.department,
+          designation: freshUser.designation,
+          about: freshUser.about,
+        });
+      }
+    } catch (error) {
+      setApiError(error instanceof Error ? error.message : "Unable to load user details.");
+    }
   };
 
   const closeEditModal = () => {
     setEditOpen(false);
-
     setEditingUser(null);
-
-    setForm({
-      ...emptyForm,
-    });
+    setForm({ ...emptyForm });
   };
 
-  const updateForm = (
-    field: keyof UserForm,
-    value: string
-  ) => {
-    setForm((prev) => ({
-      ...prev,
-      [field]: value,
-    }));
+  const updateForm = (field: keyof UserForm, value: string) => {
+    setForm((prev) => ({ ...prev, [field]: value }));
   };
 
-  const handleEditUser = (
-    e: FormEvent
-  ) => {
+  const handleEditUser = async (e: FormEvent) => {
     e.preventDefault();
-
     if (!editingUser) return;
+    setApiError("");
 
-    if (
-      !form.firstName.trim() ||
-      !form.lastName.trim() ||
-      !form.email.trim()
-    ) {
+    if (!form.firstName.trim() || !form.lastName.trim() || !form.email.trim() || !form.username.trim()) {
+      setApiError("First name, last name, username and email are required.");
+      return;
+    }
+    if (form.password && form.password !== form.confirmPassword) {
+      setApiError("Password and confirm password do not match.");
       return;
     }
 
-    if (
-      form.password &&
-      form.password !==
-        form.confirmPassword
-    ) {
+    const raw = editingUser.apiUser ?? {};
+    const payload: AddUserPayload & { id: string; userStatus: number } = {
+      ...raw,
+      id: editingUser.id,
+      firstName: form.firstName.trim(),
+      lastName: form.lastName.trim(),
+      userName: form.username.trim(),
+      email: form.email.trim(),
+      phoneNumber: form.phone.trim(),
+      password: form.password || String(raw.password ?? ""),
+      confirmPassword: form.confirmPassword || String(raw.confirmPassword ?? ""),
+      userType: editingUser.userType ?? Number(raw.userType ?? 0),
+      userStatus: editingUser.userStatus ?? Number(raw.userStatus ?? (editingUser.status === "Active" ? 1 : 0)),
+      roleId: editingUser.roleId || String(raw.roleId ?? ""),
+      address: String(raw.address ?? ""),
+      city: String(raw.city ?? ""),
+      state: String(raw.state ?? ""),
+      postalCode: String(raw.postalCode ?? ""),
+      country: String(raw.country ?? "India"),
+      isLegallyEligibleToWork: Boolean(raw.isLegallyEligibleToWork ?? true),
+      isVeteran: Boolean(raw.isVeteran ?? false),
+      isWillingForBackgroundCheck: Boolean(raw.isWillingForBackgroundCheck ?? true),
+      designationId: editingUser.designationId || String(raw.designationId ?? ""),
+      availableStartDate: String(raw.availableStartDate ?? ""),
+      desiredPay: Number(raw.desiredPay ?? 0),
+      isFullTimeDesired: Boolean(raw.isFullTimeDesired ?? true),
+      isPartTimeDesired: Boolean(raw.isPartTimeDesired ?? false),
+      isSeasonalOrTemporaryDesired: Boolean(raw.isSeasonalOrTemporaryDesired ?? false),
+      educations: Array.isArray(raw.educations) ? raw.educations : [],
+      references: Array.isArray(raw.references) ? raw.references : [],
+      experiences: Array.isArray(raw.experiences) ? raw.experiences : [],
+      permissions: Array.isArray(raw.permissions) ? raw.permissions : [],
+    };
+
+    if (!payload.roleId) {
+      setApiError("Role ID is missing for this user.");
+      return;
+    }
+    if (!payload.designationId) {
+      setApiError("Designation ID is missing for this user.");
       return;
     }
 
-    setUsers((prev) =>
-      prev.map((item) =>
-        item.id === editingUser.id
-          ? {
-              ...item,
-
-              firstName:
-                form.firstName.trim(),
-
-              lastName:
-                form.lastName.trim(),
-
-              username:
-                form.username.trim(),
-
-              name: `${form.firstName.trim()} ${form.lastName.trim()}`.trim(),
-
-              email:
-                form.email.trim(),
-
-              phone:
-                form.phone.trim(),
-
-              company:
-                form.company.trim(),
-
-              department:
-                form.department,
-
-              designation:
-                form.designation,
-
-              about:
-                form.about.trim(),
-            }
-          : item
-      )
-    );
-
-    closeEditModal();
+    try {
+      await updateUser(editingUser.id, payload);
+      setUsers((prev) =>
+        prev.map((item) =>
+          item.id === editingUser.id
+            ? {
+                ...item,
+                firstName: payload.firstName,
+                lastName: payload.lastName,
+                username: payload.userName,
+                name: `${payload.firstName} ${payload.lastName}`.trim(),
+                email: payload.email,
+                phone: payload.phoneNumber,
+                apiUser: payload,
+              }
+            : item
+        )
+      );
+      closeEditModal();
+    } catch (error) {
+      setApiError(error instanceof Error ? error.message : "Unable to update user.");
+    }
   };
 
   /* =========================================
@@ -1046,7 +1169,7 @@ const Users: React.FC = () => {
   ========================================= */
 
   const openDeleteModal = (
-    id: number
+    id: string
   ) => {
     setDeleteId(id);
 
@@ -1059,22 +1182,18 @@ const Users: React.FC = () => {
     setDeleteOpen(false);
   };
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (deleteId === null) return;
+    setApiError("");
 
-    setUsers((prev) =>
-      prev.filter(
-        (item) => item.id !== deleteId
-      )
-    );
-
-    setSelected((prev) =>
-      prev.filter(
-        (id) => id !== deleteId
-      )
-    );
-
-    closeDeleteModal();
+    try {
+      await deleteUser(deleteId);
+      setUsers((prev) => prev.filter((item) => item.id !== deleteId));
+      setSelected((prev) => prev.filter((id) => id !== deleteId));
+      closeDeleteModal();
+    } catch (error) {
+      setApiError(error instanceof Error ? error.message : "Unable to delete user.");
+    }
   };
 
   /* =========================================
@@ -2486,6 +2605,8 @@ const Users: React.FC = () => {
                           className="personal-input"
                           type="text"
                           placeholder="Full name"
+                          value={applicationForm.fullName}
+                          onChange={(e) => updateApplicationField("fullName", e.target.value)}
                         />
                       </td>
 
@@ -2608,8 +2729,41 @@ const Users: React.FC = () => {
                       <td>
                         <input
                           type="text"
-                          defaultValue="India"
+                          value={applicationForm.country}
+                          onChange={(e) => updateApplicationField("country", e.target.value)}
                         />
+                      </td>
+                    </tr>
+
+                    <tr>
+                      <th>Password</th>
+                      <th>Confirm Password</th>
+                      <th colSpan={3}>
+                        Login credentials
+                      </th>
+                    </tr>
+
+                    <tr>
+                      <td>
+                        <input
+                          type="password"
+                          placeholder="Password"
+                          value={applicationForm.password}
+                          onChange={(e) => updateApplicationField("password", e.target.value)}
+                        />
+                      </td>
+                      <td>
+                        <input
+                          type="password"
+                          placeholder="Confirm password"
+                          value={applicationForm.confirmPassword}
+                          onChange={(e) => updateApplicationField("confirmPassword", e.target.value)}
+                        />
+                      </td>
+                      <td colSpan={3}>
+                        <small style={{ color: "#687386" }}>
+                          The selected position is mapped to its Designation ID and the Employee role is mapped to its Role ID automatically.
+                        </small>
                       </td>
                     </tr>
 
@@ -3716,6 +3870,161 @@ const Users: React.FC = () => {
           text-decoration: none;
         }
 
+
+        .users-role-modal-overlay {
+          position: fixed;
+          inset: 0;
+          z-index: 2000;
+          padding: 20px;
+          background: rgba(15, 27, 49, 0.42);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+
+        .users-role-modal {
+          width: 460px;
+          max-width: calc(100vw - 32px);
+          position: relative;
+          padding: 32px 30px 28px;
+          border-radius: 10px;
+          background: #fff;
+          box-shadow: 0 20px 55px rgba(15, 27, 49, 0.22);
+          text-align: center;
+          animation: usersRoleModalIn 0.16s ease-out;
+        }
+
+        @keyframes usersRoleModalIn {
+          from {
+            opacity: 0;
+            transform: translateY(8px) scale(0.98);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+          }
+        }
+
+        .users-role-modal-close {
+          position: absolute;
+          top: 13px;
+          right: 13px;
+          width: 30px;
+          height: 30px;
+          padding: 0;
+          border: 0;
+          border-radius: 50%;
+          background: #f4f5f7;
+          color: #687386;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+        }
+
+        .users-role-modal-close:hover {
+          background: #e9ebef;
+          color: #17243d;
+        }
+
+        .users-role-modal-icon {
+          width: 58px;
+          height: 58px;
+          margin: 0 auto 16px;
+          border-radius: 50%;
+          background: #f8efdc;
+          color: #c39237;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+
+        .users-role-modal h3 {
+          margin: 0 0 8px;
+          color: #17243d;
+          font-size: 20px;
+          font-weight: 700;
+        }
+
+        .users-role-modal-subtitle {
+          margin: 0 auto 22px;
+          color: #687386;
+          font-size: 13px;
+          line-height: 1.6;
+        }
+
+        .users-role-options {
+          display: flex;
+          flex-direction: column;
+          gap: 10px;
+          text-align: left;
+        }
+
+        .users-role-option {
+          width: 100%;
+          min-height: 68px;
+          padding: 10px 14px;
+          border: 1px solid #e0e4e9;
+          border-radius: 7px;
+          background: #fff;
+          display: flex;
+          align-items: center;
+          gap: 13px;
+          text-align: left;
+          cursor: pointer;
+          transition: 0.15s ease;
+        }
+
+        .users-role-option:hover {
+          border-color: #c39237;
+          background: #fffaf1;
+        }
+
+        .users-role-option-icon {
+          width: 42px;
+          height: 42px;
+          flex: 0 0 42px;
+          border-radius: 6px;
+          background: #f7f8fa;
+          color: #c39237;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+
+        .users-role-option div:last-child {
+          display: flex;
+          flex-direction: column;
+          gap: 3px;
+        }
+
+        .users-role-option strong {
+          color: #17243d;
+          font-size: 14px;
+          font-weight: 600;
+        }
+
+        .users-role-option span {
+          color: #7a8494;
+          font-size: 11px;
+        }
+
+        .users-role-modal-cancel {
+          width: 100%;
+          height: 38px;
+          margin-top: 18px;
+          border: 1px solid #dce1e7;
+          border-radius: 5px;
+          background: #fff;
+          color: #596679;
+          font-size: 13px;
+          font-weight: 600;
+          cursor: pointer;
+        }
+
+        .users-role-modal-cancel:hover {
+          background: #f7f8fa;
+        }
         .users-add-btn {
           height: 39px;
           padding: 0 15px;
@@ -4148,6 +4457,112 @@ const Users: React.FC = () => {
         </div>
 
         {/* =====================================
+            ROLE SELECTION MODAL
+        ===================================== */}
+
+        {showRoleModal && (
+
+          <div
+            className="users-role-modal-overlay"
+            onMouseDown={(e) => {
+              if (e.target === e.currentTarget) {
+                closeRoleModal();
+              }
+            }}
+          >
+
+            <div
+              className="users-role-modal"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="select-user-role-title"
+            >
+
+              <button
+                type="button"
+                className="users-role-modal-close"
+                aria-label="Close role selection"
+                onClick={closeRoleModal}
+              >
+                <X size={18} />
+              </button>
+
+              <div className="users-role-modal-icon">
+                <UserRound size={27} />
+              </div>
+
+              <h3 id="select-user-role-title">
+                What role are you selecting?
+              </h3>
+
+              <p className="users-role-modal-subtitle">
+                Select a role to continue adding a new user.
+              </p>
+
+              <div className="users-role-options">
+
+                <button
+                  type="button"
+                  className="users-role-option"
+                  onClick={() => handleRoleSelect("HR")}
+                >
+                  <div className="users-role-option-icon">
+                    <UsersRound size={22} />
+                  </div>
+
+                  <div>
+                    <strong>HR</strong>
+                    <span>Human Resources</span>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  className="users-role-option"
+                  onClick={() => handleRoleSelect("Employee")}
+                >
+                  <div className="users-role-option-icon">
+                    <UserRound size={22} />
+                  </div>
+
+                  <div>
+                    <strong>Employee</strong>
+                    <span>Add an employee</span>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  className="users-role-option"
+                  onClick={() => handleRoleSelect("Director")}
+                >
+                  <div className="users-role-option-icon">
+                    <BriefcaseBusiness size={22} />
+                  </div>
+
+                  <div>
+                    <strong>Director</strong>
+                    <span>Director profile</span>
+                  </div>
+                </button>
+
+              </div>
+
+              <button
+                type="button"
+                className="users-role-modal-cancel"
+                onClick={closeRoleModal}
+              >
+                Cancel
+              </button>
+
+            </div>
+
+          </div>
+
+        )}
+
+        {/* =====================================
             USERS CARD
         ===================================== */}
 
@@ -4401,7 +4816,11 @@ const Users: React.FC = () => {
 
               <tbody>
 
-                {visibleUsers.map(
+                {loadingUsers ? (
+                  <tr>
+                    <td colSpan={7} style={{ height: "90px", textAlign: "center" }}>Loading users...</td>
+                  </tr>
+                ) : visibleUsers.map(
                   (user) => (
 
                     <tr key={user.id}>
@@ -4526,7 +4945,7 @@ const Users: React.FC = () => {
                   )
                 )}
 
-                {visibleUsers.length ===
+                {!loadingUsers && visibleUsers.length ===
                   0 && (
 
                   <tr>
@@ -5015,7 +5434,7 @@ const SelectInput = ({
             <option
               key={option}
               value={option}
-            >
+            >  
               {option}
             </option>
 

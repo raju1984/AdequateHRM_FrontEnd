@@ -20,10 +20,7 @@ import {
   GraduationCap,
   UsersRound,
   UserRound,
-  CalendarDays,
-  Mail,
   Phone,
-  MapPin,
 } from "lucide-react";
 
 import {
@@ -40,43 +37,28 @@ import {
   type UserApiModel,
 } from "../../services/adminservices";
 
-/* =========================================
-   TYPES
-========================================= */
+  //  TYPES
 
 type UserRole = "Employee" | "HR";
-type SelectedRole = "HR" | "Employee" | "Director";
+type SelectedRole = "HR" | "Employee" | "Accountant";
 
 type UserStatus = "Active" | "Inactive";
 
 interface UserItem {
   id: string;
-
   firstName: string;
   lastName: string;
-
   username: string;
-
   name: string;
-
   email: string;
-
   phone: string;
-
   company: string;
-
   department: string;
-
   designation: string;
-
   about: string;
-
   createdDate: string;
-
   role: UserRole;
-
   status: UserStatus;
-
   roleId?: string;
   designationId?: string;
   userType?: number;
@@ -84,23 +66,8 @@ interface UserItem {
   apiUser?: UserApiModel;
 }
 
-interface UserForm {
-  firstName: string;
-  lastName: string;
-  username: string;
-  email: string;
-  password: string;
-  confirmPassword: string;
-  phone: string;
-  company: string;
-  department: string;
-  designation: string;
-  about: string;
-}
 
-/* =========================================
-   ADD USER FORM TYPES
-========================================= */
+  //  ADD USER FORM TYPES
 
 interface EducationRow {
   schoolName: string;
@@ -158,35 +125,14 @@ interface ApplicationForm {
   employmentHistory: EmploymentRow[];
 }
 
-/* =========================================
-   INITIAL DATA
-========================================= */
+  //  INITIAL DATA
 
 const initialUsers: UserItem[] = [
  
 ];
 
-/* =========================================
-   EMPTY USER FORM
-========================================= */
 
-const emptyForm: UserForm = {
-  firstName: "",
-  lastName: "",
-  username: "",
-  email: "",
-  password: "",
-  confirmPassword: "",
-  phone: "",
-  company: "",
-  department: "",
-  designation: "",
-  about: "",
-};
-
-/* =========================================
-   EMPTY APPLICATION FORM
-========================================= */
+  //  EMPTY APPLICATION FORM
 
 const createEmptyApplicationForm =
   (): ApplicationForm => ({
@@ -259,9 +205,7 @@ const createEmptyApplicationForm =
     ],
   });
 
-/* =========================================
-   DROPDOWN DATA
-========================================= */
+  //  DROPDOWN DATA
 
 const departments = [
   "IT",
@@ -284,9 +228,7 @@ const designations = [
   "Marketing Executive",
 ];
 
-/* =========================================
-   COMPONENT
-========================================= */
+  //  COMPONENT
 
 const Users: React.FC = () => {
   const [users, setUsers] =
@@ -313,10 +255,8 @@ const Users: React.FC = () => {
   const [selected, setSelected] =
     useState<string[]>([]);
 
-  /* =========================================
-     PAGE STATE
-  ========================================= */
-
+    //  PAGE STATE
+  
   const [showAddPage, setShowAddPage] =
     useState(false);
 
@@ -326,14 +266,9 @@ const Users: React.FC = () => {
   const [selectedRole, setSelectedRole] =
     useState<SelectedRole | null>(null);
 
-  /* =========================================
-     MODALS
-  ========================================= */
+    //  MODALS
 
-  const [editOpen, setEditOpen] =
-    useState(false);
-
-  const [deleteOpen, setDeleteOpen] =
+const [deleteOpen, setDeleteOpen] =
     useState(false);
 
   const [editingUser, setEditingUser] =
@@ -342,16 +277,8 @@ const Users: React.FC = () => {
   const [deleteId, setDeleteId] =
     useState<string | null>(null);
 
-  /* =========================================
-     USER FORM
-  ========================================= */
-
-  const [form, setForm] =
-    useState<UserForm>(emptyForm);
-
-  /* =========================================
-     APPLICATION FORM
-  ========================================= */
+ 
+    //  APPLICATION FORM
 
   const [
     applicationForm,
@@ -365,9 +292,7 @@ const Users: React.FC = () => {
   const [roles, setRoles] = useState<any[]>([]);
   const [apiDesignations, setApiDesignations] = useState<any[]>([]);
 
-  /* =========================================
-     FILTER / SEARCH / SORT
-  ========================================= */
+    //  FILTER / SEARCH / SORT
 
   const filteredUsers = useMemo(() => {
     let result = [...users];
@@ -439,9 +364,7 @@ const Users: React.FC = () => {
     sortBy,
   ]);
 
-  /* =========================================
-     PAGINATION
-  ========================================= */
+    //  PAGINATION
 
   const totalPages = Math.max(
     1,
@@ -464,9 +387,7 @@ const Users: React.FC = () => {
         rowsPerPage
     );
 
-  /* =========================================
-     CHECKBOX
-  ========================================= */
+    //  CHECKBOX
 
   const allVisibleSelected =
     visibleUsers.length > 0 &&
@@ -505,9 +426,7 @@ const Users: React.FC = () => {
     );
   };
 
-  /* =========================================
-     OPEN ADD USER PAGE
-  ========================================= */
+    //  OPEN ADD USER PAGE
 
   const openAddPage = () => {
     setApiError("");
@@ -531,12 +450,12 @@ const Users: React.FC = () => {
   const closeAddPage = () => {
     setShowAddPage(false);
     setSelectedRole(null);
+    setEditingUser(null);
     setApplicationForm(createEmptyApplicationForm());
+    setApiError("");
   };
 
-  /* =========================================
-     APPLICATION FORM UPDATE
-  ========================================= */
+    //  APPLICATION FORM UPDATE
 
   const updateApplicationField = <
     K extends keyof ApplicationForm
@@ -550,9 +469,7 @@ const Users: React.FC = () => {
     }));
   };
 
-  /* =========================================
-     EDUCATION
-  ========================================= */
+    //  EDUCATION
 
   const updateEducation = (
     index: number,
@@ -609,9 +526,7 @@ const Users: React.FC = () => {
     }));
   };
 
-  /* =========================================
-     REFERENCES
-  ========================================= */
+    //  REFERENCES
 
   const updateReference = (
     index: number,
@@ -667,9 +582,7 @@ const Users: React.FC = () => {
     }));
   };
 
-  /* =========================================
-     EMPLOYMENT
-  ========================================= */
+    //  EMPLOYMENT
 
   const updateEmployment = (
     index: number,
@@ -731,9 +644,7 @@ const Users: React.FC = () => {
     }));
   };
 
-  /* =========================================
-     API HELPERS
-  ========================================= */
+    //  API HELPERS
 
   const findIdByName = (items: any[], name: string) => {
     const normalized = name.trim().toLowerCase();
@@ -824,9 +735,7 @@ const Users: React.FC = () => {
     };
   };
 
-  /* =========================================
-     LOAD USERS / ROLES / DESIGNATIONS
-  ========================================= */
+    //  LOAD USERS / ROLES / DESIGNATIONS
 
   useEffect(() => {
     let mounted = true;
@@ -859,7 +768,6 @@ const Users: React.FC = () => {
         setRoles(unwrapApiArray(roleResponse));
         setApiDesignations(unwrapApiArray(designationResponse));
       } catch {
-        // The existing local dropdowns remain usable when lookup APIs fail.
       }
     };
 
@@ -871,18 +779,19 @@ const Users: React.FC = () => {
     };
   }, []);
 
-  /* =========================================
-     SAVE APPLICATION
-  ========================================= */
+    //  SAVE APPLICATION
 
   const handleApplicationSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setApiError("");
 
     const { firstName, lastName } = parseFullName(applicationForm.fullName);
-    const designationId = findIdByName(apiDesignations, applicationForm.positionDesired);
+    const designationId =
+      findIdByName(apiDesignations, applicationForm.positionDesired) ||
+      String(editingUser?.designationId ?? "");
     const selectedRoleName = selectedRole === "HR" ? "HR" : "Employee";
     const selectedRoleId =
+      String(editingUser?.roleId ?? "") ||
       findIdByName(roles, selectedRoleName) ||
       (selectedRoleName === "Employee"
         ? findIdByName(roles, "User")
@@ -897,11 +806,11 @@ const Users: React.FC = () => {
       setApiError("Email address is required.");
       return;
     }
-    if (!applicationForm.password) {
+    if (!editingUser && !applicationForm.password) {
       setApiError("Password is required.");
       return;
     }
-    if (applicationForm.password !== applicationForm.confirmPassword) {
+    if (applicationForm.password && applicationForm.password !== applicationForm.confirmPassword) {
       setApiError("Password and confirm password do not match.");
       return;
     }
@@ -989,64 +898,167 @@ const Users: React.FC = () => {
     };
 
     try {
-      const response = await addUser(payload);
-      const createdRaw = unwrapApiValue(response);
-      const created = createdRaw && typeof createdRaw === "object" ? mapApiUserToItem(createdRaw) : null;
-
-      if (created?.id) {
-        setUsers((prev) => [...prev, created]);
-      } else {
-        const localUser: UserItem = {
-          id: `local-${Date.now()}`,
-          firstName: payload.firstName,
-          lastName: payload.lastName,
-          username: payload.userName,
-          name: `${payload.firstName} ${payload.lastName}`.trim(),
-          email: payload.email,
-          phone: payload.phoneNumber,
-          company: "Adequate",
-          department: "",
-          designation: applicationForm.positionDesired,
-          about: "",
-          createdDate: new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }),
-          role: selectedRoleName,
-          status: "Active",
-          roleId: payload.roleId,
-          designationId: payload.designationId,
-          userType: selectedRoleName === "HR" ? 1 : 0,
-          userStatus: 1,
-          apiUser: payload,
+      if (editingUser) {
+        const raw = editingUser.apiUser ?? {};
+        const updatePayload: AddUserPayload & { id: string; userStatus: number } = {
+          ...raw,
+          ...payload,
+          id: editingUser.id,
+          password: applicationForm.password || String(raw.password ?? ""),
+          confirmPassword: applicationForm.confirmPassword || String(raw.confirmPassword ?? ""),
+          userStatus: editingUser.userStatus ?? (editingUser.status === "Active" ? 1 : 0),
+          roleId: selectedRoleId,
+          designationId,
+          educations,
+          references,
+          experiences,
+          permissions: Array.isArray(raw.permissions) ? raw.permissions : [],
         };
-        setUsers((prev) => [...prev, localUser]);
+
+        if (!updatePayload.roleId) {
+          setApiError("Role ID is missing for this user.");
+          return;
+        }
+        if (!updatePayload.designationId) {
+          setApiError("Designation ID is missing for this user.");
+          return;
+        }
+
+        await updateUser(editingUser.id, updatePayload);
+
+        setUsers((prev) =>
+          prev.map((item) =>
+            item.id === editingUser.id
+              ? {
+                  ...item,
+                  firstName: updatePayload.firstName,
+                  lastName: updatePayload.lastName,
+                  username: updatePayload.userName,
+                  name: `${updatePayload.firstName} ${updatePayload.lastName}`.trim(),
+                  email: updatePayload.email,
+                  phone: updatePayload.phoneNumber,
+                  designation: applicationForm.positionDesired,
+                  role: selectedRoleName as UserRole,
+                  roleId: updatePayload.roleId,
+                  designationId: updatePayload.designationId,
+                  apiUser: updatePayload,
+                }
+              : item
+          )
+        );
+      } else {
+        const response = await addUser(payload);
+        const createdRaw = unwrapApiValue(response);
+        const created = createdRaw && typeof createdRaw === "object" ? mapApiUserToItem(createdRaw) : null;
+
+        if (created?.id) {
+          setUsers((prev) => [...prev, created]);
+        } else {
+          const localUser: UserItem = {
+            id: `local-${Date.now()}`,
+            firstName: payload.firstName,
+            lastName: payload.lastName,
+            username: payload.userName,
+            name: `${payload.firstName} ${payload.lastName}`.trim(),
+            email: payload.email,
+            phone: payload.phoneNumber,
+            company: "Adequate",
+            department: "",
+            designation: applicationForm.positionDesired,
+            about: "",
+            createdDate: new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }),
+            role: selectedRoleName as UserRole,
+            status: "Active",
+            roleId: payload.roleId,
+            designationId: payload.designationId,
+            userType: selectedRoleName === "HR" ? 1 : 0,
+            userStatus: 1,
+            apiUser: payload,
+          };
+          setUsers((prev) => [...prev, localUser]);
+        }
       }
 
       closeAddPage();
     } catch (error) {
-      setApiError(error instanceof Error ? error.message : "Unable to create user.");
+      setApiError(error instanceof Error ? error.message : editingUser ? "Unable to update user." : "Unable to create user.");
     }
   };
 
-  /* =========================================
-     EDIT USER
-  ========================================= */
+    //  EDIT USER -> SAME APPLICATION PAGE
 
-  const openEditModal = async (user: UserItem) => {
-    setEditingUser(user);
-    setForm({
-      firstName: user.firstName,
-      lastName: user.lastName,
-      username: user.username,
-      email: user.email,
+  const mapUserToApplicationForm = (user: UserItem, raw: any = {}): ApplicationForm => {
+    const educationSource = Array.isArray(raw?.educations) ? raw.educations : [];
+    const referenceSource = Array.isArray(raw?.references) ? raw.references : [];
+    const experienceSource = Array.isArray(raw?.experiences) ? raw.experiences : [];
+
+    const formatDate = (value: any) => {
+      if (!value) return "";
+      const date = new Date(value);
+      return Number.isNaN(date.getTime()) ? String(value) : date.toISOString().slice(0, 10);
+    };
+
+    const formatDateRange = (from: any, to: any) => {
+      const start = formatDate(from);
+      const end = formatDate(to);
+      if (start && end) return `${start} - ${end}`;
+      return start || end || "";
+    };
+
+    const blank = createEmptyApplicationForm();
+
+    return {
+      fullName: user.name,
       password: "",
       confirmPassword: "",
-      phone: user.phone,
-      company: user.company,
-      department: user.department,
-      designation: user.designation,
-      about: user.about,
-    });
-    setEditOpen(true);
+      country: String(raw?.country ?? raw?.Country ?? "India"),
+      address: String(raw?.address ?? raw?.Address ?? ""),
+      city: String(raw?.city ?? raw?.City ?? ""),
+      state: String(raw?.state ?? raw?.State ?? ""),
+      zip: String(raw?.postalCode ?? raw?.PostalCode ?? raw?.zip ?? raw?.Zip ?? ""),
+      phoneNumber: user.phone,
+      emailAddress: user.email,
+      eligibleToWork: raw?.isLegallyEligibleToWork === false ? "No" : "Yes",
+      veteran: raw?.isVeteran === true ? "Yes" : "No",
+      convicted: raw?.isWillingForBackgroundCheck === true ? "Yes" : "No",
+      positionDesired: user.designation,
+      availableStartDate: formatDate(raw?.availableStartDate ?? raw?.AvailableStartDate),
+      desiredPay: raw?.desiredPay != null ? String(raw.desiredPay) : "",
+      employmentType: raw?.isFullTimeDesired ? "Full time" : raw?.isPartTimeDesired ? "Part time" : raw?.isSeasonalOrTemporaryDesired ? "Seasonal/Temporary" : "",
+      education: educationSource.length ? educationSource.map((row: any) => ({
+        schoolName: String(row?.institutionName ?? row?.schoolName ?? ""),
+        location: String(row?.location ?? ""),
+        yearsAttended: formatDateRange(row?.startDate ?? row?.fromDate, row?.endDate ?? row?.toDate),
+        degreeReceived: String(row?.degreeOrCourse ?? row?.degreeReceived ?? ""),
+        major: String(row?.specialization ?? row?.major ?? ""),
+      })) : blank.education,
+      references: referenceSource.length ? referenceSource.map((row: any) => ({
+        name: String(row?.name ?? ""),
+        title: String(row?.title ?? ""),
+        company: String(row?.company ?? ""),
+        phone: String(row?.phoneNumber ?? row?.phone ?? ""),
+      })) : blank.references,
+      employmentHistory: experienceSource.length ? experienceSource.map((row: any) => ({
+        employer: String(row?.companyName ?? row?.employer ?? ""),
+        jobTitle: String(row?.jobTitle ?? ""),
+        datesEmployed: formatDateRange(row?.fromDate ?? row?.startDate, row?.toDate ?? row?.endDate),
+        workPhone: String(row?.workPhone ?? ""),
+        startingPayRate: row?.startingPayRate != null ? String(row.startingPayRate) : "",
+        endingPayRate: row?.endingPayRate != null ? String(row.endingPayRate) : "",
+        address: String(row?.address ?? ""),
+        city: String(row?.city ?? ""),
+        state: String(row?.state ?? ""),
+        zip: String(row?.postalCode ?? row?.zip ?? ""),
+      })) : blank.employmentHistory,
+    };
+  };
+
+  const openEditModal = async (user: UserItem) => {
     setApiError("");
+    setEditingUser(user);
+    setSelectedRole(user.role === "HR" ? "HR" : "Employee");
+    setApplicationForm(mapUserToApplicationForm(user, user.apiUser ?? {}));
+    setShowAddPage(true);
 
     try {
       const response = await getUserById(user.id);
@@ -1054,119 +1066,16 @@ const Users: React.FC = () => {
       if (raw && typeof raw === "object") {
         const freshUser = mapApiUserToItem(raw);
         setEditingUser(freshUser);
-        setForm({
-          firstName: freshUser.firstName,
-          lastName: freshUser.lastName,
-          username: freshUser.username,
-          email: freshUser.email,
-          password: "",
-          confirmPassword: "",
-          phone: freshUser.phone,
-          company: freshUser.company,
-          department: freshUser.department,
-          designation: freshUser.designation,
-          about: freshUser.about,
-        });
+        setSelectedRole(freshUser.role === "HR" ? "HR" : "Employee");
+        setApplicationForm(mapUserToApplicationForm(freshUser, raw));
+        setUsers((prev) => prev.map((item) => item.id === freshUser.id ? freshUser : item));
       }
     } catch (error) {
       setApiError(error instanceof Error ? error.message : "Unable to load user details.");
     }
   };
 
-  const closeEditModal = () => {
-    setEditOpen(false);
-    setEditingUser(null);
-    setForm({ ...emptyForm });
-  };
-
-  const updateForm = (field: keyof UserForm, value: string) => {
-    setForm((prev) => ({ ...prev, [field]: value }));
-  };
-
-  const handleEditUser = async (e: FormEvent) => {
-    e.preventDefault();
-    if (!editingUser) return;
-    setApiError("");
-
-    if (!form.firstName.trim() || !form.lastName.trim() || !form.email.trim() || !form.username.trim()) {
-      setApiError("First name, last name, username and email are required.");
-      return;
-    }
-    if (form.password && form.password !== form.confirmPassword) {
-      setApiError("Password and confirm password do not match.");
-      return;
-    }
-
-    const raw = editingUser.apiUser ?? {};
-    const payload: AddUserPayload & { id: string; userStatus: number } = {
-      ...raw,
-      id: editingUser.id,
-      firstName: form.firstName.trim(),
-      lastName: form.lastName.trim(),
-      userName: form.username.trim(),
-      email: form.email.trim(),
-      phoneNumber: form.phone.trim(),
-      password: form.password || String(raw.password ?? ""),
-      confirmPassword: form.confirmPassword || String(raw.confirmPassword ?? ""),
-      userType: editingUser.userType ?? Number(raw.userType ?? 0),
-      userStatus: editingUser.userStatus ?? Number(raw.userStatus ?? (editingUser.status === "Active" ? 1 : 0)),
-      roleId: editingUser.roleId || String(raw.roleId ?? ""),
-      address: String(raw.address ?? ""),
-      city: String(raw.city ?? ""),
-      state: String(raw.state ?? ""),
-      postalCode: String(raw.postalCode ?? ""),
-      country: String(raw.country ?? "India"),
-      isLegallyEligibleToWork: Boolean(raw.isLegallyEligibleToWork ?? true),
-      isVeteran: Boolean(raw.isVeteran ?? false),
-      isWillingForBackgroundCheck: Boolean(raw.isWillingForBackgroundCheck ?? true),
-      designationId: editingUser.designationId || String(raw.designationId ?? ""),
-      availableStartDate: String(raw.availableStartDate ?? ""),
-      desiredPay: Number(raw.desiredPay ?? 0),
-      isFullTimeDesired: Boolean(raw.isFullTimeDesired ?? true),
-      isPartTimeDesired: Boolean(raw.isPartTimeDesired ?? false),
-      isSeasonalOrTemporaryDesired: Boolean(raw.isSeasonalOrTemporaryDesired ?? false),
-      educations: Array.isArray(raw.educations) ? raw.educations : [],
-      references: Array.isArray(raw.references) ? raw.references : [],
-      experiences: Array.isArray(raw.experiences) ? raw.experiences : [],
-      permissions: Array.isArray(raw.permissions) ? raw.permissions : [],
-    };
-
-    if (!payload.roleId) {
-      setApiError("Role ID is missing for this user.");
-      return;
-    }
-    if (!payload.designationId) {
-      setApiError("Designation ID is missing for this user.");
-      return;
-    }
-
-    try {
-      await updateUser(editingUser.id, payload);
-      setUsers((prev) =>
-        prev.map((item) =>
-          item.id === editingUser.id
-            ? {
-                ...item,
-                firstName: payload.firstName,
-                lastName: payload.lastName,
-                username: payload.userName,
-                name: `${payload.firstName} ${payload.lastName}`.trim(),
-                email: payload.email,
-                phone: payload.phoneNumber,
-                apiUser: payload,
-              }
-            : item
-        )
-      );
-      closeEditModal();
-    } catch (error) {
-      setApiError(error instanceof Error ? error.message : "Unable to update user.");
-    }
-  };
-
-  /* =========================================
-     DELETE
-  ========================================= */
+    //  DELETE
 
   const openDeleteModal = (
     id: string
@@ -1196,9 +1105,7 @@ const Users: React.FC = () => {
     }
   };
 
-  /* =========================================
-     ADD USER APPLICATION PAGE
-  ========================================= */
+    //  ADD USER APPLICATION PAGE
 
   if (showAddPage) {
     return (
@@ -1762,160 +1669,6 @@ const Users: React.FC = () => {
             background: var(--ochre-dark);
             border-color: var(--ochre-dark);
             transform: translateY(-1px);
-          }
-
-          /* =================================
-             EDIT MODAL
-          ================================= */
-
-          .users-modal-overlay {
-            position: fixed;
-            inset: 0;
-            z-index: 99999;
-            padding: 15px;
-            background: rgba(15, 25, 42, .48);
-            backdrop-filter: blur(2px);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-          }
-
-          .users-form-modal {
-            width: 800px;
-            max-width: calc(100vw - 30px);
-            max-height: calc(100vh - 30px);
-            overflow-y: auto;
-            border-radius: 10px;
-            background: #fff;
-            box-shadow: 0 20px 55px rgba(0,0,0,.22);
-          }
-
-          .users-modal-header {
-            height: 68px;
-            padding: 0 20px;
-            border-bottom: 1px solid #e3e7eb;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-          }
-
-          .users-modal-header h3 {
-            margin: 0;
-            color: #1e2b49;
-            font-size: 20px;
-            font-weight: 700;
-          }
-
-          .users-modal-close {
-            width: 32px;
-            height: 32px;
-            border: 0;
-            border-radius: 7px;
-            background: #f5f6f8;
-            color: #667085;
-            cursor: pointer;
-            font-size: 22px;
-          }
-
-          .users-modal-close:hover {
-            background: #f0f1f3;
-            color: #14213d;
-          }
-
-          .users-modal-body {
-            padding: 23px;
-          }
-
-          .users-form-grid {
-            display: grid;
-            grid-template-columns: repeat(2,minmax(0,1fr));
-            gap: 18px 24px;
-          }
-
-          .users-form-group label {
-            display: block;
-            margin-bottom: 7px;
-            color: #263452;
-            font-size: 13px;
-            font-weight: 600;
-          }
-
-          .users-required {
-            color: #e53935;
-            margin-left: 3px;
-          }
-
-          .users-form-group input,
-          .users-form-group select {
-            width: 100%;
-            height: 42px;
-            padding: 0 11px;
-            border: 1px solid #dce1e7;
-            border-radius: 7px;
-            outline: none;
-            background: #fff;
-            color: #26344d;
-            font-size: 13px;
-            font-family: inherit;
-          }
-
-          .users-form-group input:focus,
-          .users-form-group select:focus,
-          .users-about:focus {
-            border-color: var(--ochre);
-            box-shadow: 0 0 0 3px rgba(196,147,50,.1);
-          }
-
-          .users-about-group {
-            grid-column: 1 / -1;
-          }
-
-          .users-about {
-            width: 100%;
-            min-height: 85px;
-            padding: 11px;
-            resize: vertical;
-            border: 1px solid #dce1e7;
-            border-radius: 7px;
-            outline: none;
-            font-family: inherit;
-            font-size: 13px;
-          }
-
-          .users-modal-footer {
-            min-height: 68px;
-            padding: 11px 23px;
-            border-top: 1px solid #e4e7eb;
-            background: #fff;
-            display: flex;
-            justify-content: flex-end;
-            gap: 10px;
-          }
-
-          .users-modal-cancel,
-          .users-modal-save {
-            min-height: 40px;
-            padding: 0 18px;
-            border-radius: 7px;
-            font-size: 13px;
-            cursor: pointer;
-          }
-
-          .users-modal-cancel {
-            border: 1px solid #dfe3e8;
-            background: #fff;
-            color: #26344d;
-          }
-
-          .users-modal-save {
-            border: 1px solid var(--ochre);
-            background: var(--ochre);
-            color: #fff;
-            font-weight: 600;
-          }
-
-          .users-modal-save:hover {
-            background: var(--ochre-dark);
           }
 
           /* =================================
@@ -2486,9 +2239,7 @@ const Users: React.FC = () => {
 
         <div className="application-page">
 
-          {/* =====================================
-              PAGE HEADER
-          ===================================== */}
+              {/* PAGE HEADER */}
 
           <div className="application-top">
 
@@ -2501,12 +2252,13 @@ const Users: React.FC = () => {
               <div>
 
                 <h1 className="application-heading">
-                  Add New User
+                  {editingUser ? "Edit User" : "Add New User"}
                 </h1>
 
                 <p className="application-subtitle">
-                  Add employee information, education,
-                  references and employment history.
+                  {editingUser
+                    ? "Update employee information, education, references and employment history."
+                    : "Add employee information, education, references and employment history."}
                 </p>
 
                 <div className="application-breadcrumb">
@@ -2553,9 +2305,7 @@ const Users: React.FC = () => {
 
           </div>
 
-          {/* =====================================
-              APPLICATION CARD
-          ===================================== */}
+              {/* APPLICATION CARD */}
 
           <div className="application-card">
 
@@ -2566,9 +2316,7 @@ const Users: React.FC = () => {
               }
             >
 
-              {/* =================================
-                  PERSONAL INFORMATION
-              ================================= */}
+                  {/* PERSONAL INFORMATION */}
 
               <section className="application-section">
 
@@ -2929,9 +2677,7 @@ const Users: React.FC = () => {
 
               </section>
 
-              {/* =================================
-                  POSITION
-              ================================= */}
+                  {/* POSITION */}
 
               <section className="application-section">
 
@@ -3101,9 +2847,7 @@ const Users: React.FC = () => {
 
               </section>
 
-              {/* =================================
-                  EDUCATION
-              ================================= */}
+                  {/* EDUCATION */}
 
               <section className="application-section">
 
@@ -3298,9 +3042,8 @@ const Users: React.FC = () => {
 
               </section>
 
-              {/* =================================
-                  REFERENCES
-              ================================= */}
+                  {/* REFERENCES */}
+             
 
               <section className="application-section">
 
@@ -3463,9 +3206,7 @@ const Users: React.FC = () => {
 
               </section>
 
-              {/* =================================
-                  EMPLOYMENT HISTORY
-              ================================= */}
+                  {/* EMPLOYMENT HISTORY */}
 
               <section className="application-section">
 
@@ -3790,9 +3531,7 @@ const Users: React.FC = () => {
 
               </section>
 
-              {/* =================================
-                  FOOTER
-              ================================= */}
+                  {/* FOOTER */}
 
               <div className="application-footer">
 
@@ -3810,7 +3549,7 @@ const Users: React.FC = () => {
                   type="submit"
                   className="application-save"
                 >
-                  Save User
+                  {editingUser ? "Update User" : "Save User"}
                 </button>
 
               </div>
@@ -3824,14 +3563,91 @@ const Users: React.FC = () => {
     );
   }
 
-  /* =========================================
-     USERS LIST PAGE
-  ========================================= */
+    //  USERS LIST PAGE
 
   return (
     <>
       <style>
         {`
+        .users-modal-overlay {
+          position: fixed;
+          inset: 0;
+          z-index: 99999;
+          padding: 15px;
+          background: rgba(15, 25, 42, .48);
+          backdrop-filter: blur(2px);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+
+        .users-delete-modal {
+          width: 400px;
+          max-width: calc(100vw - 30px);
+          padding: 28px 30px;
+          border-radius: 11px;
+          background: #fff;
+          text-align: center;
+          box-shadow: 0 20px 55px rgba(0,0,0,.22);
+        }
+
+        .users-delete-icon {
+          width: 62px;
+          height: 62px;
+          margin: 0 auto 15px;
+          border-radius: 10px;
+          background: #fbe4e4;
+          color: #e32929;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+
+        .users-delete-modal h3 {
+          margin: 0 0 7px;
+          color: #1d2b48;
+          font-size: 20px;
+        }
+
+        .users-delete-modal p {
+          max-width: 330px;
+          margin: 0 auto 19px;
+          color: #596375;
+          font-size: 13px;
+          line-height: 1.6;
+        }
+
+        .users-delete-actions {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 10px;
+        }
+
+        .users-delete-cancel,
+        .users-delete-confirm {
+          min-height: 40px;
+          padding: 0 18px;
+          border: 0;
+          border-radius: 7px;
+          font-size: 13px;
+          cursor: pointer;
+        }
+
+        .users-delete-cancel {
+          background: #f4f5f7;
+          color: #344054;
+        }
+
+        .users-delete-confirm {
+          background: #e32929;
+          color: #fff;
+        }
+
+        .users-delete-confirm:hover {
+          background: #c91f1f;
+        }
+
         .users-page {
           width: 100%;
           min-height: calc(100vh - 50px);
@@ -4415,9 +4231,7 @@ const Users: React.FC = () => {
 
       <div className="users-page">
 
-        {/* =====================================
-            HEADER
-        ===================================== */}
+            {/* HEADER */}
 
         <div className="users-page-header">
 
@@ -4456,9 +4270,7 @@ const Users: React.FC = () => {
 
         </div>
 
-        {/* =====================================
-            ROLE SELECTION MODAL
-        ===================================== */}
+            {/* ROLE SELECTION MODAL */}
 
         {showRoleModal && (
 
@@ -4534,15 +4346,15 @@ const Users: React.FC = () => {
                 <button
                   type="button"
                   className="users-role-option"
-                  onClick={() => handleRoleSelect("Director")}
+                  onClick={() => handleRoleSelect("Accountant")}
                 >
                   <div className="users-role-option-icon">
                     <BriefcaseBusiness size={22} />
                   </div>
 
                   <div>
-                    <strong>Director</strong>
-                    <span>Director profile</span>
+                    <strong>Accountant</strong>
+                    <span>Accountant profile</span>
                   </div>
                 </button>
 
@@ -4562,9 +4374,7 @@ const Users: React.FC = () => {
 
         )}
 
-        {/* =====================================
-            USERS CARD
-        ===================================== */}
+            {/* USERS CARD */}
 
         <div className="users-card">
 
@@ -4678,9 +4488,7 @@ const Users: React.FC = () => {
 
           </div>
 
-          {/* =====================================
-              TOOLBAR
-          ===================================== */}
+              {/* TOOLBAR */}
 
           <div className="users-toolbar">
 
@@ -4742,9 +4550,7 @@ const Users: React.FC = () => {
 
           </div>
 
-          {/* =====================================
-              TABLE
-          ===================================== */}
+              {/* TABLE */}
 
           <div className="users-table-wrapper">
 
@@ -4972,9 +4778,7 @@ const Users: React.FC = () => {
 
           </div>
 
-          {/* =====================================
-              FOOTER
-          ===================================== */}
+              {/* FOOTER */}
 
           <div className="users-table-footer">
 
@@ -5060,218 +4864,7 @@ const Users: React.FC = () => {
 
       </div>
 
-      {/* =========================================
-          EDIT USER MODAL
-      ========================================= */}
-
-      {editOpen &&
-        editingUser && (
-
-          <div className="users-modal-overlay">
-
-            <div className="users-form-modal">
-
-              <div className="users-modal-header">
-
-                <h3>
-                  Edit User
-                </h3>
-
-                <button
-                  type="button"
-                  className="users-modal-close"
-                  onClick={
-                    closeEditModal
-                  }
-                >
-                  ×
-                </button>
-
-              </div>
-
-              <form
-                onSubmit={
-                  handleEditUser
-                }
-              >
-
-                <div className="users-modal-body">
-
-                  <div className="users-form-grid">
-
-                    <UserInput
-                      label="First Name"
-                      required
-                      value={
-                        form.firstName
-                      }
-                      onChange={(value) =>
-                        updateForm(
-                          "firstName",
-                          value
-                        )
-                      }
-                    />
-
-                    <UserInput
-                      label="Last Name"
-                      value={
-                        form.lastName
-                      }
-                      onChange={(value) =>
-                        updateForm(
-                          "lastName",
-                          value
-                        )
-                      }
-                    />
-
-                    <UserInput
-                      label="Username"
-                      required
-                      value={
-                        form.username
-                      }
-                      onChange={(value) =>
-                        updateForm(
-                          "username",
-                          value
-                        )
-                      }
-                    />
-
-                    <UserInput
-                      label="Email"
-                      required
-                      value={
-                        form.email
-                      }
-                      onChange={(value) =>
-                        updateForm(
-                          "email",
-                          value
-                        )
-                      }
-                    />
-
-                    <UserInput
-                      label="Phone Number"
-                      value={
-                        form.phone
-                      }
-                      onChange={(value) =>
-                        updateForm(
-                          "phone",
-                          value
-                        )
-                      }
-                    />
-
-                    <UserInput
-                      label="Company"
-                      value={
-                        form.company
-                      }
-                      onChange={(value) =>
-                        updateForm(
-                          "company",
-                          value
-                        )
-                      }
-                    />
-
-                    <SelectInput
-                      label="Department"
-                      value={
-                        form.department
-                      }
-                      placeholder="Select Department"
-                      options={
-                        departments
-                      }
-                      onChange={(value) =>
-                        updateForm(
-                          "department",
-                          value
-                        )
-                      }
-                    />
-
-                    <SelectInput
-                      label="Designation"
-                      value={
-                        form.designation
-                      }
-                      placeholder="Select Designation"
-                      options={
-                        designations
-                      }
-                      onChange={(value) =>
-                        updateForm(
-                          "designation",
-                          value
-                        )
-                      }
-                    />
-
-                    <div className="users-form-group users-about-group">
-
-                      <label>
-                        About
-                      </label>
-
-                      <textarea
-                        className="users-about"
-                        rows={3}
-                        value={
-                          form.about
-                        }
-                        onChange={(e) =>
-                          updateForm(
-                            "about",
-                            e.target.value
-                          )
-                        }
-                      />
-
-                    </div>
-
-                  </div>
-
-                </div>
-
-                <div className="users-modal-footer">
-
-                  <button
-                    type="button"
-                    className="users-modal-cancel"
-                    onClick={
-                      closeEditModal
-                    }
-                  >
-                    Cancel
-                  </button>
-
-                  <button
-                    type="submit"
-                    className="users-modal-save"
-                  >
-                    Save Changes
-                  </button>
-
-                </div>
-
-              </form>
-
-            </div>
-
-          </div>
-
-        )}
-
-      {/* =========================================
-          DELETE MODAL
-      ========================================= */}
+          {/* DELETE MODAL */}
 
       {deleteOpen && (
 
@@ -5330,120 +4923,6 @@ const Users: React.FC = () => {
       )}
 
     </>
-  );
-};
-
-/* =========================================
-   REUSABLE INPUT
-========================================= */
-
-interface UserInputProps {
-  label: string;
-  value: string;
-  required?: boolean;
-  onChange: (value: string) => void;
-}
-
-const UserInput = ({
-  label,
-  value,
-  required = false,
-  onChange,
-}: UserInputProps) => {
-  return (
-    <div className="users-form-group">
-
-      <label>
-
-        {label}
-
-        {required && (
-          <span className="users-required">
-            *
-          </span>
-        )}
-
-      </label>
-
-      <input
-        type="text"
-        value={value}
-        onChange={(e) =>
-          onChange(
-            e.target.value
-          )
-        }
-      />
-
-    </div>
-  );
-};
-
-/* =========================================
-   REUSABLE SELECT
-========================================= */
-
-interface SelectInputProps {
-  label: string;
-  value: string;
-  placeholder: string;
-  options: string[];
-  required?: boolean;
-  onChange: (value: string) => void;
-}
-
-const SelectInput = ({
-  label,
-  value,
-  placeholder,
-  options,
-  required = false,
-  onChange,
-}: SelectInputProps) => {
-  return (
-    <div className="users-form-group">
-
-      <label>
-
-        {label}
-
-        {required && (
-          <span className="users-required">
-            *
-          </span>
-        )}
-
-      </label>
-
-      <select
-        value={value}
-        onChange={(e) =>
-          onChange(
-            e.target.value
-          )
-        }
-      >
-
-        <option value="">
-          {placeholder}
-        </option>
-
-        {options.map(
-          (option) => (
-
-            <option
-              key={option}
-              value={option}
-            >  
-              {option}
-            </option>
-
-          )
-        )}
-
-      </select>
-
-    </div>
   );
 };
 

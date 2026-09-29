@@ -26,35 +26,40 @@ const getAuthHeaders = (token?: string | null) => {
 
 const getApiErrorMessage = (error: unknown): string => {
   const axiosError = error as AxiosError<any>;
+  const status = axiosError?.response?.status;
   const data = axiosError?.response?.data;
 
+  let message = "";
+
   if (typeof data === "string") {
-    return data;
-  }
-
-  if (data?.message) {
-    return data.message;
-  }
-
-  if (data?.Message) {
-    return data.Message;
-  }
-
-  if (data?.errors) {
+    message = data;
+  } else if (data?.message) {
+    message = data.message;
+  } else if (data?.Message) {
+    message = data.Message;
+  } else if (data?.errors) {
     if (typeof data.errors === "object") {
-      return Object.entries(data.errors)
+      message = Object.entries(data.errors)
         .map(([key, value]) => {
           return `${key}: ${
-            Array.isArray(value) ? value.join(", ") : String(value)
+            Array.isArray(value)
+              ? value.join(", ")
+              : String(value)
           }`;
         })
         .join(" | ");
+    } else {
+      message = String(data.errors);
     }
-
-    return String(data.errors);
   }
 
-  return axiosError?.message || "Something went wrong.";
+  if (status) {
+    return message
+      ? `HTTP ${status}: ${message}`
+      : `HTTP ${status}: Request failed.`;
+  }
+
+  return message || axiosError?.message || "Something went wrong.";
 };
 
 const getJsonConfig = (token?: string | null) => ({
@@ -1118,36 +1123,83 @@ export interface GetEmployeesParams {
 export const getAllEmployees = async (
   params?: GetEmployeesParams
 ) => {
+  const token = getToken();
+
+  console.log("GET ALL EMPLOYEES REQUEST", {
+    url: `${BASE_URL}/Employee/page-data`,
+    params: {
+      Search: params?.Search || undefined,
+      DesignationId:
+        params?.DesignationId || undefined,
+      UserStatus: params?.UserStatus,
+      FromDate:
+        params?.FromDate || undefined,
+      ToDate:
+        params?.ToDate || undefined,
+      PageNumber:
+        params?.PageNumber ?? 1,
+      PageSize:
+        params?.PageSize ?? 100,
+      SortBy:
+        params?.SortBy || undefined,
+    },
+    hasToken: !!token,
+  });
+
   try {
-    return (
-      await axios.get(
-        `${BASE_URL}/Employee/page-data`,
-        {
-          params: {
-            Search:
-              params?.Search || undefined,
-            DesignationId:
-              params?.DesignationId ||
-              undefined,
-            UserStatus:
-              params?.UserStatus,
-            FromDate:
-              params?.FromDate || undefined,
-            ToDate:
-              params?.ToDate || undefined,
-            PageNumber:
-              params?.PageNumber ?? 1,
-            PageSize:
-              params?.PageSize ?? 100,
-            SortBy:
-              params?.SortBy || undefined,
-          },
-          headers: getAuthHeaders(),
-        }
-      )
-    ).data;
+    const response = await axios.get(
+      `${BASE_URL}/Employee/page-data`,
+      {
+        params: {
+          Search:
+            params?.Search || undefined,
+          DesignationId:
+            params?.DesignationId || undefined,
+          UserStatus:
+            params?.UserStatus,
+          FromDate:
+            params?.FromDate || undefined,
+          ToDate:
+            params?.ToDate || undefined,
+          PageNumber:
+            params?.PageNumber ?? 1,
+          PageSize:
+            params?.PageSize ?? 100,
+          SortBy:
+            params?.SortBy || undefined,
+        },
+        headers: {
+          ...getAuthHeaders(token),
+          Accept: "application/json",
+        },
+      }
+    );
+
+    console.log(
+      "GET ALL EMPLOYEES RESPONSE",
+      response.data
+    );
+
+    return response.data;
   } catch (error) {
-    throw new Error(getApiErrorMessage(error));
+    const axiosError =
+      error as AxiosError<any>;
+
+    console.error(
+      "GET ALL EMPLOYEES API ERROR",
+      {
+        status: axiosError?.response?.status,
+        data: axiosError?.response?.data,
+        url: axiosError?.config?.url,
+        method: axiosError?.config?.method,
+        hasAuthorization:
+          !!axiosError?.config?.headers?.Authorization,
+      }
+    );
+
+    throw new Error(
+      getApiErrorMessage(error)
+    );
   }
 };
 
@@ -1951,14 +2003,6 @@ export type LeaveAvailType =
   | 3
   | 4;
 
-export type LeaveStatusValue =
-  | "Approved"
-  | "Rejected";
-
-export interface UpdateLeaveStatusPayload {
-  status: LeaveStatusValue;
-  remarks?: string;
-}
 
 export interface GetAllLeaveParams {
   UserId?: string;
@@ -2252,15 +2296,20 @@ export const updateLeave = async (
    }
 ===================================================== */
 
+export type LeaveStatusValue = 1 | 2 | 3;
+
+export interface UpdateLeaveStatusPayload {
+  status: LeaveStatusValue;
+  remarks?: string;
+}
+
 export const updateLeaveStatus = async (
   leaveId: string,
   reviewedByUserId: string,
   data: UpdateLeaveStatusPayload
 ) => {
   if (!leaveId?.trim()) {
-    throw new Error(
-      "Leave ID is required."
-    );
+    throw new Error("Leave ID is required.");
   }
 
   if (!reviewedByUserId?.trim()) {
@@ -2269,21 +2318,23 @@ export const updateLeaveStatus = async (
     );
   }
 
-  const status = Number(
-    data.status
-  );
-
-  if (![0, 1, 2].includes(status)) {
+  if (![1, 2, 3].includes(data.status)) {
     throw new Error(
-      "Status must be 0, 1, or 2."
+      "Status must be 1 (New), 2 (Approved), or 3 (Declined)."
     );
   }
 
   const payload = {
-    status,
-    remarks:
-      data.remarks?.trim() || "",
+    status: data.status,
+    remarks: data.remarks?.trim() || "",
   };
+
+  console.log("UPDATE LEAVE STATUS REQUEST:", {
+    url: `${LEAVE_BASE_URL}/update-leave-status/${leaveId}/${reviewedByUserId}`,
+    leaveId,
+    reviewedByUserId,
+    payload,
+  });
 
   try {
     const response = await axios.put(
@@ -2296,8 +2347,27 @@ export const updateLeaveStatus = async (
       getJsonConfig()
     );
 
+    console.log(
+      "UPDATE LEAVE STATUS RESPONSE:",
+      response.data
+    );
+
     return response.data;
   } catch (error) {
+    const axiosError =
+      error as AxiosError<any>;
+
+    console.error(
+      "UPDATE LEAVE STATUS API ERROR:",
+      {
+        status: axiosError?.response?.status,
+        response: axiosError?.response?.data,
+        leaveId,
+        reviewedByUserId,
+        payload,
+      }
+    );
+
     throw new Error(
       getApiErrorMessage(error)
     );

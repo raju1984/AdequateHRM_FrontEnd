@@ -45,8 +45,9 @@ interface LeaveItem {
 
   leaveReason: string;
   reason: string;
-
+    remarks: string;
   requestDate: string;
+
   from: string;
   fromRaw: string;
   to: string;
@@ -358,6 +359,19 @@ const normalizeLeave = (
     ""
   );
 
+  const remarks = pickField(
+  raw,
+  [
+    "remarks",
+    "Remarks",
+    "declineRemark",
+    "DeclineRemark",
+    "declinedRemark",
+    "DeclinedRemark",
+  ],
+  ""
+);
+
   const reason = pickField(
     raw,
     ["reason", "Reason"],
@@ -525,6 +539,9 @@ const normalizeLeave = (
     ),
 
     reason: String(reason),
+
+
+      remarks: String(remarks),
 
     requestDate:
       formatDisplayDate(
@@ -1761,13 +1778,16 @@ const Leave: React.FC = () => {
           background: #c8cdd4;
           border-radius: 10px;
         }
+.leave-table {
+  width: 100%;
+  min-width: 1250px;
+  margin: 0;
+  border-collapse: collapse;
+}
 
-        .leave-table {
-          width: 100%;
-          min-width: 1420px;
-          margin: 0;
-          border-collapse: collapse;
-        }
+.leave-table.employee {
+  min-width: 1350px;
+}
 
         .leave-table.employee {
           min-width: 1580px;
@@ -1777,32 +1797,31 @@ const Leave: React.FC = () => {
           background: #e1e4e9;
         }
 
-        .leave-table th {
-          height: 43px;
-          padding: 0 13px;
-          vertical-align: middle;
-          color: #07152e;
-          font-size: 13px;
-          font-weight: 600;
-          white-space: nowrap;
-        }
+      .leave-table th {
+  height: 43px;
+  padding: 0 8px;
+  vertical-align: middle;
+  color: #07152e;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+}
 
-        .leave-table td {
-          height: 63px;
-          padding: 0 13px;
-          vertical-align: middle;
-          border-bottom: 1px solid #dfe3e8;
-          background: #fff;
-          color: #5b687a;
-          font-size: 13px;
-          white-space: nowrap;
-        }
-
-        .checkbox-col {
-          width: 60px;
-          min-width: 60px;
-          text-align: center;
-        }
+.leave-table td {
+  height: 63px;
+  padding: 0 8px;
+  vertical-align: middle;
+  border-bottom: 1px solid #dfe3e8;
+  background: #fff;
+  color: #5b687a;
+  font-size: 13px;
+  white-space: nowrap;
+}
+.checkbox-col {
+  width: 45px;
+  min-width: 45px;
+  text-align: center;
+}
 
         .leave-checkbox {
           width: 18px;
@@ -1919,50 +1938,56 @@ const Leave: React.FC = () => {
           background: #bd4fd0;
         }
 
-        .action-column {
-          min-width: 235px;
-          width: 235px;
-        }
-
-        .leave-actions {
-          display: inline-flex;
-          align-items: center;
-          gap: 14px;
-        }
-
-        .action-icon {
-          width: 20px;
-          height: 25px;
-          padding: 0;
-          border: 0;
-          background: transparent;
-          color: #506b80;
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-          cursor: pointer;
-        }
-
+     
         .action-icon:disabled {
           opacity: .5;
           cursor: not-allowed;
         }
 
-        .action-icon i {
-          font-size: 15px;
-        }
+       
 
-        .approve-btn,
-        .reject-btn {
-          height: 29px;
-          padding: 0 11px;
-          border: 0;
-          border-radius: 5px;
-          color: #fff;
-          font-size: 12px;
-          font-weight: 600;
-          cursor: pointer;
-        }
+        .action-column {
+  min-width: 150px;
+  width: 150px;
+  padding-left: 8px !important;
+  padding-right: 8px !important;
+}
+
+.leave-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.action-icon {
+  width: 26px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #506b80;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.action-icon i {
+  font-size: 15px;
+}
+
+.approve-btn,
+.reject-btn {
+  height: 29px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 5px;
+  color: #fff;
+  font-size: 20px;
+  font-weight: 600;
+  cursor: pointer;
+}
 
         .approve-btn {
           background: #08bf62;
@@ -3046,7 +3071,7 @@ const Leave: React.FC = () => {
                                       )
                                     }
                                   >
-                                    Approve
+                                    Approve 
                                   </button>
 
                                   <button
@@ -3462,21 +3487,29 @@ const Leave: React.FC = () => {
                     }
                   />
 
-                  <ViewItem
-                    label="Status"
-                    value={
-                      selectedLeave.status ||
-                      "-"
-                    }
-                  />
+                <ViewItem
+  label="Status"
+  value={
+    selectedLeave.status ||
+    "-"
+  }
+/>
 
-                  <ViewItem
-                    label="Approved By"
-                    value={
-                      selectedLeave.approvedBy ||
-                      "-"
-                    }
-                  />
+<ViewItem
+  label="Approved / Rejected By"
+  value={
+    selectedLeave.approvedBy ||
+    "-"
+  }
+/>
+
+<ViewItem
+  label="Declined Remark"
+  value={
+    selectedLeave.remarks ||
+    "-"
+  }
+/>
 
                 </div>
               </div>

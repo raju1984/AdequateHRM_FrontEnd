@@ -119,24 +119,16 @@ const AVAIL_TYPE_MAP: Record<
   "Second Half": 3,
 };
 
-const STATUS_MAP: Record<
-  LeaveStatus,
-  number
-> = {
-  New: 0,
-  Approved: 1,
-  Declined: 2,
+const STATUS_MAP: Record<LeaveStatus, number> = {
+  New: 1,
+  Approved: 2,
+  Declined: 3,
 };
-
-const STATUS_LABEL: Record<
-  number,
-  LeaveStatus
-> = {
-  0: "New",
-  1: "Approved",
-  2: "Declined",
+const STATUS_LABEL: Record<number, LeaveStatus> = {
+  1: "New",
+  2: "Approved",
+  3: "Declined",
 };
-
 const emptyForm: LeaveForm = {
   employeeId: "",
   leaveReasonId: "",
@@ -151,7 +143,7 @@ const emptyForm: LeaveForm = {
    CURRENT USER
 ========================================================= */
 
-const getCurrentUserId = (): string => {
+const getCurrentUserId = () => {
   const keys = [
     "userId",
     "UserId",
@@ -162,8 +154,7 @@ const getCurrentUserId = (): string => {
   ];
 
   for (const key of keys) {
-    const value =
-      localStorage.getItem(key);
+    const value = localStorage.getItem(key);
 
     if (value?.trim()) {
       return value.trim();
@@ -172,7 +163,6 @@ const getCurrentUserId = (): string => {
 
   return "";
 };
-
 /* =========================================================
    RESPONSE HELPERS
 ========================================================= */
@@ -695,39 +685,41 @@ const getLeaveTypeName = (
    STATUS HELPERS
 ========================================================= */
 
-const parseStatus = (
-  value: any
-): number => {
+const parseStatus = (value: any): number => {
   if (typeof value === "number") {
-    return value;
+    return [1, 2, 3].includes(value) ? value : 1;
   }
 
-  const normalized = String(
-    value ?? ""
-  )
+  const normalized = String(value ?? "")
     .trim()
     .toLowerCase();
 
   if (
-    normalized === "approved"
+    normalized === "new" ||
+    normalized === "pending"
   ) {
     return 1;
+  }
+
+  if (normalized === "approved") {
+    return 2;
   }
 
   if (
     normalized === "declined" ||
     normalized === "rejected"
   ) {
-    return 2;
+    return 3;
   }
 
   const numeric = Number(value);
 
-  return Number.isFinite(numeric)
-    ? numeric
-    : 0;
-};
+  if ([1, 2, 3].includes(numeric)) {
+    return numeric;
+  }
 
+  return 1;
+};
 /* =========================================================
    AVAIL TYPE HELPERS
 ========================================================= */
@@ -1389,6 +1381,16 @@ const Leaves = () => {
     setCurrentPage,
   ] = useState(1);
 
+
+  const [declineOpen, setDeclineOpen] = useState(false);
+const [declineLeave, setDeclineLeave] =
+  useState<LeaveItem | null>(null);
+const [declineRemark, setDeclineRemark] =
+  useState("");
+const [declining, setDeclining] = useState(false);
+const [declineError, setDeclineError] =
+  useState("");
+  
   const [addOpen, setAddOpen] =
     useState(false);
 
@@ -2569,102 +2571,214 @@ const Leaves = () => {
      STATUS UPDATE
   ===================================================== */
 
-  const handleStatusChange =
-    async (
-      item: LeaveItem,
-      nextStatus: LeaveStatus
-    ) => {
-      const reviewedByUserId =
-        getCurrentUserId();
+const handleStatusChange = async (
+  item: LeaveItem,
+  nextStatus: LeaveStatus
+) => {
+  if (item.status === nextStatus) {
+    return;
+  }
 
-      if (
-        !reviewedByUserId
-      ) {
-        setError(
-          "ReviewedByUserId was not found in localStorage. Please login again."
-        );
+  /*
+   * Declined select karte hi API call mat karo.
+   * Pehle remark modal open hoga.
+   */
+  if (nextStatus === "Declined") {
+    setDeclineLeave(item);
+    setDeclineRemark(item.remarks || "");
+    setDeclineError("");
+    setDeclineOpen(true);
+    return;
+  }
 
-        return;
-      }
+  const reviewedByUserId = getCurrentUserId();
 
-      const previousStatus =
-        item.status;
+  if (!reviewedByUserId) {
+    setError(
+      "Admin user ID not found. Please login again."
+    );
+    return;
+  }
 
-      const previousStatusValue =
-        item.statusValue;
+  const nextStatusValue = STATUS_MAP[nextStatus];
 
-      const nextStatusValue =
-        STATUS_MAP[
-          nextStatus
-        ];
+  if (![1, 2, 3].includes(nextStatusValue)) {
+    setError("Invalid leave status.");
+    return;
+  }
 
-      setLeaveData(
-        (prev) =>
-          prev.map(
-            (leave) =>
-              leave.id ===
-              item.id
-                ? {
-                    ...leave,
-                    status:
-                      nextStatus,
-                    statusValue:
-                      nextStatusValue,
-                  }
-                : leave
-          )
-      );
+  const previousStatus = item.status;
+  const previousStatusValue = item.statusValue;
 
-      try {
-        await updateLeaveStatus(
-          item.id,
-          reviewedByUserId,
-          {
-            status:
-              nextStatusValue,
+  console.log("CHANGE LEAVE STATUS:", {
+    leaveId: item.id,
+    reviewedByUserId,
+    previousStatus,
+    previousStatusValue,
+    nextStatus,
+    nextStatusValue,
+  });
 
-            remarks:
-              item.remarks ||
-              "",
+  // Approved/New direct transition
+  setLeaveData((prev) =>
+    prev.map((leave) =>
+      leave.id === item.id
+        ? {
+            ...leave,
+            status: nextStatus,
+            statusValue: nextStatusValue,
           }
-        );
+        : leave
+    )
+  );
 
-        await loadLeaves(
-          employees,
-          leaveTypes
-        );
-      } catch (err: any) {
-        console.error(
-          "UPDATE LEAVE STATUS ERROR:",
-          err
-        );
-
-        setLeaveData(
-          (prev) =>
-            prev.map(
-              (leave) =>
-                leave.id ===
-                item.id
-                  ? {
-                      ...leave,
-                      status:
-                        previousStatus,
-                      statusValue:
-                        previousStatusValue,
-                    }
-                  : leave
-            )
-        );
-
-        setError(
-          err?.response?.data
-            ?.message ||
-            err?.message ||
-            "Unable to update leave status."
-        );
+  try {
+    await updateLeaveStatus(
+      item.id,
+      reviewedByUserId,
+      {
+        status: nextStatusValue as 1 | 2 | 3,
+        remarks: item.remarks || "",
       }
-    };
+    );
 
+    console.log(
+      "LEAVE STATUS UPDATED SUCCESSFULLY:",
+      {
+        leaveId: item.id,
+        status: nextStatus,
+        statusValue: nextStatusValue,
+      }
+    );
+
+    await loadLeaves(employees, leaveTypes);
+
+    setError("");
+  } catch (error: any) {
+    console.error(
+      "LEAVE STATUS UPDATE ERROR:",
+      error
+    );
+
+    setLeaveData((prev) =>
+      prev.map((leave) =>
+        leave.id === item.id
+          ? {
+              ...leave,
+              status: previousStatus,
+              statusValue: previousStatusValue,
+            }
+          : leave
+      )
+    );
+
+    setError(
+      error?.message ||
+        "Unable to update leave status."
+    );
+  }
+};
+
+
+const closeDeclineModal = () => {
+  if (declining) {
+    return;
+  }
+
+  setDeclineOpen(false);
+  setDeclineLeave(null);
+  setDeclineRemark("");
+  setDeclineError("");
+};
+
+const handleDeclineConfirm = async () => {
+  if (!declineLeave) {
+    return;
+  }
+
+  const reviewedByUserId = getCurrentUserId();
+
+  if (!reviewedByUserId) {
+    setDeclineError(
+      "Admin user ID not found. Please login again."
+    );
+    return;
+  }
+
+  const remark = declineRemark.trim();
+
+  const previousStatus =
+    declineLeave.status;
+
+  const previousStatusValue =
+    declineLeave.statusValue;
+
+  const previousRemarks =
+    declineLeave.remarks || "";
+
+  setDeclining(true);
+  setDeclineError("");
+  setError("");
+
+  setLeaveData((prev) =>
+    prev.map((leave) =>
+      leave.id === declineLeave.id
+        ? {
+            ...leave,
+            status: "Declined",
+            statusValue: 3,
+            remarks: remark,
+          }
+        : leave
+    )
+  );
+
+  try {
+    await updateLeaveStatus(
+      declineLeave.id,
+      reviewedByUserId,
+      {
+        status: 3,
+        remarks: remark,
+      }
+    );
+
+    setDeclineOpen(false);
+    setDeclineLeave(null);
+    setDeclineRemark("");
+    setDeclineError("");
+
+    await loadLeaves(
+      employees,
+      leaveTypes
+    );
+  } catch (error: any) {
+    console.error(
+      "DECLINE LEAVE ERROR:",
+      error
+    );
+
+    setLeaveData((prev) =>
+      prev.map((leave) =>
+        leave.id === declineLeave.id
+          ? {
+              ...leave,
+              status: previousStatus,
+              statusValue: previousStatusValue,
+              remarks: previousRemarks,
+            }
+          : leave
+      )
+    );
+
+    setDeclineError(
+      error?.message ||
+        "Unable to decline leave."
+    );
+  } finally {
+    setDeclining(false);
+  }
+};
   /* =====================================================
      DELETE
   ===================================================== */
@@ -3582,6 +3696,188 @@ const Leaves = () => {
           line-height: 1.5;
         }
 
+        .leave-type-cell {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.leave-info-wrapper {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+}
+
+.leave-info-icon {
+  color: #1677ff;
+}
+
+.leave-reason-tooltip {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 8px);
+  transform: translateX(-50%);
+
+  width: 230px;
+  padding: 10px 12px;
+
+  background: black;
+  color: white;
+
+  border: 1px solid #e5e7eb;
+  border-radius: 7px;
+
+  box-shadow: 0 5px 18px rgba(0, 0, 0, 0.12);
+
+  font-size: 13px;
+  line-height: 1.4;
+
+  white-space: normal;
+
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+
+  transition: opacity 0.15s ease;
+  z-index: 100;
+}
+
+.leave-info-wrapper:hover .leave-reason-tooltip {
+  opacity: 1;
+  visibility: visible;
+}
+
+/* =====================================================
+   DECLINE LEAVE MODAL
+===================================================== */
+
+.leave-decline-modal {
+  width: 100%;
+  max-width: 520px;
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+  overflow: hidden;
+}
+
+.leave-decline-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 20px;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.leave-decline-header h5 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: #212529;
+}
+
+.leave-decline-close {
+  border: 0;
+  background: transparent;
+  font-size: 24px;
+  line-height: 1;
+  color: #6c757d;
+  cursor: pointer;
+  padding: 0;
+}
+
+.leave-decline-close:hover {
+  color: #212529;
+}
+
+.leave-decline-body {
+  padding: 20px;
+}
+
+.leave-decline-label {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #344054;
+}
+
+.leave-decline-textarea {
+  width: 100%;
+  min-height: 120px;
+  padding: 12px 14px;
+  border: 1px solid #d0d5dd;
+  border-radius: 6px;
+  resize: vertical;
+  outline: none;
+  font-size: 14px;
+  line-height: 1.5;
+  color: #344054;
+  background: #fff;
+  box-sizing: border-box;
+}
+
+.leave-decline-textarea:focus {
+  border-color: #0d6efd;
+  box-shadow: 0 0 0 2px rgba(13, 110, 253, 0.1);
+}
+
+.leave-decline-textarea::placeholder {
+  color: #98a2b3;
+}
+
+.leave-decline-error {
+  margin-top: 8px;
+  font-size: 13px;
+  color: #dc3545;
+}
+
+.leave-decline-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 15px 20px;
+  border-top: 1px solid #e9ecef;
+}
+
+.leave-decline-cancel {
+  min-width: 90px;
+  padding: 9px 16px;
+  border: 1px solid #d0d5dd;
+  border-radius: 6px;
+  background: #fff;
+  color: #344054;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.leave-decline-cancel:hover {
+  background: #f8f9fa;
+}
+
+.leave-decline-confirm {
+  min-width: 100px;
+  padding: 9px 16px;
+  border: 1px solid #dc3545;
+  border-radius: 6px;
+  background: #dc3545;
+  color: #fff;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.leave-decline-confirm:hover {
+  background: #bb2d3b;
+  border-color: #bb2d3b;
+}
+
+.leave-decline-cancel:disabled,
+.leave-decline-confirm:disabled,
+.leave-decline-close:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
         @media(max-width:900px){
           .leave-list-header,
           .leave-toolbar {
@@ -3637,7 +3933,7 @@ const Leaves = () => {
 
           </div>
 
-          <button
+          {/* <button
             type="button"
             className="leave-add-btn"
             onClick={
@@ -3646,7 +3942,7 @@ const Leaves = () => {
           >
             <i className="ti ti-circle-plus" />
             Add Leave
-          </button>
+          </button> */}
 
         </div>
 
@@ -4071,18 +4367,17 @@ const Leaves = () => {
 
                           <td>
 
-                            <div className="leave-type-cell">
+                           <div className="leave-type-cell">
+  <span>{item.type}</span>
 
-                              {
-                                item.type
-                              }
+  <span className="leave-info-wrapper">
+    <Info size={16} className="leave-info-icon" />
 
-                              <Info
-                                size={13}
-                                className="leave-info-icon"
-                              />
-
-                            </div>
+    <span className="leave-reason-tooltip">
+      {item.reason?.trim() || "No reason provided"}
+    </span>
+  </span>
+</div>
 
                           </td>
 
@@ -4131,6 +4426,8 @@ const Leaves = () => {
                                   )
                                 }
                               >
+
+
 
                                 <option value="Approved">
                                   Approved
@@ -5301,6 +5598,91 @@ const Leaves = () => {
           </div>
         )}
 
+{/* =====================================================
+    DECLINE LEAVE MODAL
+===================================================== */}
+
+{declineOpen &&
+  declineLeave && (
+    <div className="leave-modal-overlay">
+
+      <div className="leave-decline-modal">
+
+        <div className="leave-modal-header">
+
+          <h3>
+            Decline Leave
+          </h3>
+
+          <button
+            className="leave-modal-close"
+            type="button"
+            onClick={closeDeclineModal}
+            disabled={declining}
+          >
+            ×
+          </button>
+
+        </div>
+
+        <div className="leave-decline-body">
+
+          {declineError && (
+            <div className="leave-decline-error">
+              {declineError}
+            </div>
+          )}
+
+          <div className="leave-form-group">
+
+            <label className="leave-decline-label">
+              Decline Remark
+            </label>
+
+            <textarea
+              className="leave-decline-textarea"
+              placeholder="Enter reason for declining this leave..."
+              value={declineRemark}
+              disabled={declining}
+              onChange={(e) =>
+                setDeclineRemark(
+                  e.target.value
+                )
+              }
+            />
+
+          </div>
+
+        </div>
+
+        <div className="leave-modal-footer">
+
+          <button
+            type="button"
+            className="leave-modal-cancel"
+            onClick={closeDeclineModal}
+            disabled={declining}
+          >
+            Cancel
+          </button>
+
+          <button
+            type="button"
+            className="leave-decline-confirm"
+            onClick={handleDeclineConfirm}
+            disabled={declining}
+          >
+            {declining
+              ? "Declining..."
+              : "Decline Leave"}
+          </button>
+
+        </div>
+
+      </div>
+
+    </div>
+  )}
       {/* =====================================================
           DELETE LEAVE MODAL
       ===================================================== */}

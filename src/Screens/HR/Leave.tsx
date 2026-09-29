@@ -36,15 +36,15 @@ type LeaveItem = {
   name: string;
   role: string;
   leaveTypeMasterId: string;
-  type: string; // leave type name, e.g. "Medical Leave"
-  from: string; // formatted display date
-  to: string; // formatted display date
-  fromRaw: string; // raw ISO date, needed to re-open edit form / re-send to API
+  type: string;
+  from: string;
+  to: string;
+  fromRaw: string;
   toRaw: string;
-  days: string; // formatted "X Day(s)" for display
-  availType: number; // 1 = Full Day, 2 = First Half, 3 = Second Half (confirm with backend)
+  days: string;
+  availType: number;
   status: LeaveStatus;
-  statusCode: number; // raw numeric status from API
+  statusCode: number;
   reason?: string;
 };
 
@@ -70,14 +70,10 @@ type ChatMessage = {
 
 /* =====================================================
    STATUS + AVAIL TYPE MAPPING
-   NOTE: Confirm these numeric codes match your backend's
-   enum values for Status and AvailType. Adjust as needed.
 ===================================================== */
 
-// Confirmed from real API response: status 1 => statusName "Pending", status 2 => statusName "Approved".
-// Declined wasn't present in the sample payloads — 3 is a best guess, confirm with backend/Swagger.
 const STATUS_CODE_TO_LABEL: Record<number, LeaveStatus> = {
-  1: "New", // "Pending" in API terms, shown as "New" in this UI
+  1: "New",
   2: "Approved",
   3: "Declined",
 };
@@ -88,7 +84,6 @@ const STATUS_LABEL_TO_CODE: Record<LeaveStatus, number> = {
   Declined: 3,
 };
 
-// Maps directly off statusName when available, since it's more reliable than guessing codes.
 const STATUS_NAME_TO_LABEL: Record<string, LeaveStatus> = {
   Pending: "New",
   New: "New",
@@ -97,11 +92,8 @@ const STATUS_NAME_TO_LABEL: Record<string, LeaveStatus> = {
   Rejected: "Declined",
 };
 
-// ⚠️ UNVERIFIED — "1 = Full Day" is confirmed from a real GET /get-all-leave record
-// ("availType": 1, "availTypeName": "Full Day"). The values 2 and 3 for First/Second
-// Half are guesses and are the likely cause of the "AvailType is invalid" error on
-// add-leave. Check the /add-leave Swagger schema (or the AvailType enum definition)
-// for the real values and update both maps below to match.
+// ⚠️ UNVERIFIED — 1 = Full Day is confirmed. 2 and 3 are guesses.
+// Check the /add-leave Swagger schema and update both maps if needed.
 const AVAIL_TYPE_TO_LABEL: Record<number, string> = {
   1: "Full Day",
   2: "First Half",
@@ -118,13 +110,50 @@ const AVAIL_LABEL_TO_TYPE: Record<string, number> = {
    HELPERS
 ===================================================== */
 
-// Pull a field off an API object trying several common casings,
-// since the exact response shape from get-all-leave isn't confirmed.
 const pick = (obj: any, ...keys: string[]) => {
   for (const k of keys) {
     if (obj?.[k] !== undefined && obj?.[k] !== null) return obj[k];
   }
   return undefined;
+};
+
+// Finds the list inside any API response shape:
+//  []                         -> itself
+//  { data: [] }               -> data
+//  { data: { items: [] } }    -> data.items
+//  { data: { leaveTypes: [] } } / { data: { result: [] } } / any array value
+const extractList = (res: any, ...preferredKeys: string[]): any[] => {
+  if (Array.isArray(res)) return res;
+
+  const commonKeys = [
+    "items",
+    "Items",
+    "list",
+    "List",
+    "records",
+    "Records",
+    "results",
+    "Results",
+    "leaveTypes",
+    "LeaveTypes",
+    "messages",
+    "Messages",
+  ];
+
+  const containers = [res, res?.data, res?.Data, res?.result, res?.Result];
+
+  for (const c of containers) {
+    if (Array.isArray(c)) return c;
+    if (c && typeof c === "object") {
+      for (const k of [...preferredKeys, ...commonKeys]) {
+        if (Array.isArray(c[k])) return c[k];
+      }
+      for (const v of Object.values(c)) {
+        if (Array.isArray(v)) return v as any[];
+      }
+    }
+  }
+  return [];
 };
 
 const formatDisplayDate = (raw?: string) => {
@@ -142,7 +171,7 @@ const toInputDate = (raw?: string) => {
   if (!raw) return "";
   const d = new Date(raw);
   if (Number.isNaN(d.getTime())) return "";
-  return d.toISOString().slice(0, 10); // yyyy-mm-dd for <input type="date">
+  return d.toISOString().slice(0, 10);
 };
 
 const calcDaysLabel = (fromRaw?: string, toRaw?: string, fallback?: number) => {
@@ -160,7 +189,6 @@ const calcDaysLabel = (fromRaw?: string, toRaw?: string, fallback?: number) => {
   return "-";
 };
 
-// Normalizes one raw API leave record (from GET /get-all-leave) into the shape the UI uses.
 const mapApiLeave = (raw: any): LeaveItem => {
   const id = String(pick(raw, "id", "Id", "leaveId", "LeaveId"));
   const userId = String(pick(raw, "userId", "UserId") ?? "");
@@ -192,18 +220,14 @@ const mapApiLeave = (raw: any): LeaveItem => {
     toRaw: toRaw ?? "",
     days: calcDaysLabel(fromRaw, toRaw, noOfDays),
     availType,
-    // Prefer the human-readable statusName from the API when present; fall back to the numeric code map.
     status: (statusName && STATUS_NAME_TO_LABEL[statusName]) || STATUS_CODE_TO_LABEL[statusCode] || "New",
     statusCode,
     reason,
   };
 };
 
-// TODO: point this at however you actually store the logged-in user's id (auth context, redux, etc.)
 const getCurrentUserId = () => localStorage.getItem("userId") || "";
 
-// Normalizes one raw chat message from GET /api/LeaveChat/{leaveId}.
-// Response shape isn't confirmed — adjust the pick() keys once you see the real payload.
 const mapChatMessage = (raw: any): ChatMessage => {
   const currentUserId = getCurrentUserId();
   const senderId = String(pick(raw, "senderId", "SenderId", "userId", "UserId") ?? "");
@@ -235,6 +259,8 @@ const Leaves: React.FC = () => {
 
   const [employees, setEmployees] = useState<EmployeeOption[]>([]);
   const [leaveTypes, setLeaveTypes] = useState<LeaveTypeOption[]>([]);
+  const [leaveTypesLoading, setLeaveTypesLoading] = useState(false);
+  const [leaveTypesError, setLeaveTypesError] = useState<string | null>(null);
 
   const [selected, setSelected] = useState<string[]>([]);
   const [rowsPerPage, setRowsPerPage] = useState(10);
@@ -291,13 +317,7 @@ const Leaves: React.FC = () => {
         PageSize: rowsPerPage,
       });
 
-      // Confirmed shape: { statusCode, message, data: { items: [...], pageNumber, ... }, isSuccess }
-      const rawList: any[] =
-        pick(res, "data")?.items ??
-        pick(res, "Data")?.Items ??
-        pick(res, "data", "Data", "items", "Items") ??
-        res ??
-        [];
+      const rawList = extractList(res, "items");
       setLeaveData(rawList.map(mapApiLeave));
     } catch (err: any) {
       setErrorMsg(err?.message || "Failed to load leaves.");
@@ -310,12 +330,7 @@ const Leaves: React.FC = () => {
   const fetchEmployees = useCallback(async () => {
     try {
       const res = await getAllEmployees({ PageSize: 500 });
-      // Confirmed shape: { data: { employees: [...], designations: [...], summary: {...} } }
-      const rawList: any[] =
-        pick(res, "data")?.employees ??
-        pick(res, "data", "Data", "items", "Items") ??
-        res ??
-        [];
+      const rawList = extractList(res, "employees");
       setEmployees(
         rawList.map((e) => ({
           id: String(pick(e, "id", "Id", "userId", "UserId")),
@@ -326,30 +341,52 @@ const Leaves: React.FC = () => {
         }))
       );
     } catch {
-      // Non-fatal: Add/Edit employee dropdown will just be empty.
+      // Non-fatal
     }
   }, []);
 
   const fetchLeaveTypes = useCallback(async () => {
+    setLeaveTypesLoading(true);
+    setLeaveTypesError(null);
     try {
       const res = await getAllLeaveTypes({ pageSize: 100 });
-      // Same wrapper pattern as get-all-leave: { data: { items: [...] } }.
-      // Falls back to a flatter shape in case the API doesn't nest it that way.
-      const rawList: any[] =
-        pick(res, "data")?.items ??
-        pick(res, "Data")?.Items ??
-        pick(res, "data", "Data", "items", "Items") ??
-        res ??
-        [];
-      setLeaveTypes(
-        rawList.map((t) => ({
-          id: String(pick(t, "id", "Id", "leaveTypeMasterId", "LeaveTypeMasterId")),
-          name: pick(t, "leaveName", "LeaveName", "leaveTypeName", "LeaveTypeName") ?? "Leave",
+      // Check this in browser console (F12) if the dropdown is still empty.
+      console.log("LEAVE TYPES RAW RESPONSE:", res);
+
+      const rawList = extractList(res, "items", "leaveTypes");
+
+      const mapped: LeaveTypeOption[] = rawList
+        .map((t) => ({
+          id: String(
+            pick(t, "id", "Id", "leaveTypeMasterId", "LeaveTypeMasterId", "leaveTypeId", "LeaveTypeId") ?? ""
+          ),
+          name:
+            pick(
+              t,
+              "leaveName",
+              "LeaveName",
+              "leaveTypeName",
+              "LeaveTypeName",
+              "name",
+              "Name",
+              "title",
+              "Title"
+            ) ?? "Leave",
         }))
-      );
+        .filter((t) => t.id);
+
+      setLeaveTypes(mapped);
+
+      if (mapped.length === 0) {
+        setLeaveTypesError("No leave reasons found.");
+      }
     } catch (err: any) {
-      // Non-fatal: Add/Edit leave-type dropdown will just be empty.
-      console.error("Failed to load leave types:", err?.message || err);
+      console.error("Failed to load leave types:", err?.response?.data || err?.message || err);
+      setLeaveTypesError(
+        err?.response?.data?.message || err?.message || "Failed to load leave reasons."
+      );
+    } finally {
+      setLeaveTypesLoading(false);
     }
   }, []);
 
@@ -418,16 +455,14 @@ const Leaves: React.FC = () => {
   };
 
   /* -------------------------------------------------
-     STATUS UPDATE (approve / decline / new)
+     STATUS UPDATE
   ------------------------------------------------- */
 
   const updateStatus = async (item: LeaveItem, status: LeaveStatus) => {
-    // Optimistic UI update
     setLeaveData((prev) =>
       prev.map((x) => (x.id === item.id ? { ...x, status, statusCode: STATUS_LABEL_TO_CODE[status] } : x))
     );
 
-    // TODO: replace with however you actually identify the logged-in reviewer.
     const reviewedByUserId = localStorage.getItem("userId") || "";
 
     try {
@@ -436,7 +471,6 @@ const Leaves: React.FC = () => {
         remarks: "",
       });
     } catch (err: any) {
-      // Roll back on failure
       setLeaveData((prev) =>
         prev.map((x) => (x.id === item.id ? { ...x, status: item.status, statusCode: item.statusCode } : x))
       );
@@ -459,6 +493,11 @@ const Leaves: React.FC = () => {
       reason: "",
     });
     setAddOpen(true);
+
+    // If leave types didn't load earlier (or failed), try again when the modal opens.
+    if (leaveTypes.length === 0 && !leaveTypesLoading) {
+      fetchLeaveTypes();
+    }
   };
 
   const closeAdd = () => setAddOpen(false);
@@ -510,13 +549,12 @@ const Leaves: React.FC = () => {
         AvailType: AVAIL_LABEL_TO_TYPE[addForm.availTypeLabel] ?? 1,
         Reason: addForm.reason.trim(),
       };
-      // Leave this in while you're confirming the AvailType enum against Swagger.
       console.log("ADD LEAVE PAYLOAD:", payload);
       await addLeave(payload);
       setAddOpen(false);
       await fetchLeaves();
     } catch (err: any) {
-      alert(err?.message || "Failed to add leave.");
+      alert(err?.response?.data?.message || err?.message || "Failed to add leave.");
     } finally {
       setSaving(false);
     }
@@ -533,9 +571,6 @@ const Leaves: React.FC = () => {
 
   /* -------------------------------------------------
      CHAT
-     GET    /api/LeaveChat/{leaveId}
-     POST   /api/LeaveChat/{leaveId}/send        { message }
-     DELETE /api/LeaveChat/message/{messageId}
   ------------------------------------------------- */
 
   const fetchChatMessages = useCallback(async (leaveId: string) => {
@@ -543,13 +578,7 @@ const Leaves: React.FC = () => {
     setChatError(null);
     try {
       const res = await getLeaveChatMessages(leaveId);
-      // TODO: confirm actual wrapper shape once you see a real response — adjust the pick() path if needed.
-      const rawList: any[] =
-        pick(res, "data")?.items ??
-        pick(res, "data")?.messages ??
-        pick(res, "data", "Data", "items", "Items", "messages", "Messages") ??
-        res ??
-        [];
+      const rawList = extractList(res, "items", "messages");
       setChatMessages(rawList.map(mapChatMessage));
     } catch (err: any) {
       setChatError(err?.message || "Failed to load chat messages.");
@@ -592,13 +621,11 @@ const Leaves: React.FC = () => {
 
   const handleDeleteChatMessage = async (messageId: string) => {
     if (!activeLeave) return;
-    // Optimistic removal
     setChatMessages((prev) => prev.filter((m) => m.id !== messageId));
     try {
       await deleteLeaveChatMessage(messageId);
     } catch (err: any) {
       setChatError(err?.message || "Failed to delete message.");
-      // Re-fetch to restore accurate state on failure
       await fetchChatMessages(activeLeave.id);
     }
   };
@@ -619,6 +646,10 @@ const Leaves: React.FC = () => {
       reason: item.reason ?? "",
     });
     setEditOpen(true);
+
+    if (leaveTypes.length === 0 && !leaveTypesLoading) {
+      fetchLeaveTypes();
+    }
   };
 
   const handleEditFormChange = (
@@ -670,7 +701,7 @@ const Leaves: React.FC = () => {
       setEditOpen(false);
       await fetchLeaves();
     } catch (err: any) {
-      alert(err?.message || "Failed to update leave.");
+      alert(err?.response?.data?.message || err?.message || "Failed to update leave.");
     } finally {
       setSaving(false);
     }
@@ -813,6 +844,9 @@ const Leaves: React.FC = () => {
         .add-leave-field input,.add-leave-field select,.add-leave-field textarea{width:100%;height:38px;border:1px solid #d8dee6;border-radius:5px;padding:0 10px;font-size:14px;color:#1f2937;background:#fff;outline:none;box-sizing:border-box}
         .add-leave-field textarea{height:86px;padding-top:10px;resize:none}
         .add-leave-field input::placeholder{color:#9aa4b2}
+        .field-hint{font-size:12px;color:#a11212;display:flex;align-items:center;gap:8px}
+        .field-hint.loading{color:#64748b}
+        .field-hint button{border:0;background:transparent;color:#1677ff;cursor:pointer;padding:0;font-size:12px;text-decoration:underline}
 
         .leave-status-banner{padding:10px 16px;font-size:13px;border-radius:5px;margin-bottom:16px}
         .leave-status-banner.error{background:#fde3e3;color:#a11212}
@@ -962,12 +996,28 @@ const Leaves: React.FC = () => {
 
               <div className="add-leave-field">
                 <label>Leave Reason</label>
-                <select name="leaveTypeMasterId" value={addForm.leaveTypeMasterId} onChange={handleAddFormChange}>
-                  <option value="">Select Leave Reason</option>
+                <select
+                  name="leaveTypeMasterId"
+                  value={addForm.leaveTypeMasterId}
+                  onChange={handleAddFormChange}
+                  disabled={leaveTypesLoading}
+                >
+                  <option value="">
+                    {leaveTypesLoading ? "Loading leave reasons…" : "Select Leave Reason"}
+                  </option>
                   {leaveTypes.map((t) => (
                     <option key={t.id} value={t.id}>{t.name}</option>
                   ))}
                 </select>
+                {leaveTypesLoading && (
+                  <div className="field-hint loading">Loading leave reasons…</div>
+                )}
+                {!leaveTypesLoading && leaveTypesError && leaveTypes.length === 0 && (
+                  <div className="field-hint">
+                    {leaveTypesError}
+                    <button type="button" onClick={fetchLeaveTypes}>Retry</button>
+                  </div>
+                )}
               </div>
 
               <div className="add-leave-field">

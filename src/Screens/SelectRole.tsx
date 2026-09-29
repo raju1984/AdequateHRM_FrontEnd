@@ -1,3 +1,4 @@
+
 import { Link } from "react-router-dom";
 
 const SelectRole = () => {
@@ -19,9 +20,16 @@ const SelectRole = () => {
           </Link>
         </li>
 
+        <li>
+          <Link to="/Accountant/AccountantLogin">
+            Accountant
+          </Link>
+        </li>
+
       </ul>
     </div>
   );
 };
 
 export default SelectRole;
+

@@ -611,6 +611,25 @@ const Sidebar = () => {
                 </NavLink>
               </li>
 
+
+{/* TRANSACTIONS */}
+
+<li>
+  <NavLink
+    to="/admin/Transactions"
+    className={({ isActive }) =>
+      isActive ? "active" : ""
+    }
+  >
+    <i className="ti ti-arrows-left-right" />
+
+    <span>
+      Transactions
+    </span>
+  </NavLink>
+</li>
+
+
               {/* =================================================
                   USER MANAGEMENT
               ================================================= */}
@@ -650,7 +669,7 @@ const Sidebar = () => {
                   <i className="ti ti-sparkles" />
 
                   <span>
-                    Roles & Permissions
+                    Designation & Permissions
                   </span>
                 </NavLink>
               </li>

@@ -20,7 +20,6 @@ import {
   GraduationCap,
   UsersRound,
   UserRound,
-  Phone,
 } from "lucide-react";
 
 import {
@@ -37,10 +36,10 @@ import {
   type UserApiModel,
 } from "../../services/adminservices";
 
-  //  TYPES
+//  TYPES
 
-type UserRole = "Employee" | "HR";
-type SelectedRole = "HR" | "Employee" | "Accountant";
+type UserRole = "Employee" | "HR" | "Admin" | "Accountant";
+type SelectedRole = "HR" | "Employee" | "Accountant" | "Admin";
 
 type UserStatus = "Active" | "Inactive";
 
@@ -57,6 +56,7 @@ interface UserItem {
   designation: string;
   about: string;
   createdDate: string;
+  createdAtRaw: string; // ISO string - date filter / sorting ke liye
   role: UserRole;
   status: UserStatus;
   roleId?: string;
@@ -66,8 +66,7 @@ interface UserItem {
   apiUser?: UserApiModel;
 }
 
-
-  //  ADD USER FORM TYPES
+//  ADD USER FORM TYPES
 
 interface EducationRow {
   schoolName: string;
@@ -125,96 +124,68 @@ interface ApplicationForm {
   employmentHistory: EmploymentRow[];
 }
 
-  //  INITIAL DATA
+//  INITIAL DATA
 
-const initialUsers: UserItem[] = [
- 
-];
+const initialUsers: UserItem[] = [];
 
+//  EMPTY APPLICATION FORM
 
-  //  EMPTY APPLICATION FORM
+const createEmptyApplicationForm = (): ApplicationForm => ({
+  fullName: "",
+  password: "",
+  confirmPassword: "",
+  country: "India",
+  address: "",
+  city: "",
+  state: "",
+  zip: "",
 
-const createEmptyApplicationForm =
-  (): ApplicationForm => ({
-    fullName: "",
-    password: "",
-    confirmPassword: "",
-    country: "India",
-    address: "",
-    city: "",
-    state: "",
-    zip: "",
+  phoneNumber: "",
+  emailAddress: "",
 
-    phoneNumber: "",
-    emailAddress: "",
+  eligibleToWork: "",
+  veteran: "",
+  convicted: "",
 
-    eligibleToWork: "",
-    veteran: "",
-    convicted: "",
+  positionDesired: "",
+  availableStartDate: "",
+  desiredPay: "",
 
-    positionDesired: "",
-    availableStartDate: "",
-    desiredPay: "",
+  employmentType: "",
 
-    employmentType: "",
+  education: [
+    {
+      schoolName: "",
+      location: "",
+      yearsAttended: "",
+      degreeReceived: "",
+      major: "",
+    },
+  ],
 
-    education: [
-      {
-        schoolName: "",
-        location: "",
-        yearsAttended: "",
-        degreeReceived: "",
-        major: "",
-      },
-    ],
+  references: [
+    { name: "", title: "", company: "", phone: "" },
+    { name: "", title: "", company: "", phone: "" },
+    { name: "", title: "", company: "", phone: "" },
+  ],
 
-    references: [
-      {
-        name: "",
-        title: "",
-        company: "",
-        phone: "",
-      },
-      {
-        name: "",
-        title: "",
-        company: "",
-        phone: "",
-      },
-      {
-        name: "",
-        title: "",
-        company: "",
-        phone: "",
-      },
-    ],
+  employmentHistory: [
+    {
+      employer: "",
+      jobTitle: "",
+      datesEmployed: "",
+      workPhone: "",
+      startingPayRate: "",
+      endingPayRate: "",
+      address: "",
+      city: "",
+      state: "",
+      zip: "",
+    },
+  ],
+});
 
-    employmentHistory: [
-      {
-        employer: "",
-        jobTitle: "",
-        datesEmployed: "",
-        workPhone: "",
-        startingPayRate: "",
-        endingPayRate: "",
-        address: "",
-        city: "",
-        state: "",
-        zip: "",
-      },
-    ],
-  });
-
-  //  DROPDOWN DATA
-
-const departments = [
-  "IT",
-  "HR",
-  "Finance",
-  "Sales",
-  "Marketing",
-  "Operations",
-];
+//  DROPDOWN DATA
 
 const designations = [
   "Manager",
@@ -228,62 +199,68 @@ const designations = [
   "Marketing Executive",
 ];
 
-  //  COMPONENT
+//  ROLE BADGE CLASS HELPER
+
+const getRoleBadgeClass = (role: UserRole) => {
+  switch (role) {
+    case "HR":
+      return "users-role-hr";
+    case "Admin":
+      return "users-role-admin";
+    case "Accountant":
+      return "users-role-accountant";
+    default:
+      return "users-role-employee";
+  }
+};
+
+//  "All" option ki value (select me placeholder ke saath conflict na ho)
+const ALL_VALUE = "__all__";
+
+//  Calendar open karne ka helper
+const openCalendar = (e: React.MouseEvent<HTMLInputElement>) => {
+  try {
+    (e.currentTarget as any).showPicker?.();
+  } catch {
+    // browser support na ho toh default behaviour chalega
+  }
+};
+
+//  COMPONENT
 
 const Users: React.FC = () => {
-  const [users, setUsers] =
-    useState<UserItem[]>(initialUsers);
+  const [users, setUsers] = useState<UserItem[]>(initialUsers);
 
-  const [search, setSearch] =
-    useState("");
+  const [search, setSearch] = useState("");
 
-  const [roleFilter, setRoleFilter] =
-    useState("");
+  // Filters (default "" => heading dikhega, dropdown list me heading nahi)
+  const [roleFilter, setRoleFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
+  const [sortBy, setSortBy] = useState("");
 
-  const [statusFilter, setStatusFilter] =
-    useState("");
+  // Date filter (calendar)
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
 
-  const [sortBy, setSortBy] =
-    useState("Last 7 Days");
+  const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [selected, setSelected] = useState<string[]>([]);
 
-  const [rowsPerPage, setRowsPerPage] =
-    useState(10);
+  //  PAGE STATE
 
-  const [currentPage, setCurrentPage] =
-    useState(1);
+  const [showAddPage, setShowAddPage] = useState(false);
+  const [showRoleModal, setShowRoleModal] = useState(false);
+  const [selectedRole, setSelectedRole] = useState<SelectedRole | null>(null);
 
-  const [selected, setSelected] =
-    useState<string[]>([]);
+  //  MODALS
 
-    //  PAGE STATE
-  
-  const [showAddPage, setShowAddPage] =
-    useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [editingUser, setEditingUser] = useState<UserItem | null>(null);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
 
-  const [showRoleModal, setShowRoleModal] =
-    useState(false);
+  //  APPLICATION FORM
 
-  const [selectedRole, setSelectedRole] =
-    useState<SelectedRole | null>(null);
-
-    //  MODALS
-
-const [deleteOpen, setDeleteOpen] =
-    useState(false);
-
-  const [editingUser, setEditingUser] =
-    useState<UserItem | null>(null);
-
-  const [deleteId, setDeleteId] =
-    useState<string | null>(null);
-
- 
-    //  APPLICATION FORM
-
-  const [
-    applicationForm,
-    setApplicationForm,
-  ] = useState<ApplicationForm>(
+  const [applicationForm, setApplicationForm] = useState<ApplicationForm>(
     createEmptyApplicationForm()
   );
 
@@ -292,141 +269,119 @@ const [deleteOpen, setDeleteOpen] =
   const [roles, setRoles] = useState<any[]>([]);
   const [apiDesignations, setApiDesignations] = useState<any[]>([]);
 
-    //  FILTER / SEARCH / SORT
+  //  SHORT FORM (Admin / Accountant => only Personal Information + Position)
+
+  const isShortForm = selectedRole === "Admin" || selectedRole === "Accountant";
+
+  //  FILTER / SEARCH / SORT
 
   const filteredUsers = useMemo(() => {
     let result = [...users];
 
     if (search.trim()) {
-      const q = search
-        .trim()
-        .toLowerCase();
+      const q = search.trim().toLowerCase();
 
       result = result.filter(
         (item) =>
-          item.name
-            .toLowerCase()
-            .includes(q) ||
-          item.email
-            .toLowerCase()
-            .includes(q) ||
-          item.role
-            .toLowerCase()
-            .includes(q) ||
-          item.status
-            .toLowerCase()
-            .includes(q) ||
-          item.department
-            .toLowerCase()
-            .includes(q) ||
-          item.designation
-            .toLowerCase()
-            .includes(q)
+          item.name.toLowerCase().includes(q) ||
+          item.email.toLowerCase().includes(q) ||
+          item.role.toLowerCase().includes(q) ||
+          item.status.toLowerCase().includes(q) ||
+          item.department.toLowerCase().includes(q) ||
+          item.designation.toLowerCase().includes(q)
       );
     }
 
     if (roleFilter) {
-      result = result.filter(
-        (item) =>
-          item.role === roleFilter
-      );
+      result = result.filter((item) => item.role === roleFilter);
     }
 
     if (statusFilter) {
-      result = result.filter(
-        (item) =>
-          item.status === statusFilter
-      );
+      result = result.filter((item) => item.status === statusFilter);
+    }
+
+    // Calendar date range filter
+    if (dateFrom) {
+      const from = new Date(`${dateFrom}T00:00:00`).getTime();
+      result = result.filter((item) => {
+        if (!item.createdAtRaw) return false;
+        return new Date(item.createdAtRaw).getTime() >= from;
+      });
+    }
+
+    if (dateTo) {
+      const to = new Date(`${dateTo}T23:59:59.999`).getTime();
+      result = result.filter((item) => {
+        if (!item.createdAtRaw) return false;
+        return new Date(item.createdAtRaw).getTime() <= to;
+      });
+    }
+
+    // Sort By options
+    if (sortBy === "Last 7 Days" || sortBy === "Last Month") {
+      const days = sortBy === "Last 7 Days" ? 7 : 30;
+      const limit = Date.now() - days * 24 * 60 * 60 * 1000;
+
+      result = result.filter((item) => {
+        if (!item.createdAtRaw) return false;
+        return new Date(item.createdAtRaw).getTime() >= limit;
+      });
     }
 
     if (sortBy === "Ascending") {
-      result.sort((a, b) =>
-        a.name.localeCompare(b.name)
-      );
+      result.sort((a, b) => a.name.localeCompare(b.name));
     }
 
     if (sortBy === "Descending") {
-      result.sort((a, b) =>
-        b.name.localeCompare(a.name)
-      );
+      result.sort((a, b) => b.name.localeCompare(a.name));
     }
 
     if (sortBy === "Recently Added") {
-      result.sort((a, b) => b.id - a.id);
+      result.sort((a, b) => {
+        const aTime = a.createdAtRaw ? new Date(a.createdAtRaw).getTime() : 0;
+        const bTime = b.createdAtRaw ? new Date(b.createdAtRaw).getTime() : 0;
+        if (aTime !== bTime) return bTime - aTime;
+        return b.id.localeCompare(a.id, undefined, { numeric: true });
+      });
     }
 
     return result;
-  }, [
-    users,
-    search,
-    roleFilter,
-    statusFilter,
-    sortBy,
-  ]);
+  }, [users, search, roleFilter, statusFilter, sortBy, dateFrom, dateTo]);
 
-    //  PAGINATION
+  //  PAGINATION
 
-  const totalPages = Math.max(
-    1,
-    Math.ceil(
-      filteredUsers.length /
-        rowsPerPage
-    )
+  const totalPages = Math.max(1, Math.ceil(filteredUsers.length / rowsPerPage));
+
+  const safeCurrentPage = Math.min(currentPage, totalPages);
+
+  const visibleUsers = filteredUsers.slice(
+    (safeCurrentPage - 1) * rowsPerPage,
+    safeCurrentPage * rowsPerPage
   );
 
-  const safeCurrentPage = Math.min(
-    currentPage,
-    totalPages
-  );
-
-  const visibleUsers =
-    filteredUsers.slice(
-      (safeCurrentPage - 1) *
-        rowsPerPage,
-      safeCurrentPage *
-        rowsPerPage
-    );
-
-    //  CHECKBOX
+  //  CHECKBOX
 
   const allVisibleSelected =
     visibleUsers.length > 0 &&
-    visibleUsers.every((item) =>
-      selected.includes(item.id)
-    );
+    visibleUsers.every((item) => selected.includes(item.id));
 
   const handleSelectAll = () => {
-    const ids = visibleUsers.map(
-      (item) => item.id
-    );
+    const ids = visibleUsers.map((item) => item.id);
 
     if (allVisibleSelected) {
-      setSelected((prev) =>
-        prev.filter(
-          (id) => !ids.includes(id)
-        )
-      );
+      setSelected((prev) => prev.filter((id) => !ids.includes(id)));
     } else {
-      setSelected((prev) => [
-        ...new Set([
-          ...prev,
-          ...ids,
-        ]),
-      ]);
+      setSelected((prev) => [...new Set([...prev, ...ids])]);
     }
   };
 
   const toggleSelect = (id: string) => {
     setSelected((prev) =>
-      prev.includes(id)
-        ? prev.filter(
-            (item) => item !== id
-          )
-        : [...prev, id]
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
     );
   };
 
-    //  OPEN ADD USER PAGE
+  //  OPEN ADD USER PAGE
 
   const openAddPage = () => {
     setApiError("");
@@ -434,13 +389,11 @@ const [deleteOpen, setDeleteOpen] =
   };
 
   const handleRoleSelect = (role: SelectedRole) => {
+    setEditingUser(null);
     setSelectedRole(role);
     setShowRoleModal(false);
-
-    if (role === "HR" || role === "Employee") {
-      setApplicationForm(createEmptyApplicationForm());
-      setShowAddPage(true);
-    }
+    setApplicationForm(createEmptyApplicationForm());
+    setShowAddPage(true);
   };
 
   const closeRoleModal = () => {
@@ -455,21 +408,19 @@ const [deleteOpen, setDeleteOpen] =
     setApiError("");
   };
 
-    //  APPLICATION FORM UPDATE
+  //  APPLICATION FORM UPDATE
 
-  const updateApplicationField = <
-    K extends keyof ApplicationForm
-  >(
+  function updateApplicationField<K extends keyof ApplicationForm>(
     field: K,
     value: ApplicationForm[K]
-  ) => {
+  ) {
     setApplicationForm((prev) => ({
       ...prev,
       [field]: value,
     }));
-  };
+  }
 
-    //  EDUCATION
+  //  EDUCATION
 
   const updateEducation = (
     index: number,
@@ -477,29 +428,17 @@ const [deleteOpen, setDeleteOpen] =
     value: string
   ) => {
     setApplicationForm((prev) => {
-      const education = [
-        ...prev.education,
-      ];
-
-      education[index] = {
-        ...education[index],
-        [field]: value,
-      };
-
-      return {
-        ...prev,
-        education,
-      };
+      const education = [...prev.education];
+      education[index] = { ...education[index], [field]: value };
+      return { ...prev, education };
     });
   };
 
   const addEducationRow = () => {
     setApplicationForm((prev) => ({
       ...prev,
-
       education: [
         ...prev.education,
-
         {
           schoolName: "",
           location: "",
@@ -511,22 +450,17 @@ const [deleteOpen, setDeleteOpen] =
     }));
   };
 
-  const removeEducationRow = (
-    index: number
-  ) => {
+  const removeEducationRow = (index: number) => {
     setApplicationForm((prev) => ({
       ...prev,
-
       education:
         prev.education.length > 1
-          ? prev.education.filter(
-              (_, i) => i !== index
-            )
+          ? prev.education.filter((_, i) => i !== index)
           : prev.education,
     }));
   };
 
-    //  REFERENCES
+  //  REFERENCES
 
   const updateReference = (
     index: number,
@@ -534,55 +468,33 @@ const [deleteOpen, setDeleteOpen] =
     value: string
   ) => {
     setApplicationForm((prev) => {
-      const references = [
-        ...prev.references,
-      ];
-
-      references[index] = {
-        ...references[index],
-        [field]: value,
-      };
-
-      return {
-        ...prev,
-        references,
-      };
+      const references = [...prev.references];
+      references[index] = { ...references[index], [field]: value };
+      return { ...prev, references };
     });
   };
 
   const addReferenceRow = () => {
     setApplicationForm((prev) => ({
       ...prev,
-
       references: [
         ...prev.references,
-
-        {
-          name: "",
-          title: "",
-          company: "",
-          phone: "",
-        },
+        { name: "", title: "", company: "", phone: "" },
       ],
     }));
   };
 
-  const removeReferenceRow = (
-    index: number
-  ) => {
+  const removeReferenceRow = (index: number) => {
     setApplicationForm((prev) => ({
       ...prev,
-
       references:
         prev.references.length > 1
-          ? prev.references.filter(
-              (_, i) => i !== index
-            )
+          ? prev.references.filter((_, i) => i !== index)
           : prev.references,
     }));
   };
 
-    //  EMPLOYMENT
+  //  EMPLOYMENT
 
   const updateEmployment = (
     index: number,
@@ -590,29 +502,20 @@ const [deleteOpen, setDeleteOpen] =
     value: string
   ) => {
     setApplicationForm((prev) => {
-      const employmentHistory = [
-        ...prev.employmentHistory,
-      ];
-
+      const employmentHistory = [...prev.employmentHistory];
       employmentHistory[index] = {
         ...employmentHistory[index],
         [field]: value,
       };
-
-      return {
-        ...prev,
-        employmentHistory,
-      };
+      return { ...prev, employmentHistory };
     });
   };
 
   const addEmploymentRow = () => {
     setApplicationForm((prev) => ({
       ...prev,
-
       employmentHistory: [
         ...prev.employmentHistory,
-
         {
           employer: "",
           jobTitle: "",
@@ -629,35 +532,33 @@ const [deleteOpen, setDeleteOpen] =
     }));
   };
 
-  const removeEmploymentRow = (
-    index: number
-  ) => {
+  const removeEmploymentRow = (index: number) => {
     setApplicationForm((prev) => ({
       ...prev,
-
       employmentHistory:
         prev.employmentHistory.length > 1
-          ? prev.employmentHistory.filter(
-              (_, i) => i !== index
-            )
+          ? prev.employmentHistory.filter((_, i) => i !== index)
           : prev.employmentHistory,
     }));
   };
 
-    //  API HELPERS
+  //  API HELPERS
 
   const findIdByName = (items: any[], name: string) => {
     const normalized = name.trim().toLowerCase();
-    const match = items.find((item) =>
-      String(
-        item?.name ??
-        item?.roleName ??
-        item?.designationName ??
-        item?.Name ??
-        item?.RoleName ??
-        item?.DesignationName ??
-        ""
-      ).trim().toLowerCase() === normalized
+    const match = items.find(
+      (item) =>
+        String(
+          item?.name ??
+            item?.roleName ??
+            item?.designationName ??
+            item?.Name ??
+            item?.RoleName ??
+            item?.DesignationName ??
+            ""
+        )
+          .trim()
+          .toLowerCase() === normalized
     );
     return String(match?.id ?? match?.Id ?? "");
   };
@@ -689,21 +590,49 @@ const [deleteOpen, setDeleteOpen] =
     return { fromDate: single, toDate: single };
   };
 
+  // Role detect karne ka sahi logic (HR => HR form, Employee => Employee form)
+  const detectRole = (roleName: string, userType: number): UserRole => {
+    const lower = roleName.trim().toLowerCase();
+
+    if (/\badmin/.test(lower)) return "Admin";
+    if (/\baccountant/.test(lower)) return "Accountant";
+    if (/\bhr\b/.test(lower) || lower.includes("human resource")) return "HR";
+    if (userType === 1) return "HR";
+    return "Employee";
+  };
+
   const mapApiUserToItem = (raw: any): UserItem => {
     const firstName = String(raw?.firstName ?? raw?.FirstName ?? "");
     const lastName = String(raw?.lastName ?? raw?.LastName ?? "");
-    const name = `${firstName} ${lastName}`.trim() ||
+    const name =
+      `${firstName} ${lastName}`.trim() ||
       String(raw?.userName ?? raw?.UserName ?? raw?.name ?? raw?.Name ?? "User");
     const userStatus = Number(raw?.userStatus ?? raw?.UserStatus ?? 1);
     const userType = Number(raw?.userType ?? raw?.UserType ?? 0);
     const roleName = String(
-      raw?.roleName ?? raw?.RoleName ?? raw?.role?.roleName ?? raw?.role?.name ??
-      raw?.Role?.roleName ?? raw?.Role?.name ?? (userType === 1 ? "HR" : "Employee")
+      raw?.roleName ??
+        raw?.RoleName ??
+        raw?.role?.roleName ??
+        raw?.role?.name ??
+        raw?.Role?.roleName ??
+        raw?.Role?.name ??
+        ""
     );
     const designationName = String(
-      raw?.designationName ?? raw?.DesignationName ?? raw?.designation?.designationName ??
-      raw?.designation?.name ?? raw?.Designation?.designationName ?? raw?.Designation?.name ?? ""
+      raw?.designationName ??
+        raw?.DesignationName ??
+        raw?.designation?.designationName ??
+        raw?.designation?.name ??
+        raw?.Designation?.designationName ??
+        raw?.Designation?.name ??
+        ""
     );
+
+    const mappedRole = detectRole(roleName, userType);
+
+    const createdRaw = raw?.createdAt ?? raw?.CreatedAt ?? "";
+    const createdDateObj = createdRaw ? new Date(createdRaw) : null;
+    const validCreated = createdDateObj && !Number.isNaN(createdDateObj.getTime());
 
     return {
       id: String(raw?.id ?? raw?.Id ?? ""),
@@ -712,30 +641,48 @@ const [deleteOpen, setDeleteOpen] =
       username: String(raw?.userName ?? raw?.UserName ?? ""),
       name,
       email: String(raw?.email ?? raw?.Email ?? ""),
-      phone: String(raw?.phoneNumber ?? raw?.PhoneNumber ?? raw?.phone ?? raw?.Phone ?? ""),
+      phone: String(
+        raw?.phoneNumber ?? raw?.PhoneNumber ?? raw?.phone ?? raw?.Phone ?? ""
+      ),
       company: String(raw?.company ?? raw?.Company ?? "Adequate"),
       department: String(
-        raw?.departmentName ?? raw?.DepartmentName ?? raw?.department?.departmentName ??
-        raw?.department?.name ?? raw?.Department?.departmentName ?? raw?.Department?.name ?? ""
+        raw?.departmentName ??
+          raw?.DepartmentName ??
+          raw?.department?.departmentName ??
+          raw?.department?.name ??
+          raw?.Department?.departmentName ??
+          raw?.Department?.name ??
+          ""
       ),
       designation: designationName,
       about: String(raw?.about ?? raw?.About ?? ""),
-      createdDate: raw?.createdAt || raw?.CreatedAt
-        ? new Date(raw?.createdAt ?? raw?.CreatedAt).toLocaleDateString("en-GB", {
-            day: "2-digit", month: "short", year: "numeric",
+      createdDate: validCreated
+        ? createdDateObj!.toLocaleDateString("en-GB", {
+            day: "2-digit",
+            month: "short",
+            year: "numeric",
           })
         : "",
-      role: roleName.toLowerCase().includes("hr") ? "HR" : "Employee",
+      createdAtRaw: validCreated ? createdDateObj!.toISOString() : "",
+      role: mappedRole,
       status: userStatus === 0 ? "Inactive" : "Active",
-      roleId: String(raw?.roleId ?? raw?.RoleId ?? raw?.role?.id ?? raw?.Role?.id ?? ""),
-      designationId: String(raw?.designationId ?? raw?.DesignationId ?? raw?.designation?.id ?? raw?.Designation?.id ?? ""),
+      roleId: String(
+        raw?.roleId ?? raw?.RoleId ?? raw?.role?.id ?? raw?.Role?.id ?? ""
+      ),
+      designationId: String(
+        raw?.designationId ??
+          raw?.DesignationId ??
+          raw?.designation?.id ??
+          raw?.Designation?.id ??
+          ""
+      ),
       userType,
       userStatus,
       apiUser: raw as UserApiModel,
     };
   };
 
-    //  LOAD USERS / ROLES / DESIGNATIONS
+  //  LOAD USERS / ROLES / DESIGNATIONS
 
   useEffect(() => {
     let mounted = true;
@@ -751,7 +698,9 @@ const [deleteOpen, setDeleteOpen] =
         }
       } catch (error) {
         if (mounted) {
-          setApiError(error instanceof Error ? error.message : "Unable to load users.");
+          setApiError(
+            error instanceof Error ? error.message : "Unable to load users."
+          );
         }
       } finally {
         if (mounted) setLoadingUsers(false);
@@ -768,6 +717,7 @@ const [deleteOpen, setDeleteOpen] =
         setRoles(unwrapApiArray(roleResponse));
         setApiDesignations(unwrapApiArray(designationResponse));
       } catch {
+        // ignore
       }
     };
 
@@ -777,9 +727,10 @@ const [deleteOpen, setDeleteOpen] =
     return () => {
       mounted = false;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-    //  SAVE APPLICATION
+  //  SAVE APPLICATION
 
   const handleApplicationSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -789,13 +740,11 @@ const [deleteOpen, setDeleteOpen] =
     const designationId =
       findIdByName(apiDesignations, applicationForm.positionDesired) ||
       String(editingUser?.designationId ?? "");
-    const selectedRoleName = selectedRole === "HR" ? "HR" : "Employee";
+    const selectedRoleName: UserRole = (selectedRole ?? "Employee") as UserRole;
     const selectedRoleId =
       String(editingUser?.roleId ?? "") ||
       findIdByName(roles, selectedRoleName) ||
-      (selectedRoleName === "Employee"
-        ? findIdByName(roles, "User")
-        : "") ||
+      (selectedRoleName === "Employee" ? findIdByName(roles, "User") : "") ||
       String(roles[0]?.id ?? roles[0]?.Id ?? "");
 
     if (!applicationForm.fullName.trim()) {
@@ -810,12 +759,17 @@ const [deleteOpen, setDeleteOpen] =
       setApiError("Password is required.");
       return;
     }
-    if (applicationForm.password && applicationForm.password !== applicationForm.confirmPassword) {
+    if (
+      applicationForm.password &&
+      applicationForm.password !== applicationForm.confirmPassword
+    ) {
       setApiError("Password and confirm password do not match.");
       return;
     }
     if (!selectedRoleId) {
-      setApiError(`${selectedRoleName} role ID could not be found. Please check the Roles API.`);
+      setApiError(
+        `${selectedRoleName} role ID could not be found. Please check the Roles API.`
+      );
       return;
     }
     if (!designationId) {
@@ -823,49 +777,63 @@ const [deleteOpen, setDeleteOpen] =
       return;
     }
 
-    const educations = applicationForm.education
-      .filter((row) => row.schoolName.trim() || row.degreeReceived.trim() || row.major.trim())
-      .map((row) => {
-        const range = parseDateRange(row.yearsAttended);
-        return {
-          institutionName: row.schoolName.trim(),
-          location: row.location.trim(),
-          startDate: range.fromDate,
-          endDate: range.toDate,
-          degreeOrCourse: row.degreeReceived.trim(),
-          specialization: row.major.trim(),
-        };
-      });
+    // Admin / Accountant => no education, references, employment history
+    const educations = isShortForm
+      ? []
+      : applicationForm.education
+          .filter(
+            (row) =>
+              row.schoolName.trim() ||
+              row.degreeReceived.trim() ||
+              row.major.trim()
+          )
+          .map((row) => {
+            const range = parseDateRange(row.yearsAttended);
+            return {
+              institutionName: row.schoolName.trim(),
+              location: row.location.trim(),
+              startDate: range.fromDate,
+              endDate: range.toDate,
+              degreeOrCourse: row.degreeReceived.trim(),
+              specialization: row.major.trim(),
+            };
+          });
 
-    const references = applicationForm.references
-      .filter((row) => row.name.trim() || row.title.trim() || row.company.trim())
-      .map((row) => ({
-        name: row.name.trim(),
-        title: row.title.trim(),
-        company: row.company.trim(),
-        phoneNumber: row.phone.trim(),
-      }));
+    const references = isShortForm
+      ? []
+      : applicationForm.references
+          .filter(
+            (row) => row.name.trim() || row.title.trim() || row.company.trim()
+          )
+          .map((row) => ({
+            name: row.name.trim(),
+            title: row.title.trim(),
+            company: row.company.trim(),
+            phoneNumber: row.phone.trim(),
+          }));
 
-    const experiences = applicationForm.employmentHistory
-      .filter((row) => row.employer.trim() || row.jobTitle.trim())
-      .map((row) => {
-        const range = parseDateRange(row.datesEmployed);
-        return {
-          companyName: row.employer.trim(),
-          jobTitle: row.jobTitle.trim(),
-          fromDate: range.fromDate,
-          toDate: range.toDate,
-          isCurrentlyWorking: false,
-          workPhone: row.workPhone.trim(),
-          startingPayRate: Number(row.startingPayRate) || 0,
-          endingPayRate: Number(row.endingPayRate) || 0,
-          address: row.address.trim(),
-          city: row.city.trim(),
-          state: row.state.trim(),
-          postalCode: row.zip.trim(),
-          description: "",
-        };
-      });
+    const experiences = isShortForm
+      ? []
+      : applicationForm.employmentHistory
+          .filter((row) => row.employer.trim() || row.jobTitle.trim())
+          .map((row) => {
+            const range = parseDateRange(row.datesEmployed);
+            return {
+              companyName: row.employer.trim(),
+              jobTitle: row.jobTitle.trim(),
+              fromDate: range.fromDate,
+              toDate: range.toDate,
+              isCurrentlyWorking: false,
+              workPhone: row.workPhone.trim(),
+              startingPayRate: Number(row.startingPayRate) || 0,
+              endingPayRate: Number(row.endingPayRate) || 0,
+              address: row.address.trim(),
+              city: row.city.trim(),
+              state: row.state.trim(),
+              postalCode: row.zip.trim(),
+              description: "",
+            };
+          });
 
     const payload: AddUserPayload = {
       firstName: firstName.trim(),
@@ -890,7 +858,8 @@ const [deleteOpen, setDeleteOpen] =
       desiredPay: Number(applicationForm.desiredPay) || 0,
       isFullTimeDesired: applicationForm.employmentType === "Full time",
       isPartTimeDesired: applicationForm.employmentType === "Part time",
-      isSeasonalOrTemporaryDesired: applicationForm.employmentType === "Seasonal/Temporary",
+      isSeasonalOrTemporaryDesired:
+        applicationForm.employmentType === "Seasonal/Temporary",
       educations,
       references,
       experiences,
@@ -900,13 +869,18 @@ const [deleteOpen, setDeleteOpen] =
     try {
       if (editingUser) {
         const raw = editingUser.apiUser ?? {};
-        const updatePayload: AddUserPayload & { id: string; userStatus: number } = {
+        const updatePayload: AddUserPayload & {
+          id: string;
+          userStatus: number;
+        } = {
           ...raw,
           ...payload,
           id: editingUser.id,
           password: applicationForm.password || String(raw.password ?? ""),
-          confirmPassword: applicationForm.confirmPassword || String(raw.confirmPassword ?? ""),
-          userStatus: editingUser.userStatus ?? (editingUser.status === "Active" ? 1 : 0),
+          confirmPassword:
+            applicationForm.confirmPassword || String(raw.confirmPassword ?? ""),
+          userStatus:
+            editingUser.userStatus ?? (editingUser.status === "Active" ? 1 : 0),
           roleId: selectedRoleId,
           designationId,
           educations,
@@ -938,7 +912,7 @@ const [deleteOpen, setDeleteOpen] =
                   email: updatePayload.email,
                   phone: updatePayload.phoneNumber,
                   designation: applicationForm.positionDesired,
-                  role: selectedRoleName as UserRole,
+                  role: selectedRoleName,
                   roleId: updatePayload.roleId,
                   designationId: updatePayload.designationId,
                   apiUser: updatePayload,
@@ -949,11 +923,16 @@ const [deleteOpen, setDeleteOpen] =
       } else {
         const response = await addUser(payload);
         const createdRaw = unwrapApiValue(response);
-        const created = createdRaw && typeof createdRaw === "object" ? mapApiUserToItem(createdRaw) : null;
+        const created =
+          createdRaw && typeof createdRaw === "object"
+            ? mapApiUserToItem(createdRaw)
+            : null;
 
         if (created?.id) {
-          setUsers((prev) => [...prev, created]);
+          // Backend role name galat/missing aaye toh selected role hi use karo
+          setUsers((prev) => [...prev, { ...created, role: selectedRoleName }]);
         } else {
+          const now = new Date();
           const localUser: UserItem = {
             id: `local-${Date.now()}`,
             firstName: payload.firstName,
@@ -966,8 +945,13 @@ const [deleteOpen, setDeleteOpen] =
             department: "",
             designation: applicationForm.positionDesired,
             about: "",
-            createdDate: new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }),
-            role: selectedRoleName as UserRole,
+            createdDate: now.toLocaleDateString("en-GB", {
+              day: "2-digit",
+              month: "short",
+              year: "numeric",
+            }),
+            createdAtRaw: now.toISOString(),
+            role: selectedRoleName,
             status: "Active",
             roleId: payload.roleId,
             designationId: payload.designationId,
@@ -981,21 +965,34 @@ const [deleteOpen, setDeleteOpen] =
 
       closeAddPage();
     } catch (error) {
-      setApiError(error instanceof Error ? error.message : editingUser ? "Unable to update user." : "Unable to create user.");
+      setApiError(
+        error instanceof Error
+          ? error.message
+          : editingUser
+          ? "Unable to update user."
+          : "Unable to create user."
+      );
     }
   };
 
-    //  EDIT USER -> SAME APPLICATION PAGE
+  //  EDIT USER -> SAME APPLICATION PAGE
 
-  const mapUserToApplicationForm = (user: UserItem, raw: any = {}): ApplicationForm => {
+  const mapUserToApplicationForm = (
+    user: UserItem,
+    raw: any = {}
+  ): ApplicationForm => {
     const educationSource = Array.isArray(raw?.educations) ? raw.educations : [];
     const referenceSource = Array.isArray(raw?.references) ? raw.references : [];
-    const experienceSource = Array.isArray(raw?.experiences) ? raw.experiences : [];
+    const experienceSource = Array.isArray(raw?.experiences)
+      ? raw.experiences
+      : [];
 
     const formatDate = (value: any) => {
       if (!value) return "";
       const date = new Date(value);
-      return Number.isNaN(date.getTime()) ? String(value) : date.toISOString().slice(0, 10);
+      return Number.isNaN(date.getTime())
+        ? String(value)
+        : date.toISOString().slice(0, 10);
     };
 
     const formatDateRange = (from: any, to: any) => {
@@ -1022,41 +1019,64 @@ const [deleteOpen, setDeleteOpen] =
       veteran: raw?.isVeteran === true ? "Yes" : "No",
       convicted: raw?.isWillingForBackgroundCheck === true ? "Yes" : "No",
       positionDesired: user.designation,
-      availableStartDate: formatDate(raw?.availableStartDate ?? raw?.AvailableStartDate),
+      availableStartDate: formatDate(
+        raw?.availableStartDate ?? raw?.AvailableStartDate
+      ),
       desiredPay: raw?.desiredPay != null ? String(raw.desiredPay) : "",
-      employmentType: raw?.isFullTimeDesired ? "Full time" : raw?.isPartTimeDesired ? "Part time" : raw?.isSeasonalOrTemporaryDesired ? "Seasonal/Temporary" : "",
-      education: educationSource.length ? educationSource.map((row: any) => ({
-        schoolName: String(row?.institutionName ?? row?.schoolName ?? ""),
-        location: String(row?.location ?? ""),
-        yearsAttended: formatDateRange(row?.startDate ?? row?.fromDate, row?.endDate ?? row?.toDate),
-        degreeReceived: String(row?.degreeOrCourse ?? row?.degreeReceived ?? ""),
-        major: String(row?.specialization ?? row?.major ?? ""),
-      })) : blank.education,
-      references: referenceSource.length ? referenceSource.map((row: any) => ({
-        name: String(row?.name ?? ""),
-        title: String(row?.title ?? ""),
-        company: String(row?.company ?? ""),
-        phone: String(row?.phoneNumber ?? row?.phone ?? ""),
-      })) : blank.references,
-      employmentHistory: experienceSource.length ? experienceSource.map((row: any) => ({
-        employer: String(row?.companyName ?? row?.employer ?? ""),
-        jobTitle: String(row?.jobTitle ?? ""),
-        datesEmployed: formatDateRange(row?.fromDate ?? row?.startDate, row?.toDate ?? row?.endDate),
-        workPhone: String(row?.workPhone ?? ""),
-        startingPayRate: row?.startingPayRate != null ? String(row.startingPayRate) : "",
-        endingPayRate: row?.endingPayRate != null ? String(row.endingPayRate) : "",
-        address: String(row?.address ?? ""),
-        city: String(row?.city ?? ""),
-        state: String(row?.state ?? ""),
-        zip: String(row?.postalCode ?? row?.zip ?? ""),
-      })) : blank.employmentHistory,
+      employmentType: raw?.isFullTimeDesired
+        ? "Full time"
+        : raw?.isPartTimeDesired
+        ? "Part time"
+        : raw?.isSeasonalOrTemporaryDesired
+        ? "Seasonal/Temporary"
+        : "",
+      education: educationSource.length
+        ? educationSource.map((row: any) => ({
+            schoolName: String(row?.institutionName ?? row?.schoolName ?? ""),
+            location: String(row?.location ?? ""),
+            yearsAttended: formatDateRange(
+              row?.startDate ?? row?.fromDate,
+              row?.endDate ?? row?.toDate
+            ),
+            degreeReceived: String(row?.degreeOrCourse ?? row?.degreeReceived ?? ""),
+            major: String(row?.specialization ?? row?.major ?? ""),
+          }))
+        : blank.education,
+      references: referenceSource.length
+        ? referenceSource.map((row: any) => ({
+            name: String(row?.name ?? ""),
+            title: String(row?.title ?? ""),
+            company: String(row?.company ?? ""),
+            phone: String(row?.phoneNumber ?? row?.phone ?? ""),
+          }))
+        : blank.references,
+      employmentHistory: experienceSource.length
+        ? experienceSource.map((row: any) => ({
+            employer: String(row?.companyName ?? row?.employer ?? ""),
+            jobTitle: String(row?.jobTitle ?? ""),
+            datesEmployed: formatDateRange(
+              row?.fromDate ?? row?.startDate,
+              row?.toDate ?? row?.endDate
+            ),
+            workPhone: String(row?.workPhone ?? ""),
+            startingPayRate:
+              row?.startingPayRate != null ? String(row.startingPayRate) : "",
+            endingPayRate:
+              row?.endingPayRate != null ? String(row.endingPayRate) : "",
+            address: String(row?.address ?? ""),
+            city: String(row?.city ?? ""),
+            state: String(row?.state ?? ""),
+            zip: String(row?.postalCode ?? row?.zip ?? ""),
+          }))
+        : blank.employmentHistory,
     };
   };
 
+  // Edit click => user ke role ka hi form khulega (HR => Edit HR, Employee => Edit Employee)
   const openEditModal = async (user: UserItem) => {
     setApiError("");
     setEditingUser(user);
-    setSelectedRole(user.role === "HR" ? "HR" : "Employee");
+    setSelectedRole(user.role);
     setApplicationForm(mapUserToApplicationForm(user, user.apiUser ?? {}));
     setShowAddPage(true);
 
@@ -1064,30 +1084,41 @@ const [deleteOpen, setDeleteOpen] =
       const response = await getUserById(user.id);
       const raw = unwrapApiValue(response);
       if (raw && typeof raw === "object") {
-        const freshUser = mapApiUserToItem(raw);
+        const mapped = mapApiUserToItem(raw);
+        // List me jo role dikh raha tha wahi rakho (API detail me roleName na aaye toh role na badle)
+        const freshUser: UserItem = {
+          ...mapped,
+          role: mapped.roleId || (raw as any).roleName || (raw as any).userType != null
+            ? mapped.role === "Employee" && user.role !== "Employee"
+              ? user.role
+              : mapped.role
+            : user.role,
+          createdDate: mapped.createdDate || user.createdDate,
+          createdAtRaw: mapped.createdAtRaw || user.createdAtRaw,
+        };
         setEditingUser(freshUser);
-        setSelectedRole(freshUser.role === "HR" ? "HR" : "Employee");
+        setSelectedRole(freshUser.role);
         setApplicationForm(mapUserToApplicationForm(freshUser, raw));
-        setUsers((prev) => prev.map((item) => item.id === freshUser.id ? freshUser : item));
+        setUsers((prev) =>
+          prev.map((item) => (item.id === freshUser.id ? freshUser : item))
+        );
       }
     } catch (error) {
-      setApiError(error instanceof Error ? error.message : "Unable to load user details.");
+      setApiError(
+        error instanceof Error ? error.message : "Unable to load user details."
+      );
     }
   };
 
-    //  DELETE
+  //  DELETE
 
-  const openDeleteModal = (
-    id: string
-  ) => {
+  const openDeleteModal = (id: string) => {
     setDeleteId(id);
-
     setDeleteOpen(true);
   };
 
   const closeDeleteModal = () => {
     setDeleteId(null);
-
     setDeleteOpen(false);
   };
 
@@ -1101,11 +1132,22 @@ const [deleteOpen, setDeleteOpen] =
       setSelected((prev) => prev.filter((id) => id !== deleteId));
       closeDeleteModal();
     } catch (error) {
-      setApiError(error instanceof Error ? error.message : "Unable to delete user.");
+      setApiError(
+        error instanceof Error ? error.message : "Unable to delete user."
+      );
     }
   };
 
-    //  ADD USER APPLICATION PAGE
+  //  Filter dropdown change helper ("All" => filter clear => heading wapas)
+  const handleFilterChange =
+    (setter: (v: string) => void) =>
+    (e: React.ChangeEvent<HTMLSelectElement>) => {
+      const value = e.target.value;
+      setter(value === ALL_VALUE ? "" : value);
+      setCurrentPage(1);
+    };
+
+  //  ADD / EDIT USER APPLICATION PAGE
 
   if (showAddPage) {
     return (
@@ -1135,10 +1177,6 @@ const [deleteOpen, setDeleteOpen] =
             color: var(--navy);
             font-family: "Inter", "Segoe UI", Arial, sans-serif;
           }
-
-          /* =================================
-             HEADER
-          ================================= */
 
           .application-top {
             display: flex;
@@ -1218,10 +1256,6 @@ const [deleteOpen, setDeleteOpen] =
             background: #fffdf8;
           }
 
-          /* =================================
-             MAIN CARD
-          ================================= */
-
           .application-card {
             width: 100%;
             border: 1px solid #dfe3e8;
@@ -1234,10 +1268,6 @@ const [deleteOpen, setDeleteOpen] =
           .application-form {
             width: 100%;
           }
-
-          /* =================================
-             SECTIONS
-          ================================= */
 
           .application-section {
             padding: 22px 20px 26px;
@@ -1270,10 +1300,6 @@ const [deleteOpen, setDeleteOpen] =
             border-radius: 4px;
             background: rgba(255,255,255,.85);
           }
-
-          /* =================================
-             FORM TABLE
-          ================================= */
 
           .application-table {
             width: 100%;
@@ -1340,10 +1366,6 @@ const [deleteOpen, setDeleteOpen] =
             box-shadow: inset 0 0 0 1.5px var(--ochre);
           }
 
-          /* =================================
-             PERSONAL INFORMATION
-          ================================= */
-
           .personal-input {
             height: 45px !important;
           }
@@ -1383,10 +1405,6 @@ const [deleteOpen, setDeleteOpen] =
             margin: 0;
             accent-color: var(--ochre);
           }
-
-          /* =================================
-             POSITION
-          ================================= */
 
           .position-grid {
             display: grid;
@@ -1474,10 +1492,6 @@ const [deleteOpen, setDeleteOpen] =
             accent-color: var(--ochre);
           }
 
-          /* =================================
-             ADD BUTTONS
-          ================================= */
-
           .education-actions,
           .reference-actions,
           .employment-actions {
@@ -1538,10 +1552,6 @@ const [deleteOpen, setDeleteOpen] =
             min-width: 850px;
           }
 
-          /* =================================
-             REFERENCES
-          ================================= */
-
           .reference-table th:last-child,
           .reference-table td:last-child {
             width: 52px;
@@ -1552,10 +1562,6 @@ const [deleteOpen, setDeleteOpen] =
           .reference-table td:last-child {
             padding: 7px;
           }
-
-          /* =================================
-             EMPLOYMENT HISTORY
-          ================================= */
 
           .employment-wrapper {
             width: 100%;
@@ -1580,29 +1586,12 @@ const [deleteOpen, setDeleteOpen] =
             height: 46px;
           }
 
-          .employment-table th:nth-child(1) {
-            width: 20%;
-          }
-
-          .employment-table th:nth-child(2) {
-            width: 17%;
-          }
-
-          .employment-table th:nth-child(3) {
-            width: 15%;
-          }
-
-          .employment-table th:nth-child(4) {
-            width: 13%;
-          }
-
-          .employment-table th:nth-child(5) {
-            width: 13%;
-          }
-
-          .employment-table th:nth-child(6) {
-            width: 13%;
-          }
+          .employment-table th:nth-child(1) { width: 20%; }
+          .employment-table th:nth-child(2) { width: 17%; }
+          .employment-table th:nth-child(3) { width: 15%; }
+          .employment-table th:nth-child(4) { width: 13%; }
+          .employment-table th:nth-child(5) { width: 13%; }
+          .employment-table th:nth-child(6) { width: 13%; }
 
           .employment-table th:last-child,
           .employment-table td:last-child {
@@ -1619,10 +1608,6 @@ const [deleteOpen, setDeleteOpen] =
           .employment-table td:last-child .row-delete-btn {
             margin: 0 auto;
           }
-
-          /* =================================
-             FOOTER
-          ================================= */
 
           .application-footer {
             min-height: 78px;
@@ -1670,78 +1655,6 @@ const [deleteOpen, setDeleteOpen] =
             border-color: var(--ochre-dark);
             transform: translateY(-1px);
           }
-
-          /* =================================
-             DELETE MODAL
-          ================================= */
-
-          .users-delete-modal {
-            width: 400px;
-            max-width: calc(100vw - 30px);
-            padding: 28px 30px;
-            border-radius: 11px;
-            background: #fff;
-            text-align: center;
-            box-shadow: 0 20px 55px rgba(0,0,0,.22);
-          }
-
-          .users-delete-icon {
-            width: 62px;
-            height: 62px;
-            margin: 0 auto 15px;
-            border-radius: 10px;
-            background: #fbe4e4;
-            color: #e32929;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-          }
-
-          .users-delete-modal h3 {
-            margin: 0 0 7px;
-            color: #1d2b48;
-            font-size: 20px;
-          }
-
-          .users-delete-modal p {
-            max-width: 330px;
-            margin: 0 auto 19px;
-            color: #596375;
-            font-size: 13px;
-            line-height: 1.6;
-          }
-
-          .users-delete-actions {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
-          }
-
-          .users-delete-cancel,
-          .users-delete-confirm {
-            min-height: 40px;
-            padding: 0 18px;
-            border: 0;
-            border-radius: 7px;
-            font-size: 13px;
-            cursor: pointer;
-          }
-
-          .users-delete-cancel {
-            background: #f4f5f7;
-            color: #172033;
-          }
-
-          .users-delete-confirm {
-            background: #e32929;
-            color: #fff;
-            font-weight: 600;
-          }
-
-          /* =================================
-             RESPONSIVE - ADD USER
-          ================================= */
 
           @media(max-width: 900px) {
             .application-page {
@@ -1808,490 +1721,39 @@ const [deleteOpen, setDeleteOpen] =
               flex: 1;
             }
           }
-
-          /* =================================
-             USERS LIST
-          ================================= */
-
-          .users-page {
-            width: 100%;
-            min-height: calc(100vh - 50px);
-            padding: 24px 25px 25px;
-            background: #f8f9fb;
-            color: #10203f;
-            font-family: "Inter","Segoe UI",sans-serif;
-          }
-
-          .users-page-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            margin-bottom: 26px;
-          }
-
-          .users-page-title {
-            margin: 0 0 5px;
-            color: #0f1e3c;
-            font-size: 24px;
-            line-height: 1.2;
-            font-weight: 700;
-          }
-
-          .users-breadcrumb {
-            display: flex;
-            align-items: center;
-            gap: 9px;
-            color: #677386;
-            font-size: 12px;
-          }
-
-          .users-breadcrumb a {
-            color: #315c75;
-            display: inline-flex;
-            text-decoration: none;
-          }
-
-          .users-add-btn {
-            height: 39px;
-            padding: 0 15px;
-            border: 0;
-            border-radius: 5px;
-            background: #c39237;
-            color: white;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 7px;
-            font-size: 14px;
-            font-weight: 600;
-            cursor: pointer;
-          }
-
-          .users-add-btn:hover {
-            background: #b58430;
-          }
-
-          .users-card {
-            width: 100%;
-            overflow: hidden;
-            border: 1px solid #dde2e8;
-            border-radius: 5px;
-            background: #fff;
-          }
-
-          .users-card-header {
-            min-height: 71px;
-            padding: 14px 20px;
-            border-bottom: 1px solid #dde2e8;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 18px;
-          }
-
-          .users-card-header h5 {
-            margin: 0;
-            color: #0d1c38;
-            font-size: 15px;
-            font-weight: 600;
-          }
-
-          .users-filters {
-            display: flex;
-            align-items: center;
-            gap: 15px;
-          }
-
-          .users-filter {
-            height: 38px;
-            padding: 0 11px;
-            border: 1px solid #dce1e7;
-            border-radius: 5px;
-            outline: none;
-            background: #fff;
-            color: #14213b;
-            font-size: 13px;
-          }
-
-          .users-date-filter {
-            width: 195px;
-          }
-
-          .users-role-filter {
-            width: 77px;
-          }
-
-          .users-status-filter {
-            width: 91px;
-          }
-
-          .users-sort-filter {
-            width: 178px;
-          }
-
-          .users-toolbar {
-            min-height: 61px;
-            padding: 10px 16px;
-            border-bottom: 1px solid #e2e5e9;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-          }
-
-          .users-row-control {
-            display: flex;
-            align-items: center;
-            gap: 9px;
-            color: #26354d;
-            font-size: 13px;
-          }
-
-          .users-row-select {
-            width: 49px;
-            height: 29px;
-            padding: 0 5px;
-            border: 1px solid #dce1e7;
-            border-radius: 6px;
-            outline: none;
-            background: #fff;
-            font-size: 12px;
-          }
-
-          .users-search {
-            width: 160px;
-            height: 30px;
-            padding: 0 14px;
-            border: 1px solid #dce1e7;
-            border-radius: 5px;
-            outline: none;
-            background: #fff;
-            color: #26344d;
-            font-size: 12px;
-          }
-
-          .users-search::placeholder {
-            color: #8c97a9;
-          }
-
-          .users-table-wrapper {
-            width: 100%;
-            overflow-x: auto;
-          }
-
-          .users-table {
-            width: 100%;
-            min-width: 950px;
-            margin: 0;
-            border-collapse: collapse;
-          }
-
-          .users-table thead {
-            background: #e1e4e9;
-          }
-
-          .users-table th {
-            height: 43px;
-            padding: 0 14px;
-            vertical-align: middle;
-            color: #06142e;
-            font-size: 13px;
-            font-weight: 600;
-            white-space: nowrap;
-          }
-
-          .users-table td {
-            height: 53px;
-            padding: 0 14px;
-            vertical-align: middle;
-            border-bottom: 1px solid #dfe3e8;
-            background: #fff;
-            color: #596679;
-            font-size: 13px;
-            white-space: nowrap;
-          }
-
-          .users-check-col {
-            width: 58px;
-            text-align: center;
-          }
-
-          .users-checkbox {
-            width: 17px;
-            height: 17px;
-            margin: 0;
-            cursor: pointer;
-          }
-
-          .users-sort {
-            float: right;
-            margin-left: 8px;
-            color: #cbd1d9;
-            font-size: 10px;
-          }
-
-          .users-user-cell {
-            display: flex;
-            align-items: center;
-            gap: 9px;
-          }
-
-          .users-avatar {
-            width: 33px;
-            height: 33px;
-            flex: 0 0 33px;
-            position: relative;
-            border-radius: 50%;
-            background: #d7d7d7;
-          }
-
-          .users-avatar::after {
-            content: "...";
-            position: absolute;
-            inset: 0;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: #aaa;
-            font-size: 8px;
-          }
-
-          .users-name {
-            color: #06142e;
-            font-size: 13px;
-            font-weight: 500;
-          }
-
-          .users-role-badge {
-            min-height: 32px;
-            padding: 0 9px;
-            border-radius: 4px;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 10px;
-            font-weight: 500;
-          }
-
-          .users-role-employee {
-            background: #ffedf5;
-            color: #ff3486;
-          }
-
-          .users-role-hr {
-            background: #f0ddf3;
-            color: #bc46c6;
-          }
-
-          .users-status {
-            height: 19px;
-            min-width: 57px;
-            padding: 0 7px;
-            border-radius: 4px;
-            color: #fff;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 4px;
-            font-size: 10px;
-            line-height: 1;
-            font-weight: 600;
-          }
-
-          .users-status-active {
-            background: #00bd61;
-          }
-
-          .users-status-inactive {
-            min-width: 64px;
-            background: #ef0b0b;
-          }
-
-          .users-status-dot {
-            width: 4px !important;
-            height: 4px !important;
-            min-width: 4px !important;
-            min-height: 4px !important;
-            flex: 0 0 4px !important;
-            padding: 0 !important;
-            margin: 0 !important;
-            border-radius: 50% !important;
-            background: #fff !important;
-          }
-
-          .users-actions {
-            display: inline-flex;
-            align-items: center;
-            gap: 13px;
-          }
-
-          .users-action-btn {
-            width: 20px;
-            height: 25px;
-            padding: 0;
-            border: 0;
-            background: transparent;
-            color: #647286;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-          }
-
-          .users-action-btn:hover {
-            color: #17233f;
-          }
-
-          .users-table-footer {
-            height: 57px;
-            padding: 0 16px;
-            border-top: 1px solid #dfe3e8;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            color: #596679;
-            font-size: 13px;
-          }
-
-          .users-pagination {
-            display: flex;
-            align-items: center;
-            gap: 16px;
-          }
-
-          .users-page-arrow {
-            width: 22px;
-            height: 28px;
-            padding: 0;
-            border: 0;
-            background: transparent;
-            color: #a2a9b4;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-          }
-
-          .users-page-arrow:disabled {
-            opacity: .4;
-            cursor: default;
-          }
-
-          .users-current-page {
-            width: 27px;
-            height: 27px;
-            border-radius: 50%;
-            background: #c39237;
-            color: #fff;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 12px;
-          }
-
-          @media(max-width:900px) {
-            .users-card-header {
-              flex-direction: column;
-              align-items: flex-start;
-            }
-
-            .users-filters {
-              width: 100%;
-              flex-wrap: wrap;
-            }
-          }
-
-          @media(max-width:650px) {
-            .users-page {
-              padding: 18px 12px;
-            }
-
-            .users-form-grid {
-              grid-template-columns: 1fr;
-            }
-
-            .users-about-group {
-              grid-column: auto;
-            }
-
-            .users-toolbar {
-              flex-direction: column;
-              align-items: stretch;
-              gap: 10px;
-            }
-
-            .users-search {
-              width: 100%;
-            }
-
-            .users-filters {
-              flex-direction: column;
-            }
-
-            .users-date-filter,
-            .users-role-filter,
-            .users-status-filter,
-            .users-sort-filter {
-              width: 100%;
-            }
-          }
           `}
         </style>
 
         <div className="application-page">
-
-              {/* PAGE HEADER */}
+          {/* PAGE HEADER */}
 
           <div className="application-top">
-
             <div className="application-heading-wrapper">
-
               <div className="application-heading-icon">
                 <UserRound size={23} />
               </div>
 
               <div>
-
                 <h1 className="application-heading">
-                  {editingUser ? "Edit User" : "Add New User"}
+                  {editingUser
+                    ? `Edit ${selectedRole ?? "User"}`
+                    : selectedRole
+                    ? `Add New ${selectedRole}`
+                    : "Add New User"}
                 </h1>
 
                 <p className="application-subtitle">
-                  {editingUser
+                  {isShortForm
+                    ? editingUser
+                      ? "Update personal information and position details."
+                      : "Add personal information and position details."
+                    : editingUser
                     ? "Update employee information, education, references and employment history."
                     : "Add employee information, education, references and employment history."}
                 </p>
 
-                <div className="application-breadcrumb">
-
-                  {/* <Link to="/admin/dashboard">
-                    <i className="ti ti-home" />
-                  </Link> */}
-
-                  {/* <span>/</span>
-
-                  <button
-                    type="button"
-                    onClick={closeAddPage}
-                    style={{
-                      border: 0,
-                      background: "transparent",
-                      padding: 0,
-                      color: "#c49332",
-                      cursor: "pointer",
-                      fontSize: "13px",
-                    }}
-                  >
-                    Users
-                  </button>
-
-                  <span>/</span>
-
-                  <span>Add User</span> */}
-
-                </div>
-
+                <div className="application-breadcrumb" />
               </div>
-
             </div>
 
             <button
@@ -2302,49 +1764,27 @@ const [deleteOpen, setDeleteOpen] =
               <ChevronLeft size={16} />
               Back to Users
             </button>
-
           </div>
 
-              {/* APPLICATION CARD */}
+          {/* APPLICATION CARD */}
 
           <div className="application-card">
-
-            <form
-              className="application-form"
-              onSubmit={
-                handleApplicationSubmit
-              }
-            >
-
-                  {/* PERSONAL INFORMATION */}
+            <form className="application-form" onSubmit={handleApplicationSubmit}>
+              {/* PERSONAL INFORMATION */}
 
               <section className="application-section">
-
                 <h2 className="application-section-title">
                   <UserRound size={18} />
                   Personal Information
                 </h2>
 
                 <table className="application-table">
-
                   <tbody>
-
                     <tr>
-                      <th colSpan={2}>
-                        Name
-                      </th>
-
-                      <th>
-                        Address
-                      </th>
-
-                      <th>
-                        City
-                      </th>
-
-                      <th>
-                        State
-                      </th>
+                      <th colSpan={2}>Name</th>
+                      <th>Address</th>
+                      <th>City</th>
+                      <th>State</th>
                     </tr>
 
                     <tr>
@@ -2354,7 +1794,9 @@ const [deleteOpen, setDeleteOpen] =
                           type="text"
                           placeholder="Full name"
                           value={applicationForm.fullName}
-                          onChange={(e) => updateApplicationField("fullName", e.target.value)}
+                          onChange={(e) =>
+                            updateApplicationField("fullName", e.target.value)
+                          }
                         />
                       </td>
 
@@ -2362,14 +1804,9 @@ const [deleteOpen, setDeleteOpen] =
                         <input
                           type="text"
                           placeholder="Address"
-                          value={
-                            applicationForm.address
-                          }
+                          value={applicationForm.address}
                           onChange={(e) =>
-                            updateApplicationField(
-                              "address",
-                              e.target.value
-                            )
+                            updateApplicationField("address", e.target.value)
                           }
                         />
                       </td>
@@ -2378,14 +1815,9 @@ const [deleteOpen, setDeleteOpen] =
                         <input
                           type="text"
                           placeholder="City"
-                          value={
-                            applicationForm.city
-                          }
+                          value={applicationForm.city}
                           onChange={(e) =>
-                            updateApplicationField(
-                              "city",
-                              e.target.value
-                            )
+                            updateApplicationField("city", e.target.value)
                           }
                         />
                       </td>
@@ -2394,35 +1826,19 @@ const [deleteOpen, setDeleteOpen] =
                         <input
                           type="text"
                           placeholder="State"
-                          value={
-                            applicationForm.state
-                          }
+                          value={applicationForm.state}
                           onChange={(e) =>
-                            updateApplicationField(
-                              "state",
-                              e.target.value
-                            )
+                            updateApplicationField("state", e.target.value)
                           }
                         />
                       </td>
                     </tr>
 
                     <tr>
-                      <th>
-                        Zip
-                      </th>
-
-                      <th>
-                        Phone number
-                      </th>
-
-                      <th colSpan={2}>
-                        Email address
-                      </th>
-
-                      <th>
-                        Country
-                      </th>
+                      <th>Zip</th>
+                      <th>Phone number</th>
+                      <th colSpan={2}>Email address</th>
+                      <th>Country</th>
                     </tr>
 
                     <tr>
@@ -2430,14 +1846,9 @@ const [deleteOpen, setDeleteOpen] =
                         <input
                           type="text"
                           placeholder="Zip code"
-                          value={
-                            applicationForm.zip
-                          }
+                          value={applicationForm.zip}
                           onChange={(e) =>
-                            updateApplicationField(
-                              "zip",
-                              e.target.value
-                            )
+                            updateApplicationField("zip", e.target.value)
                           }
                         />
                       </td>
@@ -2446,14 +1857,9 @@ const [deleteOpen, setDeleteOpen] =
                         <input
                           type="text"
                           placeholder="Phone number"
-                          value={
-                            applicationForm.phoneNumber
-                          }
+                          value={applicationForm.phoneNumber}
                           onChange={(e) =>
-                            updateApplicationField(
-                              "phoneNumber",
-                              e.target.value
-                            )
+                            updateApplicationField("phoneNumber", e.target.value)
                           }
                         />
                       </td>
@@ -2462,14 +1868,9 @@ const [deleteOpen, setDeleteOpen] =
                         <input
                           type="email"
                           placeholder="Email address"
-                          value={
-                            applicationForm.emailAddress
-                          }
+                          value={applicationForm.emailAddress}
                           onChange={(e) =>
-                            updateApplicationField(
-                              "emailAddress",
-                              e.target.value
-                            )
+                            updateApplicationField("emailAddress", e.target.value)
                           }
                         />
                       </td>
@@ -2478,7 +1879,9 @@ const [deleteOpen, setDeleteOpen] =
                         <input
                           type="text"
                           value={applicationForm.country}
-                          onChange={(e) => updateApplicationField("country", e.target.value)}
+                          onChange={(e) =>
+                            updateApplicationField("country", e.target.value)
+                          }
                         />
                       </td>
                     </tr>
@@ -2486,9 +1889,7 @@ const [deleteOpen, setDeleteOpen] =
                     <tr>
                       <th>Password</th>
                       <th>Confirm Password</th>
-                      <th colSpan={3}>
-                        Login credentials
-                      </th>
+                      <th colSpan={3}>Login credentials</th>
                     </tr>
 
                     <tr>
@@ -2497,7 +1898,9 @@ const [deleteOpen, setDeleteOpen] =
                           type="password"
                           placeholder="Password"
                           value={applicationForm.password}
-                          onChange={(e) => updateApplicationField("password", e.target.value)}
+                          onChange={(e) =>
+                            updateApplicationField("password", e.target.value)
+                          }
                         />
                       </td>
                       <td>
@@ -2505,42 +1908,43 @@ const [deleteOpen, setDeleteOpen] =
                           type="password"
                           placeholder="Confirm password"
                           value={applicationForm.confirmPassword}
-                          onChange={(e) => updateApplicationField("confirmPassword", e.target.value)}
+                          onChange={(e) =>
+                            updateApplicationField(
+                              "confirmPassword",
+                              e.target.value
+                            )
+                          }
                         />
                       </td>
                       <td colSpan={3}>
-                        <small style={{ color: "#687386" }}>
-                          The selected position is mapped to its Designation ID and the Employee role is mapped to its Role ID automatically.
+                        <small
+                          style={{
+                            color: "#687386",
+                            padding: "0 11px",
+                            display: "block",
+                          }}
+                        >
+                          The selected position is mapped to its Designation ID
+                          and the {selectedRole ?? "selected"} role is mapped to
+                          its Role ID automatically.
                         </small>
                       </td>
                     </tr>
 
                     <tr>
-
-                      <td
-                        colSpan={2}
-                        className="question-cell"
-                      >
-
+                      <td colSpan={2} className="question-cell">
                         <span className="question-text">
                           Are you legally eligible to work in the US?
                         </span>
 
                         <div className="radio-group">
-
                           <label className="radio-option">
                             <input
                               type="radio"
                               name="eligible"
-                              checked={
-                                applicationForm.eligibleToWork ===
-                                "Yes"
-                              }
+                              checked={applicationForm.eligibleToWork === "Yes"}
                               onChange={() =>
-                                updateApplicationField(
-                                  "eligibleToWork",
-                                  "Yes"
-                                )
+                                updateApplicationField("eligibleToWork", "Yes")
                               }
                             />
                             Yes
@@ -2550,47 +1954,27 @@ const [deleteOpen, setDeleteOpen] =
                             <input
                               type="radio"
                               name="eligible"
-                              checked={
-                                applicationForm.eligibleToWork ===
-                                "No"
-                              }
+                              checked={applicationForm.eligibleToWork === "No"}
                               onChange={() =>
-                                updateApplicationField(
-                                  "eligibleToWork",
-                                  "No"
-                                )
+                                updateApplicationField("eligibleToWork", "No")
                               }
                             />
                             No
                           </label>
-
                         </div>
-
                       </td>
 
-                      <td
-                        className="question-cell"
-                      >
-
-                        <span className="question-text">
-                          Are you a veteran?
-                        </span>
+                      <td className="question-cell">
+                        <span className="question-text">Are you a veteran?</span>
 
                         <div className="radio-group">
-
                           <label className="radio-option">
                             <input
                               type="radio"
                               name="veteran"
-                              checked={
-                                applicationForm.veteran ===
-                                "Yes"
-                              }
+                              checked={applicationForm.veteran === "Yes"}
                               onChange={() =>
-                                updateApplicationField(
-                                  "veteran",
-                                  "Yes"
-                                )
+                                updateApplicationField("veteran", "Yes")
                               }
                             />
                             Yes
@@ -2600,48 +1984,30 @@ const [deleteOpen, setDeleteOpen] =
                             <input
                               type="radio"
                               name="veteran"
-                              checked={
-                                applicationForm.veteran ===
-                                "No"
-                              }
+                              checked={applicationForm.veteran === "No"}
                               onChange={() =>
-                                updateApplicationField(
-                                  "veteran",
-                                  "No"
-                                )
+                                updateApplicationField("veteran", "No")
                               }
                             />
                             No
                           </label>
-
                         </div>
-
                       </td>
 
-                      <td
-                        colSpan={2}
-                        className="question-cell"
-                      >
-
+                      <td colSpan={2} className="question-cell">
                         <span className="question-text">
-                          If selected for employment are you willing to be subject to a background check?
+                          If selected for employment are you willing to be
+                          subject to a background check?
                         </span>
 
                         <div className="radio-group">
-
                           <label className="radio-option">
                             <input
                               type="radio"
                               name="convicted"
-                              checked={
-                                applicationForm.convicted ===
-                                "Yes"
-                              }
+                              checked={applicationForm.convicted === "Yes"}
                               onChange={() =>
-                                updateApplicationField(
-                                  "convicted",
-                                  "Yes"
-                                )
+                                updateApplicationField("convicted", "Yes")
                               }
                             />
                             Yes
@@ -2651,92 +2017,57 @@ const [deleteOpen, setDeleteOpen] =
                             <input
                               type="radio"
                               name="convicted"
-                              checked={
-                                applicationForm.convicted ===
-                                "No"
-                              }
+                              checked={applicationForm.convicted === "No"}
                               onChange={() =>
-                                updateApplicationField(
-                                  "convicted",
-                                  "No"
-                                )
+                                updateApplicationField("convicted", "No")
                               }
                             />
                             No
                           </label>
-
                         </div>
-
                       </td>
-
                     </tr>
-
                   </tbody>
-
                 </table>
-
               </section>
 
-                  {/* POSITION */}
+              {/* POSITION */}
 
               <section className="application-section">
-
                 <h2 className="application-section-title">
                   <BriefcaseBusiness size={18} />
                   Position
                 </h2>
 
                 <div className="position-grid">
-
-                  {/* POSITION DROPDOWN */}
                   <div className="position-field">
-
                     <div className="position-label">
                       Position you are applying for
                     </div>
 
                     <select
-                      value={
-                        applicationForm.positionDesired
-                      }
+                      value={applicationForm.positionDesired}
                       onChange={(e) =>
-                        updateApplicationField(
-                          "positionDesired",
-                          e.target.value
-                        )
+                        updateApplicationField("positionDesired", e.target.value)
                       }
                     >
+                      <option value="">Select Position</option>
 
-                      <option value="">
-                        Select Position
-                      </option>
-
-                      {designations.map(
-                        (designation) => (
-                          <option
-                            key={designation}
-                            value={designation}
-                          >
-                            {designation}
-                          </option>
-                        )
-                      )}
-
+                      {designations.map((designation) => (
+                        <option key={designation} value={designation}>
+                          {designation}
+                        </option>
+                      ))}
                     </select>
-
                   </div>
 
                   <div className="position-field">
-
-                    <div className="position-label">
-                      Available start date
-                    </div>
+                    <div className="position-label">Available start date</div>
 
                     <input
                       type="date"
-                      value={
-                        applicationForm.availableStartDate
-                      }
+                      value={applicationForm.availableStartDate}
+                      onClick={openCalendar}
                       onChange={(e) =>
                         updateApplicationField(
                           "availableStartDate",
@@ -2744,544 +2075,107 @@ const [deleteOpen, setDeleteOpen] =
                         )
                       }
                     />
-
                   </div>
 
                   <div className="position-field">
-
-                    <div className="position-label">
-                      Desired pay
-                    </div>
+                    <div className="position-label">Desired pay</div>
 
                     <input
                       type="text"
                       placeholder="Enter desired pay"
-                      value={
-                        applicationForm.desiredPay
-                      }
+                      value={applicationForm.desiredPay}
                       onChange={(e) =>
-                        updateApplicationField(
-                          "desiredPay",
-                          e.target.value
-                        )
+                        updateApplicationField("desiredPay", e.target.value)
                       }
                     />
-
                   </div>
-
                 </div>
 
                 <div className="employment-type-row">
-
-                  <span className="employment-type-title">
-                    Employment desired
-                  </span>
+                  <span className="employment-type-title">Employment desired</span>
 
                   <label className="employment-checkbox">
-
                     <input
                       type="checkbox"
-                      checked={
-                        applicationForm.employmentType ===
-                        "Full time"
-                      }
+                      checked={applicationForm.employmentType === "Full time"}
                       onChange={(e) =>
                         updateApplicationField(
                           "employmentType",
-                          e.target.checked
-                            ? "Full time"
-                            : ""
+                          e.target.checked ? "Full time" : ""
                         )
                       }
                     />
-
                     Full time
-
                   </label>
 
                   <label className="employment-checkbox">
-
                     <input
                       type="checkbox"
-                      checked={
-                        applicationForm.employmentType ===
-                        "Part time"
-                      }
+                      checked={applicationForm.employmentType === "Part time"}
                       onChange={(e) =>
                         updateApplicationField(
                           "employmentType",
-                          e.target.checked
-                            ? "Part time"
-                            : ""
+                          e.target.checked ? "Part time" : ""
                         )
                       }
                     />
-
                     Part time
-
                   </label>
 
                   <label className="employment-checkbox">
-
                     <input
                       type="checkbox"
                       checked={
-                        applicationForm.employmentType ===
-                        "Seasonal/Temporary"
+                        applicationForm.employmentType === "Seasonal/Temporary"
                       }
                       onChange={(e) =>
                         updateApplicationField(
                           "employmentType",
-                          e.target.checked
-                            ? "Seasonal/Temporary"
-                            : ""
+                          e.target.checked ? "Seasonal/Temporary" : ""
                         )
                       }
                     />
-
                     Seasonal / Temporary
-
                   </label>
-
                 </div>
-
               </section>
 
+              {/* Education / References / Employment History
+                  Sirf HR & Employee ke liye. Admin & Accountant ke liye hidden. */}
+
+              {!isShortForm && (
+                <>
                   {/* EDUCATION */}
 
-              <section className="application-section">
+                  <section className="application-section">
+                    <h2 className="application-section-title">
+                      <GraduationCap size={18} />
+                      Education
+                    </h2>
 
-                <h2 className="application-section-title">
-                  <GraduationCap size={18} />
-                  Education
-                </h2>
-
-                <div className="table-with-actions">
-
-                  <table className="application-table">
-
-                    <thead>
-
-                      <tr>
-
-                        <th>
-                          School name
-                        </th>
-
-                        <th>
-                          Location
-                        </th>
-
-                        <th>
-                          Years attended
-                        </th>
-
-                        <th>
-                          Degree received
-                        </th>
-
-                        <th>
-                          Major
-                        </th>
-
-                        <th
-                          style={{
-                            width: "52px",
-                          }}
-                        >
-                          #
-                        </th>
-
-                      </tr>
-
-                    </thead>
-
-                    <tbody>
-
-                      {applicationForm.education.map(
-                        (
-                          education,
-                          index
-                        ) => (
-
-                          <tr key={index}>
-
-                            <td>
-                              <input
-                                type="text"
-                                placeholder="School name"
-                                value={
-                                  education.schoolName
-                                }
-                                onChange={(e) =>
-                                  updateEducation(
-                                    index,
-                                    "schoolName",
-                                    e.target.value
-                                  )
-                                }
-                              />
-                            </td>
-
-                            <td>
-                              <input
-                                type="text"
-                                placeholder="Location"
-                                value={
-                                  education.location
-                                }
-                                onChange={(e) =>
-                                  updateEducation(
-                                    index,
-                                    "location",
-                                    e.target.value
-                                  )
-                                }
-                              />
-                            </td>
-
-                            <td>
-                              <input
-                                type="text"
-                                placeholder="Years"
-                                value={
-                                  education.yearsAttended
-                                }
-                                onChange={(e) =>
-                                  updateEducation(
-                                    index,
-                                    "yearsAttended",
-                                    e.target.value
-                                  )
-                                }
-                              />
-                            </td>
-
-                            <td>
-                              <input
-                                type="text"
-                                placeholder="Degree"
-                                value={
-                                  education.degreeReceived
-                                }
-                                onChange={(e) =>
-                                  updateEducation(
-                                    index,
-                                    "degreeReceived",
-                                    e.target.value
-                                  )
-                                }
-                              />
-                            </td>
-
-                            <td>
-                              <input
-                                type="text"
-                                placeholder="Major"
-                                value={
-                                  education.major
-                                }
-                                onChange={(e) =>
-                                  updateEducation(
-                                    index,
-                                    "major",
-                                    e.target.value
-                                  )
-                                }
-                              />
-                            </td>
-
-                            <td
-                              style={{
-                                textAlign:
-                                  "center",
-                                padding:
-                                  "7px",
-                              }}
-                            >
-
-                              <button
-                                type="button"
-                                className="row-delete-btn"
-                                onClick={() =>
-                                  removeEducationRow(
-                                    index
-                                  )
-                                }
-                              >
-                                <X size={14} />
-                              </button>
-
-                            </td>
-
+                    <div className="table-with-actions">
+                      <table className="application-table">
+                        <thead>
+                          <tr>
+                            <th>School name</th>
+                            <th>Location</th>
+                            <th>Years attended</th>
+                            <th>Degree received</th>
+                            <th>Major</th>
+                            <th style={{ width: "52px" }}>#</th>
                           </tr>
+                        </thead>
 
-                        )
-                      )}
-
-                    </tbody>
-
-                  </table>
-
-                </div>
-
-                <div className="education-actions">
-
-                  <button
-                    type="button"
-                    className="small-add-btn"
-                    onClick={
-                      addEducationRow
-                    }
-                  >
-                    <Plus size={14} />
-                    Add Education
-                  </button>
-
-                </div>
-
-              </section>
-
-                  {/* REFERENCES */}
-             
-
-              <section className="application-section">
-
-                <h2 className="application-section-title">
-                  <UsersRound size={18} />
-                  References
-                </h2>
-
-                <div className="table-with-actions">
-
-                  <table className="application-table reference-table">
-
-                    <thead>
-
-                      <tr>
-
-                        <th>
-                          Name
-                        </th>
-
-                        <th>
-                          Title
-                        </th>
-
-                        <th>
-                          Company
-                        </th>
-
-                        <th>
-                          Phone
-                        </th>
-
-                        <th>
-                          #
-                        </th>
-
-                      </tr>
-
-                    </thead>
-
-                    <tbody>
-
-                      {applicationForm.references.map(
-                        (
-                          reference,
-                          index
-                        ) => (
-
-                          <tr key={index}>
-
-                            <td>
-                              <input
-                                type="text"
-                                placeholder="Reference name"
-                                value={
-                                  reference.name
-                                }
-                                onChange={(e) =>
-                                  updateReference(
-                                    index,
-                                    "name",
-                                    e.target.value
-                                  )
-                                }
-                              />
-                            </td>
-
-                            <td>
-                              <input
-                                type="text"
-                                placeholder="Title"
-                                value={
-                                  reference.title
-                                }
-                                onChange={(e) =>
-                                  updateReference(
-                                    index,
-                                    "title",
-                                    e.target.value
-                                  )
-                                }
-                              />
-                            </td>
-
-                            <td>
-                              <input
-                                type="text"
-                                placeholder="Company"
-                                value={
-                                  reference.company
-                                }
-                                onChange={(e) =>
-                                  updateReference(
-                                    index,
-                                    "company",
-                                    e.target.value
-                                  )
-                                }
-                              />
-                            </td>
-
-                            <td>
-                              <input
-                                type="text"
-                                placeholder="Phone"
-                                value={
-                                  reference.phone
-                                }
-                                onChange={(e) =>
-                                  updateReference(
-                                    index,
-                                    "phone",
-                                    e.target.value
-                                  )
-                                }
-                              />
-                            </td>
-
-                            <td>
-
-                              <button
-                                type="button"
-                                className="row-delete-btn"
-                                onClick={() =>
-                                  removeReferenceRow(
-                                    index
-                                  )
-                                }
-                              >
-                                <X size={14} />
-                              </button>
-
-                            </td>
-
-                          </tr>
-
-                        )
-                      )}
-
-                    </tbody>
-
-                  </table>
-
-                </div>
-
-                <div className="reference-actions">
-
-                  <button
-                    type="button"
-                    className="small-add-btn"
-                    onClick={
-                      addReferenceRow
-                    }
-                  >
-                    <Plus size={14} />
-                    Add Reference
-                  </button>
-
-                </div>
-
-              </section>
-
-                  {/* EMPLOYMENT HISTORY */}
-
-              <section className="application-section">
-
-                <h2 className="application-section-title">
-                  <BriefcaseBusiness size={18} />
-                  Employment History
-                </h2>
-
-                <div className="employment-wrapper">
-
-                  <table className="application-table employment-table">
-
-                    <thead>
-
-                      <tr>
-
-                        <th>
-                          Employer
-                        </th>
-
-                        <th>
-                          Job title
-                        </th>
-
-                        <th>
-                          Dates employed
-                        </th>
-
-                        <th>
-                          Work phone
-                        </th>
-
-                        <th>
-                          Starting pay rate
-                        </th>
-
-                        <th>
-                          Ending pay rate
-                        </th>
-
-                        <th>
-                          #
-                        </th>
-
-                      </tr>
-
-                    </thead>
-
-                    <tbody>
-
-                      {applicationForm.employmentHistory.map(
-                        (
-                          employment,
-                          index
-                        ) => (
-
-                          <React.Fragment
-                            key={index}
-                          >
-
-                            <tr>
-
+                        <tbody>
+                          {applicationForm.education.map((education, index) => (
+                            <tr key={index}>
                               <td>
                                 <input
                                   type="text"
-                                  placeholder="Employer"
-                                  value={
-                                    employment.employer
-                                  }
+                                  placeholder="School name"
+                                  value={education.schoolName}
                                   onChange={(e) =>
-                                    updateEmployment(
-                                      index,
-                                      "employer",
-                                      e.target.value
-                                    )
+                                    updateEducation(index, "schoolName", e.target.value)
                                   }
                                 />
                               </td>
@@ -3289,16 +2183,10 @@ const [deleteOpen, setDeleteOpen] =
                               <td>
                                 <input
                                   type="text"
-                                  placeholder="Job title"
-                                  value={
-                                    employment.jobTitle
-                                  }
+                                  placeholder="Location"
+                                  value={education.location}
                                   onChange={(e) =>
-                                    updateEmployment(
-                                      index,
-                                      "jobTitle",
-                                      e.target.value
-                                    )
+                                    updateEducation(index, "location", e.target.value)
                                   }
                                 />
                               </td>
@@ -3306,16 +2194,10 @@ const [deleteOpen, setDeleteOpen] =
                               <td>
                                 <input
                                   type="text"
-                                  placeholder="e.g. 2022 - 2025"
-                                  value={
-                                    employment.datesEmployed
-                                  }
+                                  placeholder="Years"
+                                  value={education.yearsAttended}
                                   onChange={(e) =>
-                                    updateEmployment(
-                                      index,
-                                      "datesEmployed",
-                                      e.target.value
-                                    )
+                                    updateEducation(index, "yearsAttended", e.target.value)
                                   }
                                 />
                               </td>
@@ -3323,16 +2205,10 @@ const [deleteOpen, setDeleteOpen] =
                               <td>
                                 <input
                                   type="text"
-                                  placeholder="Work phone"
-                                  value={
-                                    employment.workPhone
-                                  }
+                                  placeholder="Degree"
+                                  value={education.degreeReceived}
                                   onChange={(e) =>
-                                    updateEmployment(
-                                      index,
-                                      "workPhone",
-                                      e.target.value
-                                    )
+                                    updateEducation(index, "degreeReceived", e.target.value)
                                   }
                                 />
                               </td>
@@ -3340,230 +2216,367 @@ const [deleteOpen, setDeleteOpen] =
                               <td>
                                 <input
                                   type="text"
-                                  placeholder="Starting rate"
-                                  value={
-                                    employment.startingPayRate
-                                  }
+                                  placeholder="Major"
+                                  value={education.major}
                                   onChange={(e) =>
-                                    updateEmployment(
-                                      index,
-                                      "startingPayRate",
-                                      e.target.value
-                                    )
+                                    updateEducation(index, "major", e.target.value)
                                   }
                                 />
                               </td>
 
-                              <td>
-                                <input
-                                  type="text"
-                                  placeholder="Ending rate"
-                                  value={
-                                    employment.endingPayRate
-                                  }
-                                  onChange={(e) =>
-                                    updateEmployment(
-                                      index,
-                                      "endingPayRate",
-                                      e.target.value
-                                    )
-                                  }
-                                />
-                              </td>
-
-                              <td
-                                style={{
-                                  width:
-                                    "55px",
-                                  textAlign:
-                                    "center",
-                                  padding:
-                                    "7px",
-                                }}
-                              >
-
+                              <td style={{ textAlign: "center", padding: "7px" }}>
                                 <button
                                   type="button"
                                   className="row-delete-btn"
-                                  onClick={() =>
-                                    removeEmploymentRow(
-                                      index
-                                    )
-                                  }
+                                  onClick={() => removeEducationRow(index)}
                                 >
                                   <X size={14} />
                                 </button>
-
                               </td>
-
                             </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
 
-                            <tr>
+                    <div className="education-actions">
+                      <button
+                        type="button"
+                        className="small-add-btn"
+                        onClick={addEducationRow}
+                      >
+                        <Plus size={14} />
+                        Add Education
+                      </button>
+                    </div>
+                  </section>
 
-                              <th>
-                                Address
-                              </th>
+                  {/* REFERENCES */}
 
-                              <th>
-                                City
-                              </th>
+                  <section className="application-section">
+                    <h2 className="application-section-title">
+                      <UsersRound size={18} />
+                      References
+                    </h2>
 
-                              <th>
-                                State
-                              </th>
+                    <div className="table-with-actions">
+                      <table className="application-table reference-table">
+                        <thead>
+                          <tr>
+                            <th>Name</th>
+                            <th>Title</th>
+                            <th>Company</th>
+                            <th>Phone</th>
+                            <th>#</th>
+                          </tr>
+                        </thead>
 
-                              <th>
-                                Zip
-                              </th>
+                        <tbody>
+                          {applicationForm.references.map((reference, index) => (
+                            <tr key={index}>
+                              <td>
+                                <input
+                                  type="text"
+                                  placeholder="Reference name"
+                                  value={reference.name}
+                                  onChange={(e) =>
+                                    updateReference(index, "name", e.target.value)
+                                  }
+                                />
+                              </td>
 
-                              <th colSpan={3}>
-                                Employment details
-                              </th>
+                              <td>
+                                <input
+                                  type="text"
+                                  placeholder="Title"
+                                  value={reference.title}
+                                  onChange={(e) =>
+                                    updateReference(index, "title", e.target.value)
+                                  }
+                                />
+                              </td>
 
+                              <td>
+                                <input
+                                  type="text"
+                                  placeholder="Company"
+                                  value={reference.company}
+                                  onChange={(e) =>
+                                    updateReference(index, "company", e.target.value)
+                                  }
+                                />
+                              </td>
+
+                              <td>
+                                <input
+                                  type="text"
+                                  placeholder="Phone"
+                                  value={reference.phone}
+                                  onChange={(e) =>
+                                    updateReference(index, "phone", e.target.value)
+                                  }
+                                />
+                              </td>
+
+                              <td>
+                                <button
+                                  type="button"
+                                  className="row-delete-btn"
+                                  onClick={() => removeReferenceRow(index)}
+                                >
+                                  <X size={14} />
+                                </button>
+                              </td>
                             </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
 
-                            <tr>
+                    <div className="reference-actions">
+                      <button
+                        type="button"
+                        className="small-add-btn"
+                        onClick={addReferenceRow}
+                      >
+                        <Plus size={14} />
+                        Add Reference
+                      </button>
+                    </div>
+                  </section>
 
-                              <td>
-                                <input
-                                  type="text"
-                                  placeholder="Address"
-                                  value={
-                                    employment.address
-                                  }
-                                  onChange={(e) =>
-                                    updateEmployment(
-                                      index,
-                                      "address",
-                                      e.target.value
-                                    )
-                                  }
-                                />
-                              </td>
+                  {/* EMPLOYMENT HISTORY */}
 
-                              <td>
-                                <input
-                                  type="text"
-                                  placeholder="City"
-                                  value={
-                                    employment.city
-                                  }
-                                  onChange={(e) =>
-                                    updateEmployment(
-                                      index,
-                                      "city",
-                                      e.target.value
-                                    )
-                                  }
-                                />
-                              </td>
+                  <section className="application-section">
+                    <h2 className="application-section-title">
+                      <BriefcaseBusiness size={18} />
+                      Employment History
+                    </h2>
 
-                              <td>
-                                <input
-                                  type="text"
-                                  placeholder="State"
-                                  value={
-                                    employment.state
-                                  }
-                                  onChange={(e) =>
-                                    updateEmployment(
-                                      index,
-                                      "state",
-                                      e.target.value
-                                    )
-                                  }
-                                />
-                              </td>
+                    <div className="employment-wrapper">
+                      <table className="application-table employment-table">
+                        <thead>
+                          <tr>
+                            <th>Employer</th>
+                            <th>Job title</th>
+                            <th>Dates employed</th>
+                            <th>Work phone</th>
+                            <th>Starting pay rate</th>
+                            <th>Ending pay rate</th>
+                            <th>#</th>
+                          </tr>
+                        </thead>
 
-                              <td>
-                                <input
-                                  type="text"
-                                  placeholder="Zip"
-                                  value={
-                                    employment.zip
-                                  }
-                                  onChange={(e) =>
-                                    updateEmployment(
-                                      index,
-                                      "zip",
-                                      e.target.value
-                                    )
-                                  }
-                                />
-                              </td>
+                        <tbody>
+                          {applicationForm.employmentHistory.map(
+                            (employment, index) => (
+                              <React.Fragment key={index}>
+                                <tr>
+                                  <td>
+                                    <input
+                                      type="text"
+                                      placeholder="Employer"
+                                      value={employment.employer}
+                                      onChange={(e) =>
+                                        updateEmployment(index, "employer", e.target.value)
+                                      }
+                                    />
+                                  </td>
 
-                              <td colSpan={3}>
+                                  <td>
+                                    <input
+                                      type="text"
+                                      placeholder="Job title"
+                                      value={employment.jobTitle}
+                                      onChange={(e) =>
+                                        updateEmployment(index, "jobTitle", e.target.value)
+                                      }
+                                    />
+                                  </td>
 
-                                <input
-                                  type="text"
-                                  placeholder="Additional employment information"
-                                />
+                                  <td>
+                                    <input
+                                      type="text"
+                                      placeholder="e.g. 2022 - 2025"
+                                      value={employment.datesEmployed}
+                                      onChange={(e) =>
+                                        updateEmployment(index, "datesEmployed", e.target.value)
+                                      }
+                                    />
+                                  </td>
 
-                              </td>
+                                  <td>
+                                    <input
+                                      type="text"
+                                      placeholder="Work phone"
+                                      value={employment.workPhone}
+                                      onChange={(e) =>
+                                        updateEmployment(index, "workPhone", e.target.value)
+                                      }
+                                    />
+                                  </td>
 
-                            </tr>
+                                  <td>
+                                    <input
+                                      type="text"
+                                      placeholder="Starting rate"
+                                      value={employment.startingPayRate}
+                                      onChange={(e) =>
+                                        updateEmployment(index, "startingPayRate", e.target.value)
+                                      }
+                                    />
+                                  </td>
 
-                          </React.Fragment>
+                                  <td>
+                                    <input
+                                      type="text"
+                                      placeholder="Ending rate"
+                                      value={employment.endingPayRate}
+                                      onChange={(e) =>
+                                        updateEmployment(index, "endingPayRate", e.target.value)
+                                      }
+                                    />
+                                  </td>
 
-                        )
-                      )}
+                                  <td
+                                    style={{
+                                      width: "55px",
+                                      textAlign: "center",
+                                      padding: "7px",
+                                    }}
+                                  >
+                                    <button
+                                      type="button"
+                                      className="row-delete-btn"
+                                      onClick={() => removeEmploymentRow(index)}
+                                    >
+                                      <X size={14} />
+                                    </button>
+                                  </td>
+                                </tr>
 
-                    </tbody>
+                                <tr>
+                                  <th>Address</th>
+                                  <th>City</th>
+                                  <th>State</th>
+                                  <th>Zip</th>
+                                  <th colSpan={3}>Employment details</th>
+                                </tr>
 
-                  </table>
+                                <tr>
+                                  <td>
+                                    <input
+                                      type="text"
+                                      placeholder="Address"
+                                      value={employment.address}
+                                      onChange={(e) =>
+                                        updateEmployment(index, "address", e.target.value)
+                                      }
+                                    />
+                                  </td>
 
+                                  <td>
+                                    <input
+                                      type="text"
+                                      placeholder="City"
+                                      value={employment.city}
+                                      onChange={(e) =>
+                                        updateEmployment(index, "city", e.target.value)
+                                      }
+                                    />
+                                  </td>
+
+                                  <td>
+                                    <input
+                                      type="text"
+                                      placeholder="State"
+                                      value={employment.state}
+                                      onChange={(e) =>
+                                        updateEmployment(index, "state", e.target.value)
+                                      }
+                                    />
+                                  </td>
+
+                                  <td>
+                                    <input
+                                      type="text"
+                                      placeholder="Zip"
+                                      value={employment.zip}
+                                      onChange={(e) =>
+                                        updateEmployment(index, "zip", e.target.value)
+                                      }
+                                    />
+                                  </td>
+
+                                  <td colSpan={3}>
+                                    <input
+                                      type="text"
+                                      placeholder="Additional employment information"
+                                    />
+                                  </td>
+                                </tr>
+                              </React.Fragment>
+                            )
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+
+                    <div className="employment-actions">
+                      <button
+                        type="button"
+                        className="small-add-btn"
+                        onClick={addEmploymentRow}
+                      >
+                        <Plus size={14} />
+                        Add Employment
+                      </button>
+                    </div>
+                  </section>
+                </>
+              )}
+
+              {/* API ERROR */}
+
+              {apiError && (
+                <div
+                  style={{
+                    margin: "0 20px 16px",
+                    padding: "10px 14px",
+                    borderRadius: "8px",
+                    background: "#fff5f5",
+                    border: "1px solid #f2d5d5",
+                    color: "#dc3545",
+                    fontSize: "13px",
+                  }}
+                >
+                  {apiError}
                 </div>
+              )}
 
-                <div className="employment-actions">
-
-                  <button
-                    type="button"
-                    className="small-add-btn"
-                    onClick={
-                      addEmploymentRow
-                    }
-                  >
-                    <Plus size={14} />
-                    Add Employment
-                  </button>
-
-                </div>
-
-              </section>
-
-                  {/* FOOTER */}
+              {/* FOOTER */}
 
               <div className="application-footer">
-
                 <button
                   type="button"
                   className="application-cancel"
-                  onClick={
-                    closeAddPage
-                  }
+                  onClick={closeAddPage}
                 >
                   Cancel
                 </button>
 
-                <button
-                  type="submit"
-                  className="application-save"
-                >
+                <button type="submit" className="application-save">
                   {editingUser ? "Update User" : "Save User"}
                 </button>
-
               </div>
-
             </form>
-
           </div>
-
         </div>
       </>
     );
   }
 
-    //  USERS LIST PAGE
+  //  USERS LIST PAGE
 
   return (
     <>
@@ -3686,7 +2699,6 @@ const [deleteOpen, setDeleteOpen] =
           text-decoration: none;
         }
 
-
         .users-role-modal-overlay {
           position: fixed;
           inset: 0;
@@ -3701,6 +2713,8 @@ const [deleteOpen, setDeleteOpen] =
         .users-role-modal {
           width: 460px;
           max-width: calc(100vw - 32px);
+          max-height: calc(100vh - 40px);
+          overflow-y: auto;
           position: relative;
           padding: 32px 30px 28px;
           border-radius: 10px;
@@ -3841,6 +2855,7 @@ const [deleteOpen, setDeleteOpen] =
         .users-role-modal-cancel:hover {
           background: #f7f8fa;
         }
+
         .users-add-btn {
           height: 39px;
           padding: 0 15px;
@@ -3901,22 +2916,72 @@ const [deleteOpen, setDeleteOpen] =
           background: #fff;
           color: #14213b;
           font-size: 13px;
+          cursor: pointer;
         }
 
-        .users-date-filter {
-          width: 195px;
+        .users-filter:focus {
+          border-color: #c39237;
+        }
+
+        /* DATE RANGE (CALENDAR) */
+        .users-date-range {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+        }
+
+        .users-date-range span {
+          color: #677386;
+          font-size: 12px;
+        }
+
+        .users-date-input {
+          width: 135px;
+          height: 38px;
+          padding: 0 8px;
+          border: 1px solid #dce1e7;
+          border-radius: 5px;
+          outline: none;
+          background: #fff;
+          color: #14213b;
+          font-size: 12px;
+          font-family: inherit;
+          cursor: pointer;
+        }
+
+        .users-date-input:focus {
+          border-color: #c39237;
+        }
+
+        .users-date-clear {
+          width: 26px;
+          height: 26px;
+          padding: 0;
+          border: 0;
+          border-radius: 50%;
+          background: #f4f5f7;
+          color: #687386;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+        }
+
+        .users-date-clear:hover {
+          background: #e9ebef;
+          color: #17243d;
         }
 
         .users-role-filter {
-          width: 77px;
+          width: 120px;
         }
 
         .users-status-filter {
-          width: 91px;
+          width: 105px;
         }
 
         .users-sort-filter {
-          width: 178px;
+          width: 150px;
         }
 
         .users-toolbar {
@@ -4072,6 +3137,16 @@ const [deleteOpen, setDeleteOpen] =
           color: #bc46c6;
         }
 
+        .users-role-admin {
+          background: #e3f0ff;
+          color: #1a73e8;
+        }
+
+        .users-role-accountant {
+          background: #e0f6ee;
+          color: #0f9d6b;
+        }
+
         .users-status {
           height: 19px;
           min-width: 57px;
@@ -4178,9 +3253,7 @@ const [deleteOpen, setDeleteOpen] =
           font-size: 12px;
         }
 
-        
-
-        @media(max-width:900px) {
+        @media(max-width:1100px) {
           .users-card-header {
             flex-direction: column;
             align-items: flex-start;
@@ -4197,14 +3270,6 @@ const [deleteOpen, setDeleteOpen] =
             padding: 18px 12px;
           }
 
-          .users-form-grid {
-            grid-template-columns: 1fr;
-          }
-
-          .users-about-group {
-            grid-column: auto;
-          }
-
           .users-toolbar {
             flex-direction: column;
             align-items: stretch;
@@ -4217,9 +3282,18 @@ const [deleteOpen, setDeleteOpen] =
 
           .users-filters {
             flex-direction: column;
+            align-items: stretch;
           }
 
-          .users-date-filter,
+          .users-date-range {
+            width: 100%;
+          }
+
+          .users-date-input {
+            flex: 1;
+            width: auto;
+          }
+
           .users-role-filter,
           .users-status-filter,
           .users-sort-filter {
@@ -4230,50 +3304,32 @@ const [deleteOpen, setDeleteOpen] =
       </style>
 
       <div className="users-page">
-
-            {/* HEADER */}
+        {/* HEADER */}
 
         <div className="users-page-header">
-
           <div>
-
-            <h1 className="users-page-title">
-              Users
-            </h1>
+            <h1 className="users-page-title">Users</h1>
 
             <div className="users-breadcrumb">
-
               <Link to="/admin/dashboard">
                 <i className="ti ti-home" />
               </Link>
 
               <span>/</span>
 
-              <span>
-                Users
-              </span>
-
+              <span>Users</span>
             </div>
-
           </div>
 
-          <button
-            type="button"
-            className="users-add-btn"
-            onClick={
-              openAddPage
-            }
-          >
+          <button type="button" className="users-add-btn" onClick={openAddPage}>
             <CirclePlus size={15} />
             Add User
           </button>
-
         </div>
 
-            {/* ROLE SELECTION MODAL */}
+        {/* ROLE SELECTION MODAL */}
 
         {showRoleModal && (
-
           <div
             className="users-role-modal-overlay"
             onMouseDown={(e) => {
@@ -4282,14 +3338,12 @@ const [deleteOpen, setDeleteOpen] =
               }
             }}
           >
-
             <div
               className="users-role-modal"
               role="dialog"
               aria-modal="true"
               aria-labelledby="select-user-role-title"
             >
-
               <button
                 type="button"
                 className="users-role-modal-close"
@@ -4303,16 +3357,13 @@ const [deleteOpen, setDeleteOpen] =
                 <UserRound size={27} />
               </div>
 
-              <h3 id="select-user-role-title">
-                What role are you selecting?
-              </h3>
+              <h3 id="select-user-role-title">What role are you selecting?</h3>
 
               <p className="users-role-modal-subtitle">
                 Select a role to continue adding a new user.
               </p>
 
               <div className="users-role-options">
-
                 <button
                   type="button"
                   className="users-role-option"
@@ -4346,6 +3397,21 @@ const [deleteOpen, setDeleteOpen] =
                 <button
                   type="button"
                   className="users-role-option"
+                  onClick={() => handleRoleSelect("Admin")}
+                >
+                  <div className="users-role-option-icon">
+                    <Shield size={22} />
+                  </div>
+
+                  <div>
+                    <strong>Admin</strong>
+                    <span>Administrator profile</span>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  className="users-role-option"
                   onClick={() => handleRoleSelect("Accountant")}
                 >
                   <div className="users-role-option-icon">
@@ -4357,7 +3423,6 @@ const [deleteOpen, setDeleteOpen] =
                     <span>Accountant profile</span>
                   </div>
                 </button>
-
               </div>
 
               <button
@@ -4367,172 +3432,133 @@ const [deleteOpen, setDeleteOpen] =
               >
                 Cancel
               </button>
-
             </div>
-
           </div>
-
         )}
 
-            {/* USERS CARD */}
+        {/* USERS CARD */}
 
         <div className="users-card">
-
           <div className="users-card-header">
-
-            <h5>
-              Users List
-            </h5>
+            <h5>Users List</h5>
 
             <div className="users-filters">
+              {/* DATE RANGE - CALENDAR OPEN HOGA */}
+              <div className="users-date-range">
+                <input
+                  type="date"
+                  className="users-date-input"
+                  title="From date"
+                  value={dateFrom}
+                  max={dateTo || undefined}
+                  onClick={openCalendar}
+                  onChange={(e) => {
+                    setDateFrom(e.target.value);
+                    setCurrentPage(1);
+                  }}
+                />
 
-              <select
-                className="users-filter users-date-filter"
-                defaultValue="range"
-              >
-                <option value="range">
-                  08/28/2026 - 09/03/20
-                </option>
+                <span>to</span>
 
-                <option value="week">
-                  Last 7 Days
-                </option>
+                <input
+                  type="date"
+                  className="users-date-input"
+                  title="To date"
+                  value={dateTo}
+                  min={dateFrom || undefined}
+                  onClick={openCalendar}
+                  onChange={(e) => {
+                    setDateTo(e.target.value);
+                    setCurrentPage(1);
+                  }}
+                />
 
-                <option value="month">
-                  Last Month
-                </option>
-              </select>
+                {(dateFrom || dateTo) && (
+                  <button
+                    type="button"
+                    className="users-date-clear"
+                    title="Clear dates"
+                    onClick={() => {
+                      setDateFrom("");
+                      setDateTo("");
+                      setCurrentPage(1);
+                    }}
+                  >
+                    <X size={14} />
+                  </button>
+                )}
+              </div>
 
+              {/* USER TYPE */}
               <select
                 className="users-filter users-role-filter"
-                value={
-                  roleFilter
-                }
-                onChange={(e) => {
-                  setRoleFilter(
-                    e.target.value
-                  );
-                  setCurrentPage(1);
-                }}
+                value={roleFilter}
+                onChange={handleFilterChange(setRoleFilter)}
               >
-                <option value="">
-                  Role
+                <option value="" disabled hidden>
+                  User Type
                 </option>
-
-                <option value="Employee">
-                  Employee
-                </option>
-
-                <option value="HR">
-                  HR
-                </option>
+                <option value={ALL_VALUE}>All</option>
+                <option value="Employee">Employee</option>
+                <option value="HR">HR</option>
+                <option value="Admin">Admin</option>
+                <option value="Accountant">Accountant</option>
               </select>
 
+              {/* STATUS */}
               <select
                 className="users-filter users-status-filter"
-                value={
-                  statusFilter
-                }
-                onChange={(e) => {
-                  setStatusFilter(
-                    e.target.value
-                  );
-                  setCurrentPage(1);
-                }}
+                value={statusFilter}
+                onChange={handleFilterChange(setStatusFilter)}
               >
-                <option value="">
+                <option value="" disabled hidden>
                   Status
                 </option>
-
-                <option value="Active">
-                  Active
-                </option>
-
-                <option value="Inactive">
-                  Inactive
-                </option>
+                <option value={ALL_VALUE}>All</option>
+                <option value="Active">Active</option>
+                <option value="Inactive">Inactive</option>
               </select>
 
+              {/* SORT BY */}
               <select
                 className="users-filter users-sort-filter"
                 value={sortBy}
-                onChange={(e) => {
-                  setSortBy(
-                    e.target.value
-                  );
-                  setCurrentPage(1);
-                }}
+                onChange={handleFilterChange(setSortBy)}
               >
-                <option value="Last 7 Days">
-                  Sort By : Last 7 Days
+                <option value="" disabled hidden>
+                  Sort By
                 </option>
-
-                <option value="Recently Added">
-                  Recently Added
-                </option>
-
-                <option value="Ascending">
-                  Ascending
-                </option>
-
-                <option value="Descending">
-                  Descending
-                </option>
-
-                <option value="Last Month">
-                  Last Month
-                </option>
+                <option value={ALL_VALUE}>Default</option>
+                <option value="Recently Added">Recently Added</option>
+                <option value="Ascending">Ascending</option>
+                <option value="Descending">Descending</option>
+                <option value="Last 7 Days">Last 7 Days</option>
+                <option value="Last Month">Last Month</option>
               </select>
-
             </div>
-
           </div>
 
-              {/* TOOLBAR */}
+          {/* TOOLBAR */}
 
           <div className="users-toolbar">
-
             <div className="users-row-control">
-
-              <span>
-                Row Per Page
-              </span>
+              <span>Row Per Page</span>
 
               <select
                 className="users-row-select"
-                value={
-                  rowsPerPage
-                }
+                value={rowsPerPage}
                 onChange={(e) => {
-                  setRowsPerPage(
-                    Number(
-                      e.target.value
-                    )
-                  );
+                  setRowsPerPage(Number(e.target.value));
                   setCurrentPage(1);
                 }}
               >
-                <option value={10}>
-                  10
-                </option>
-
-                <option value={20}>
-                  20
-                </option>
-
-                <option value={30}>
-                  30
-                </option>
-
-                <option value={40}>
-                  40
-                </option>
+                <option value={10}>10</option>
+                <option value={20}>20</option>
+                <option value={30}>30</option>
+                <option value={40}>40</option>
               </select>
 
-              <span>
-                Entries
-              </span>
-
+              <span>Entries</span>
             </div>
 
             <input
@@ -4541,173 +3567,116 @@ const [deleteOpen, setDeleteOpen] =
               placeholder="Search"
               value={search}
               onChange={(e) => {
-                setSearch(
-                  e.target.value
-                );
+                setSearch(e.target.value);
                 setCurrentPage(1);
               }}
             />
-
           </div>
 
-              {/* TABLE */}
+          {/* TABLE */}
 
           <div className="users-table-wrapper">
-
             <table className="users-table">
-
               <thead>
-
                 <tr>
-
                   <th className="users-check-col">
-
                     <input
                       type="checkbox"
                       className="users-checkbox"
-                      checked={
-                        allVisibleSelected
-                      }
-                      onChange={
-                        handleSelectAll
-                      }
+                      checked={allVisibleSelected}
+                      onChange={handleSelectAll}
                     />
-
                   </th>
 
                   <th>
                     Name
-                    <span className="users-sort">
-                      ↑↓
-                    </span>
+                    <span className="users-sort">↑↓</span>
                   </th>
 
                   <th>
                     Email
-                    <span className="users-sort">
-                      ↑↓
-                    </span>
+                    <span className="users-sort">↑↓</span>
                   </th>
 
                   <th>
                     Created Date
-                    <span className="users-sort">
-                      ↑↓
-                    </span>
+                    <span className="users-sort">↑↓</span>
                   </th>
 
                   <th>
-                    Role
-                    <span className="users-sort">
-                      ↑↓
-                    </span>
+                    User type
+                    <span className="users-sort">↑↓</span>
                   </th>
 
                   <th>
                     Status
-                    <span className="users-sort">
-                      ↑↓
-                    </span>
+                    <span className="users-sort">↑↓</span>
                   </th>
 
                   <th>
-                    <span className="users-sort">
-                      ↑↓
-                    </span>
+                    <span className="users-sort">↑↓</span>
                   </th>
-
                 </tr>
-
               </thead>
 
               <tbody>
-
                 {loadingUsers ? (
                   <tr>
-                    <td colSpan={7} style={{ height: "90px", textAlign: "center" }}>Loading users...</td>
+                    <td
+                      colSpan={7}
+                      style={{ height: "90px", textAlign: "center" }}
+                    >
+                      Loading users...
+                    </td>
                   </tr>
-                ) : visibleUsers.map(
-                  (user) => (
-
+                ) : (
+                  visibleUsers.map((user) => (
                     <tr key={user.id}>
-
                       <td className="users-check-col">
-
                         <input
                           type="checkbox"
                           className="users-checkbox"
-                          checked={selected.includes(
-                            user.id
-                          )}
-                          onChange={() =>
-                            toggleSelect(
-                              user.id
-                            )
-                          }
+                          checked={selected.includes(user.id)}
+                          onChange={() => toggleSelect(user.id)}
                         />
-
                       </td>
 
                       <td>
-
                         <div className="users-user-cell">
-
                           <div className="users-avatar" />
-
-                          <div className="users-name">
-                            {user.name}
-                          </div>
-
+                          <div className="users-name">{user.name}</div>
                         </div>
-
                       </td>
 
-                      <td>
-                        {user.email}
-                      </td>
+                      <td>{user.email}</td>
+
+                      <td>{user.createdDate}</td>
 
                       <td>
-                        {user.createdDate}
-                      </td>
-
-                      <td>
-
                         <span
-                          className={`users-role-badge ${
-                            user.role ===
-                            "Employee"
-                              ? "users-role-employee"
-                              : "users-role-hr"
-                          }`}
+                          className={`users-role-badge ${getRoleBadgeClass(
+                            user.role
+                          )}`}
                         >
                           {user.role}
                         </span>
-
                       </td>
 
                       <td>
-
                         <span
                           className={`users-status ${
-                            user.status ===
-                            "Active"
+                            user.status === "Active"
                               ? "users-status-active"
                               : "users-status-inactive"
                           }`}
                         >
-
                           <span className="users-status-dot" />
-
                           {user.status}
-
                         </span>
-
                       </td>
 
                       <td>
-
                         <div className="users-actions">
-
                           <button
                             type="button"
                             className="users-action-btn"
@@ -4719,12 +3688,8 @@ const [deleteOpen, setDeleteOpen] =
                           <button
                             type="button"
                             className="users-action-btn"
-                            title="Edit"
-                            onClick={() =>
-                              openEditModal(
-                                user
-                              )
-                            }
+                            title={`Edit ${user.role}`}
+                            onClick={() => openEditModal(user)}
                           >
                             <Pencil size={15} />
                           </button>
@@ -4733,173 +3698,93 @@ const [deleteOpen, setDeleteOpen] =
                             type="button"
                             className="users-action-btn"
                             title="Delete"
-                            onClick={() =>
-                              openDeleteModal(
-                                user.id
-                              )
-                            }
+                            onClick={() => openDeleteModal(user.id)}
                           >
                             <Trash2 size={15} />
                           </button>
-
                         </div>
-
                       </td>
-
                     </tr>
-
-                  )
+                  ))
                 )}
 
-                {!loadingUsers && visibleUsers.length ===
-                  0 && (
-
+                {!loadingUsers && visibleUsers.length === 0 && (
                   <tr>
-
                     <td
                       colSpan={7}
-                      style={{
-                        height:
-                          "90px",
-                        textAlign:
-                          "center",
-                      }}
+                      style={{ height: "90px", textAlign: "center" }}
                     >
                       No users found
                     </td>
-
                   </tr>
-
                 )}
-
               </tbody>
-
             </table>
-
           </div>
 
-              {/* FOOTER */}
+          {/* FOOTER */}
 
           <div className="users-table-footer">
-
             <div>
-
               Showing{" "}
-
-              {filteredUsers.length ===
-              0
+              {filteredUsers.length === 0
                 ? 0
-                : (safeCurrentPage -
-                    1) *
-                    rowsPerPage +
-                  1}
-
+                : (safeCurrentPage - 1) * rowsPerPage + 1}
               {" - "}
-
-              {Math.min(
-                safeCurrentPage *
-                  rowsPerPage,
-                filteredUsers.length
-              )}
-
+              {Math.min(safeCurrentPage * rowsPerPage, filteredUsers.length)}
               {" of "}
-
               {filteredUsers.length}
-
               {" entries"}
-
             </div>
 
             <div className="users-pagination">
-
               <button
                 type="button"
                 className="users-page-arrow"
-                disabled={
-                  safeCurrentPage ===
-                  1
-                }
-                onClick={() =>
-                  setCurrentPage(
-                    (page) =>
-                      Math.max(
-                        1,
-                        page - 1
-                      )
-                  )
-                }
+                disabled={safeCurrentPage === 1}
+                onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
               >
                 <ChevronLeft size={16} />
               </button>
 
-              <span className="users-current-page">
-                {safeCurrentPage}
-              </span>
+              <span className="users-current-page">{safeCurrentPage}</span>
 
               <button
                 type="button"
                 className="users-page-arrow"
-                disabled={
-                  safeCurrentPage ===
-                  totalPages
-                }
+                disabled={safeCurrentPage === totalPages}
                 onClick={() =>
-                  setCurrentPage(
-                    (page) =>
-                      Math.min(
-                        totalPages,
-                        page + 1
-                      )
-                  )
+                  setCurrentPage((page) => Math.min(totalPages, page + 1))
                 }
               >
                 <ChevronRight size={16} />
               </button>
-
             </div>
-
           </div>
-
         </div>
-
       </div>
 
-          {/* DELETE MODAL */}
+      {/* DELETE MODAL */}
 
       {deleteOpen && (
-
         <div className="users-modal-overlay">
-
           <div className="users-delete-modal">
-
             <div className="users-delete-icon">
-
-              <Trash2
-                size={31}
-                strokeWidth={2.2}
-              />
-
+              <Trash2 size={31} strokeWidth={2.2} />
             </div>
 
-            <h3>
-              Confirm Delete
-            </h3>
+            <h3>Confirm Delete</h3>
 
             <p>
-              You want to delete all
-              the marked items, this
-              cant be undone once you
-              delete.
+              You want to delete all the marked items, this cant be undone once
+              you delete.
             </p>
 
             <div className="users-delete-actions">
-
               <button
                 type="button"
                 className="users-delete-cancel"
-                onClick={
-                  closeDeleteModal
-                }
+                onClick={closeDeleteModal}
               >
                 Cancel
               </button>
@@ -4907,21 +3792,14 @@ const [deleteOpen, setDeleteOpen] =
               <button
                 type="button"
                 className="users-delete-confirm"
-                onClick={
-                  handleDelete
-                }
+                onClick={handleDelete}
               >
                 Yes, Delete
               </button>
-
             </div>
-
           </div>
-
         </div>
-
       )}
-
     </>
   );
 };

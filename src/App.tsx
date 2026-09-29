@@ -1,16 +1,12 @@
   import React from "react";
   import { BrowserRouter, Routes, Route } from "react-router-dom";
 
-  // ======================================================
   // HOME
-  // ======================================================
 
   import Home from "./Screens/Home";
   import SelectRole from "./Screens/SelectRole";
 
-  // ======================================================
   // ADMIN
-  // ======================================================
 
   import DashboardLayout from "./Components/Admin/DashboardLayout";
 
@@ -27,14 +23,14 @@
   import LeaveType from "./Screens/Admin/LeaveType";
   import Attendance from "./Screens/Admin/Attendance";
   import EmployeSalary from "./Screens/Admin/EmployeSalary";
+    import Transactions from "./Screens/Admin/Transactions";
+
   import Users from "./Screens/Admin/Users";
   import RolesPermission from "./Screens/Admin/RolesPermission";
   import Profile from "./Screens/Admin/Profile";
   import EmployeDetails from "./Screens/Admin/EmployeDetails";
 
-  // ======================================================
   // HR
-  // ======================================================
 
   import Hrlogin from "./Screens/HR/HrLogin";
   import HrSignup from "./Screens/HR/HrSignup";
@@ -60,9 +56,7 @@
   import HROTP from "./Screens/HR/HROTP";
   import HRResetPassword from "./Screens/HR/HRResetPassword";
 
-  // ======================================================
   // EMPLOYEE
-  // ======================================================
 
   import EmployeLogin from "./Screens/Employee/EmployeLogin";
   import ForgetPasswordEmp from "./Screens/Employee/forgetPassword";
@@ -80,6 +74,13 @@
 
   import OTP from "./Screens/Employee/OTP";
   import ResetPassword from "./Screens/Employee/ResetPassword";
+
+  import AccountantLogin from "./Screens/Accountant/AccountantLogin";
+    import AccountantSignup from "./Screens/Accountant/AccountantSignup";
+    import ForgotPass from "./Screens/Accountant/ForgotPass";
+     import Otp from "./Screens/Accountant/Otp";
+   import Resetpassword from "./Screens/Accountant/Resetpassword";
+
 
   function App() {
     return (
@@ -196,6 +197,16 @@
             element={
               <DashboardLayout>
                 <EmployeSalary />
+              </DashboardLayout>
+            }
+          />
+
+
+            <Route
+            path="/admin/transactions"
+            element={
+              <DashboardLayout>
+                <Transactions />
               </DashboardLayout>
             }
           />
@@ -379,6 +390,38 @@
             path="/Employee/ResetPassword"
             element={<ResetPassword />}
           />
+
+
+          {/* ==================================================
+    ACCOUNTANT AUTH
+    NO HEADER / SIDEBAR
+================================================== */}
+
+<Route
+  path="/Accountant/AccountantLogin"
+  element={<AccountantLogin />}
+/>
+
+<Route
+  path="/Accountant/AccountantSignup"
+  element={<AccountantSignup />}
+/>
+
+<Route
+  path="/Accountant/ForgotPass"
+  element={<ForgotPass />}
+/>
+
+<Route
+  path="/Accountant/Otp"
+  element={< Otp />}
+/>
+
+<Route
+  path="/Accountant/Resetpassword"
+  element={< ResetPassword />}
+/>
+
 
           {/* ==================================================
               EMPLOYEE - HEADER + SIDEBAR

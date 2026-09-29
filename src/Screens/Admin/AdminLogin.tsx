@@ -76,12 +76,7 @@ console.log("LOGIN TOKENS:", response?.data?.tokens);
         return;
       }
 
-      /*
-       * IMPORTANT:
-       * Clear the complete previous user's session.
-       * Otherwise HR's userId/role can remain in localStorage
-       * when logging into Admin.
-       */
+      
       localStorage.removeItem("token");
       localStorage.removeItem("userId");
       localStorage.removeItem("role");
@@ -404,6 +399,8 @@ console.log("LOGIN TOKENS:", response?.data?.tokens);
                         ? "Signing In..."
                         : "Sign In"}
                     </button>
+
+
 
                   </form>
 

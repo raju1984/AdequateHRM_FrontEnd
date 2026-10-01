@@ -5,27 +5,27 @@ import logo from "../../assets/img/logo.webp";
 import avatar27 from "../../assets/img/profiles/avatar-27.jpg";
 
 const Header = () => {
- const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(false);
 
-const dropdownRef = useRef<HTMLDivElement | null>(null);
-const navigate = useNavigate();;
+  const dropdownRef = useRef<HTMLDivElement | null>(null);
+ const navigate = useNavigate();
 
-useEffect(() => {
-  const handleClickOutside = (event: MouseEvent) => {
-    if (
-      dropdownRef.current &&
-      !dropdownRef.current.contains(event.target as Node)
-    ) {
-      setOpen(false);
-    }
-  };
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(event.target as Node)
+      ) {
+        setOpen(false);
+      }
+    };
 
-  document.addEventListener("click", handleClickOutside);
+    document.addEventListener("click", handleClickOutside);
 
-  return () => {
-    document.removeEventListener("click", handleClickOutside);
-  };
-}, []);
+    return () => {
+      document.removeEventListener("click", handleClickOutside);
+    };
+  }, []);
 
   const handleLogout = () => {
     setOpen(false);
@@ -33,35 +33,49 @@ useEffect(() => {
   };
 
   return (
-    <div
-      className="header"
- style={{
-  height: "55px",
-  background: "#fff",
-  borderBottom: "1px solid #e5e7eb",
-  position: "sticky",
-  top: 0,
-  zIndex: 1000,
-
-  // position: "fixed",
-  left: "260px",
-  right: 0,
-  width: "auto",
-}}
-    >
-      <div
-        className="main-header"
-        style={{
-          height: "100%",
-          padding: "0 16px",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-        }}
-      >
+<div
+  className="header"
+  style={{
+    height: "55px",
+    width: "100%",
+    margin: 0,
+    padding: 0,
+    background: "#fff",
+    borderBottom: "1px solid #e5e7eb",
+    position: "sticky",
+    top: 0,
+    zIndex: 1000,
+    boxSizing: "border-box",
+  }}
+>
+<div
+  className="main-header"
+  style={{
+    height: "100%",
+    width: "100%",
+    margin: 0,
+    padding: "0 16px",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    boxSizing: "border-box",
+  }}
+>
         {/* LEFT */}
-        <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
-          <a href="#" style={{ fontSize: "20px", color: "#667085" }}>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "14px",
+          }}
+        >
+          <a
+            href="#"
+            style={{
+              fontSize: "20px",
+              color: "#667085",
+            }}
+          >
             <i className="ti ti-arrow-bar-to-left"></i>
           </a>
 
@@ -77,9 +91,13 @@ useEffect(() => {
               padding: "0 10px",
               background: "#f9fafb",
               position: "relative",
+              boxSizing: "border-box",
             }}
           >
-            <i className="ti ti-search" style={{ color: "#98a2b3" }}></i>
+            <i
+              className="ti ti-search"
+              style={{ color: "#98a2b3" }}
+            ></i>
 
             <input
               type="text"
@@ -91,6 +109,7 @@ useEffect(() => {
                 marginLeft: "6px",
                 flex: 1,
                 fontSize: "12px",
+                minWidth: 0,
               }}
             />
 
@@ -115,16 +134,30 @@ useEffect(() => {
         </div>
 
         {/* RIGHT */}
-        <div style={{ display: "flex", alignItems: "center", gap: "18px" }}>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "18px",
+          }}
+        >
           {/* Notification */}
-          <i className="ti ti-bell" style={{ fontSize: "20px", color: "#667085" }}></i>
+          <i
+            className="ti ti-bell"
+            style={{
+              fontSize: "20px",
+              color: "#667085",
+            }}
+          ></i>
 
           {/* PROFILE */}
-<div
-  ref={dropdownRef}
-  style={{ position: "relative" }}
->
-              <img
+          <div
+            ref={dropdownRef}
+            style={{
+              position: "relative",
+            }}
+          >
+            <img
               src={avatar27}
               alt=""
               onClick={() => setOpen(!open)}
@@ -134,6 +167,7 @@ useEffect(() => {
                 borderRadius: "50%",
                 cursor: "pointer",
                 border: "2px solid #f2f4f7",
+                display: "block",
               }}
             />
 
@@ -175,46 +209,49 @@ useEffect(() => {
                   </div>
                 </div>
 
-                <hr style={{ border: "none", borderTop: "1px solid #eaecf0" }} />
+                <hr
+                  style={{
+                    border: "none",
+                    borderTop: "1px solid #eaecf0",
+                  }}
+                />
 
-               
                 {/* My Profile */}
-<div
-  onClick={() => {
-    setOpen(false);
-    navigate("/Admin/Profile");
-  }}
-  
-  style={{
-    padding: "10px",
-    cursor: "pointer",
-    fontSize: "13px",
-    fontWeight: "600",
-    color: "#344054",
-    background: "#f2f4f7",
-    borderRadius: "6px",
-    marginTop: "6px",
-  }}
->
-  My Profile
-</div>
+                <div
+                  onClick={() => {
+                    setOpen(false);
+                    navigate("/Admin/Profile");
+                  }}
+                  style={{
+                    padding: "10px",
+                    cursor: "pointer",
+                    fontSize: "13px",
+                    fontWeight: "600",
+                    color: "#344054",
+                    background: "#f2f4f7",
+                    borderRadius: "6px",
+                    marginTop: "6px",
+                  }}
+                >
+                  My Profile
+                </div>
 
-{/* Logout */}
-<div
-  onClick={handleLogout}
-  style={{
-    padding: "10px",
-    cursor: "pointer",
-    fontSize: "13px",
-    fontWeight: "600",
-    color: "#d92d20",
-    background: "#fef3f2",
-    borderRadius: "6px",
-    marginTop: "6px",
-  }}
->
-  Logout
-</div>
+                {/* Logout */}
+                <div
+                  onClick={handleLogout}
+                  style={{
+                    padding: "10px",
+                    cursor: "pointer",
+                    fontSize: "13px",
+                    fontWeight: "600",
+                    color: "#d92d20",
+                    background: "#fef3f2",
+                    borderRadius: "6px",
+                    marginTop: "6px",
+                  }}
+                >
+                  Logout
+                </div>
               </div>
             )}
           </div>
@@ -225,3 +262,5 @@ useEffect(() => {
 };
 
 export default Header;
+
+

@@ -932,13 +932,15 @@ const Designation: React.FC = () => {
         {`
           * { box-sizing: border-box; }
 
-          .designation-page {
-            width: 100%;
-            min-height: calc(100vh - 70px);
-            background: #f7f8fa;
-            padding: 22px 20px 35px;
-            font-family: Inter, Arial, sans-serif;
-          }
+        .designations-page {
+  min-height: 100%;
+  padding: 26px 26px 40px;
+  background: transparent !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
+  font-family: Inter, Arial, sans-serif;
+  color: #101828;
+}
 
           .designation-top {
             display: flex;

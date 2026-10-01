@@ -442,13 +442,15 @@ const Holidays: React.FC = () => {
   return (
     <>
       <style>{`
-        .hol-page{
-          padding:24px 24px 32px;
-          min-height:100vh;
-          background:#f7f8fa;
-          color:#152647;
-          font-family:Inter,Arial,sans-serif;
-        }
+       .hols-page{ 
+  padding:24px 24px 32px; 
+  min-height:100vh; 
+  background:transparent !important; 
+  box-shadow:none !important; 
+  border-radius:0 !important; 
+  color:#152647; 
+  font-family:Inter,Arial,sans-serif; 
+}
 
         .hol-header{
           display:flex;

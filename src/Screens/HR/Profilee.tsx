@@ -752,17 +752,19 @@ const Profilee: React.FC = () => {
   ===================================================== */
 
   return (
-    <div
-      style={{
-        minHeight: "100vh",
-        background: PAGE_BG,
-        padding: "24px",
-        boxSizing: "border-box",
-        fontFamily:
-          "'Inter', 'Nunito Sans', 'Segoe UI', Arial, sans-serif",
-        color: TEXT_DARK,
-      }}
-    >
+ <div
+  style={{
+    minHeight: "100vh",
+    background: "transparent",
+    padding: "24px",
+    boxSizing: "border-box",
+    fontFamily:
+      "'Inter', 'Nunito Sans', 'Segoe UI', Arial, sans-serif",
+    color: TEXT_DARK,
+    boxShadow: "none",
+    borderRadius: 0,
+  }}
+>
       {/* =================================================
           PAGE HEADER
       ================================================= */}

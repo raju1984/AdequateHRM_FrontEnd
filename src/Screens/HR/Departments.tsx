@@ -661,13 +661,15 @@ const Departments: React.FC = () => {
   return (
     <>
       <style>{`
-        .department-page {
-          min-height: 100%;
-          padding: 26px 26px 40px;
-          background: #f7f8fa;
-          font-family: Inter, Arial, sans-serif;
-          color: #101828;
-        }
+     .departments-page {
+  min-height: 100%;
+  padding: 26px 26px 40px;
+  background: transparent !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
+  font-family: Inter, Arial, sans-serif;
+  color: #101828;
+}
 
         .department-page * {
           box-sizing: border-box;

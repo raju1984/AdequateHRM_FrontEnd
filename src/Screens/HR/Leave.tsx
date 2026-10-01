@@ -738,7 +738,7 @@ const Leaves: React.FC = () => {
   return (
     <>
       <style>{`
-        .leave-page{min-height:100vh;background:#f5f6f8;padding:24px 20px 26px;color:#14223d;font-family:Inter,Arial,sans-serif}
+        .leaves-page{min-height:100vh;background:#f5f6f8;padding:24px 20px 26px;color:#14223d;font-family:Inter,Arial,sans-serif}
         .leave-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:28px}
         .leave-title{margin:0;font-size:25px;line-height:1.2;font-weight:700;color:#172442}
         .leave-breadcrumb{display:flex;align-items:center;gap:9px;margin-top:9px;font-size:12px;color:#52627a}

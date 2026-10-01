@@ -1,2360 +1,967 @@
-import React, { useMemo, useState } from "react";
-import {
-  ArrowUpDown,
-  ChevronDown,
-  ChevronLeft,
-  ChevronRight,
-  Edit3,
-  Home,
-  Search,
-  Trash2,
-  X,
-  Plus,
-} from "lucide-react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
+import * as XLSX from "xlsx"; // npm i xlsx
 
 /* =====================================================
    TYPES
 ===================================================== */
 
-interface SalaryType {
-  id: number;
-  empId: string;
+type FieldRow = { id: string; label: string; value: string };
+
+type Employee = {
+  id: string; // Emp-001
   name: string;
   role: string;
   email: string;
   phone: string;
-  designation: string;
-  joiningDate: string;
+  account: string;
+  salary: number;
+  avatar: string;
+  earn?: FieldRow[];
+  ded?: FieldRow[];
+};
+
+type PreviewRow = {
   salary: string;
-
-  basic: string;
-  da: string;
-  hra: string;
-  conveyance: string;
-
-  allowance: string;
-  medicalAllowance: string;
-  earningOthers: string;
-
-  tds: string;
-  esi: string;
+  workedDays: string;
+  holidays: string;
+  el: string;
+  gl: string;
+  lwp: string;
   pf: string;
-  leave: string;
+  tds: string;
+  gratuity: string;
+  advances: string;
+  employerPf: string;
+  other: string;
+};
 
-  professionalTax: string;
-  labourWelfare: string;
-  deductionOthers: string;
-}
+type ResultRow = {
+  id: string;
+  name: string;
+  account: string;
+  earnings: number;
+  deductions: number;
+  net: number;
+};
 
 /* =====================================================
-   INITIAL DATA
+   STATIC DATA (replace with API when ready)
+   NOTE: avatar paths assume template assets are served from /assets
 ===================================================== */
 
-const salaryData: SalaryType[] = [
-  {
-    id: 1,
-    empId: "Emp-001",
-    name: "Anthony Lewis",
-    role: "Finance",
-    email: "anthony@example.com",
-    phone: "(123) 4567 890",
-    designation: "Finance",
-    joiningDate: "12 Sep 2024",
-    salary: "$40000",
+const INITIAL_EMPLOYEES: Employee[] = [
+  { id: "Emp-001", name: "Anthony Lewis", role: "Finance", email: "anthony@example.com", phone: "(123) 4567 890", account: "123456789001", salary: 40000, avatar: "/assets/img/users/user-32.jpg" },
+  { id: "Emp-002", name: "Brian Villalobos", role: "Developer", email: "brian@example.com", phone: "(179) 7382 829", account: "123456789002", salary: 35000, avatar: "/assets/img/users/user-09.jpg" },
+  { id: "Emp-003", name: "Harvey Smith", role: "Developer", email: "harvey@example.com", phone: "(184) 2719 738", account: "123456789003", salary: 20000, avatar: "/assets/img/users/user-01.jpg" },
+  { id: "Emp-004", name: "Stephan Peralt", role: "Executive Officer", email: "peral@example.com", phone: "(193) 7839 748", account: "123456789004", salary: 22000, avatar: "/assets/img/users/user-33.jpg" },
+  { id: "Emp-005", name: "Doglas Martini", role: "Manager", email: "martniwr@example.com", phone: "(183) 9302 890", account: "123456789005", salary: 25000, avatar: "/assets/img/users/user-34.jpg" },
+  { id: "Emp-006", name: "Linda Ray", role: "Finance", email: "ray456@example.com", phone: "(120) 3728 039", account: "123456789006", salary: 30000, avatar: "/assets/img/users/user-02.jpg" },
+  { id: "Emp-007", name: "Elliot Murray", role: "Developer", email: "murray@example.com", phone: "(102) 8480 832", account: "123456789007", salary: 35000, avatar: "/assets/img/users/user-35.jpg" },
+  { id: "Emp-008", name: "Rebecca Smtih", role: "Executive", email: "smtih@example.com", phone: "(162) 8920 713", account: "123456789008", salary: 45000, avatar: "/assets/img/users/user-36.jpg" },
+  { id: "Emp-009", name: "Connie Waters", role: "Developer", email: "connie@example.com", phone: "(189) 0920 723", account: "123456789009", salary: 50000, avatar: "/assets/img/users/user-37.jpg" },
+  { id: "Emp-010", name: "Lori Broaddus", role: "Finance", email: "broaddus@example.com", phone: "(168) 8392 823", account: "123456789010", salary: 25000, avatar: "/assets/img/users/user-38.jpg" },
+];
 
-    basic: "$40000",
-    da: "$16000",
-    hra: "$2666",
-    conveyance: "$2000",
+const DEFAULT_EARN_LABELS = ["Basic", "DA(40%)", "HRA(15%)", "Conveyance", "Allowance", "Medical Allowance", "Others"];
+const DEFAULT_DED_LABELS = ["TDS", "ESI", "PF", "Leave", "Prof.Tax", "Labour Welfare", "Others"];
 
-    allowance: "$1000",
-    medicalAllowance: "$2000",
-    earningOthers: "",
+// Sample values shown in the original Edit modal (Anthony Lewis)
+const ANTHONY_EARN = ["₹40000", "₹16000", "₹2666", "₹2000", "₹1000", "₹2000", ""];
+const ANTHONY_DED = ["₹4000", "₹2000", "₹3000", "₹1000", "₹800", "₹500", "₹100"];
 
-    tds: "$4000",
-    esi: "$2000",
-    pf: "$3000",
-    leave: "$1000",
+const ATTENDANCE_FIELDS: [keyof PreviewRow, string][] = [
+  ["workedDays", "Worked Days"],
+  ["holidays", "Holidays"],
+  ["el", "Leaves (EL) - Paid"],
+  ["gl", "Leaves (GL) - Paid"],
+  ["lwp", "LWP"],
+];
 
-    professionalTax: "$800",
-    labourWelfare: "$500",
-    deductionOthers: "$100",
-  },
-
-  {
-    id: 2,
-    empId: "Emp-002",
-    name: "Brian Villalobos",
-    role: "Developer",
-    email: "brian@example.com",
-    phone: "(179) 7382 829",
-    designation: "Developer",
-    joiningDate: "24 Oct 2024",
-    salary: "$35000",
-
-    basic: "$35000",
-    da: "$14000",
-    hra: "$2300",
-    conveyance: "$2000",
-
-    allowance: "$1000",
-    medicalAllowance: "$1800",
-    earningOthers: "",
-
-    tds: "$3500",
-    esi: "$1800",
-    pf: "$2800",
-    leave: "$800",
-
-    professionalTax: "$700",
-    labourWelfare: "$500",
-    deductionOthers: "$100",
-  },
-
-  {
-    id: 3,
-    empId: "Emp-003",
-    name: "Harvey Smith",
-    role: "Developer",
-    email: "harvey@example.com",
-    phone: "(184) 2719 738",
-    designation: "Executive",
-    joiningDate: "18 Feb 2024",
-    salary: "$20000",
-
-    basic: "$20000",
-    da: "$8000",
-    hra: "$1500",
-    conveyance: "$1500",
-
-    allowance: "$800",
-    medicalAllowance: "$1200",
-    earningOthers: "",
-
-    tds: "$2000",
-    esi: "$1000",
-    pf: "$1800",
-    leave: "$500",
-
-    professionalTax: "$500",
-    labourWelfare: "$300",
-    deductionOthers: "$100",
-  },
-
-  {
-    id: 4,
-    empId: "Emp-004",
-    name: "Stephan Peralt",
-    role: "Executive Officer",
-    email: "peral@example.com",
-    phone: "(193) 7839 748",
-    designation: "Executive",
-    joiningDate: "17 Oct 2024",
-    salary: "$22000",
-
-    basic: "$22000",
-    da: "$8800",
-    hra: "$1650",
-    conveyance: "$1500",
-
-    allowance: "$800",
-    medicalAllowance: "$1200",
-    earningOthers: "",
-
-    tds: "$2200",
-    esi: "$1100",
-    pf: "$1900",
-    leave: "$500",
-
-    professionalTax: "$500",
-    labourWelfare: "$300",
-    deductionOthers: "$100",
-  },
-
-  {
-    id: 5,
-    empId: "Emp-005",
-    name: "Doglas Martini",
-    role: "Manager",
-    email: "martniwr@example.com",
-    phone: "(183) 9302 890",
-    designation: "Manager",
-    joiningDate: "20 Jul 2024",
-    salary: "$25000",
-
-    basic: "$25000",
-    da: "$10000",
-    hra: "$1875",
-    conveyance: "$1800",
-
-    allowance: "$900",
-    medicalAllowance: "$1500",
-    earningOthers: "",
-
-    tds: "$2500",
-    esi: "$1300",
-    pf: "$2100",
-    leave: "$600",
-
-    professionalTax: "$600",
-    labourWelfare: "$350",
-    deductionOthers: "$100",
-  },
-
-  {
-    id: 6,
-    empId: "Emp-006",
-    name: "Linda Ray",
-    role: "Finance",
-    email: "ray456@example.com",
-    phone: "(120) 3728 039",
-    designation: "Finance",
-    joiningDate: "10 Apr 2024",
-    salary: "$30000",
-
-    basic: "$30000",
-    da: "$12000",
-    hra: "$2250",
-    conveyance: "$1800",
-
-    allowance: "$900",
-    medicalAllowance: "$1600",
-    earningOthers: "",
-
-    tds: "$3000",
-    esi: "$1500",
-    pf: "$2400",
-    leave: "$700",
-
-    professionalTax: "$650",
-    labourWelfare: "$400",
-    deductionOthers: "$100",
-  },
-
-  {
-    id: 7,
-    empId: "Emp-007",
-    name: "Elliot Murray",
-    role: "Developer",
-    email: "murray@example.com",
-    phone: "(102) 8480 832",
-    designation: "Finance",
-    joiningDate: "29 Aug 2024",
-    salary: "$35000",
-
-    basic: "$35000",
-    da: "$14000",
-    hra: "$2625",
-    conveyance: "$2000",
-
-    allowance: "$1000",
-    medicalAllowance: "$1800",
-    earningOthers: "",
-
-    tds: "$3500",
-    esi: "$1800",
-    pf: "$2800",
-    leave: "$800",
-
-    professionalTax: "$700",
-    labourWelfare: "$450",
-    deductionOthers: "$100",
-  },
-
-  {
-    id: 8,
-    empId: "Emp-008",
-    name: "Rebecca Smith",
-    role: "Executive",
-    email: "smith@example.com",
-    phone: "(162) 8920 713",
-    designation: "Executive",
-    joiningDate: "22 Feb 2024",
-    salary: "$45000",
-
-    basic: "$45000",
-    da: "$18000",
-    hra: "$3375",
-    conveyance: "$2200",
-
-    allowance: "$1200",
-    medicalAllowance: "$2200",
-    earningOthers: "",
-
-    tds: "$4500",
-    esi: "$2200",
-    pf: "$3500",
-    leave: "$1000",
-
-    professionalTax: "$900",
-    labourWelfare: "$500",
-    deductionOthers: "$100",
-  },
-
-  {
-    id: 9,
-    empId: "Emp-009",
-    name: "Connie Waters",
-    role: "Developer",
-    email: "connie@example.com",
-    phone: "(189) 0920 723",
-    designation: "Developer",
-    joiningDate: "03 Nov 2024",
-    salary: "$50000",
-
-    basic: "$50000",
-    da: "$20000",
-    hra: "$3750",
-    conveyance: "$2500",
-
-    allowance: "$1500",
-    medicalAllowance: "$2500",
-    earningOthers: "",
-
-    tds: "$5000",
-    esi: "$2500",
-    pf: "$4000",
-    leave: "$1200",
-
-    professionalTax: "$1000",
-    labourWelfare: "$600",
-    deductionOthers: "$100",
-  },
-
-  {
-    id: 10,
-    empId: "Emp-010",
-    name: "Lori Broaddus",
-    role: "Finance",
-    email: "broaddus@example.com",
-    phone: "(168) 8392 823",
-    designation: "Finance",
-    joiningDate: "17 Dec 2024",
-    salary: "$25000",
-
-    basic: "$25000",
-    da: "$10000",
-    hra: "$1875",
-    conveyance: "$1800",
-
-    allowance: "$900",
-    medicalAllowance: "$1500",
-    earningOthers: "",
-
-    tds: "$2500",
-    esi: "$1300",
-    pf: "$2100",
-    leave: "$600",
-
-    professionalTax: "$600",
-    labourWelfare: "$350",
-    deductionOthers: "$100",
-  },
+const DEDUCTION_FIELDS: [keyof PreviewRow, string][] = [
+  ["pf", "PF"],
+  ["tds", "TDS"],
+  ["gratuity", "Gratuity"],
+  ["advances", "Advances"],
+  ["employerPf", "Employer Cont to PF"],
+  ["other", "Other"],
 ];
 
 /* =====================================================
-   COMPONENT
+   HELPERS
 ===================================================== */
 
-const EmployeSalary: React.FC = () => {
-  const [data, setData] = useState<SalaryType[]>(salaryData);
+let uid = 0;
+const nextId = () => `f${++uid}`;
 
-  const [search, setSearch] = useState("");
-  const [rowsPerPage, setRowsPerPage] = useState(10);
+const parseAmt = (v: string | number) => {
+  const n = parseFloat(String(v).replace(/[^0-9.]/g, ""));
+  return Number.isNaN(n) ? 0 : n;
+};
 
-  const [selectedRows, setSelectedRows] = useState<number[]>([]);
+const num = (v: string) => {
+  const n = Number(v);
+  return v.trim() === "" || Number.isNaN(n) ? NaN : n;
+};
 
-  const [designationFilter, setDesignationFilter] =
-    useState("Designation");
+const round2 = (n: number) => Math.round((n + Number.EPSILON) * 100) / 100;
 
-  const [sortFilter, setSortFilter] =
-    useState("Sort By : Last 7 Days");
+const inr = (n: number) =>
+  `₹${n.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
-  const [dateFilter, setDateFilter] =
-    useState("08/27/2026 - 09/02/2026");
+const hasMax2Decimals = (n: number) => Math.abs(Math.round(n * 100) - n * 100) < 1e-6;
 
-  /* =====================================================
-     EDIT MODAL
-  ===================================================== */
+const daysInMonth = (ym: string) => {
+  const [y, m] = ym.split("-").map(Number);
+  return new Date(y, m, 0).getDate();
+};
 
-  const [showEditModal, setShowEditModal] = useState(false);
+const monthLabel = (ym: string) => {
+  const [y, m] = ym.split("-").map(Number);
+  return new Date(y, m - 1, 1).toLocaleDateString("en-GB", { month: "long", year: "numeric" });
+};
 
-  const [editingEmployee, setEditingEmployee] =
-    useState<SalaryType | null>(null);
+const buildRows = (labels: string[], values: string[] = [], saved?: FieldRow[]): FieldRow[] =>
+  saved && saved.length
+    ? saved.map((r) => ({ ...r }))
+    : labels.map((label, i) => ({ id: nextId(), label, value: values[i] ?? "" }));
 
-  const [editForm, setEditForm] = useState<SalaryType | null>(
-    null
+const defaultPreviewRow = (emp: Employee, days: number): PreviewRow => ({
+  salary: String(emp.salary),
+  workedDays: String(days),
+  holidays: "0",
+  el: "0",
+  gl: "0",
+  lwp: "0",
+  pf: "4200",
+  tds: "3500",
+  gratuity: "0",
+  advances: "0",
+  employerPf: "0",
+  other: "0",
+});
+
+// Returns computed totals + whether the row is valid
+const evaluateRow = (row: PreviewRow, days: number) => {
+  const salary = num(row.salary);
+  const att = ATTENDANCE_FIELDS.map(([k]) => num(row[k]));
+  const ded = DEDUCTION_FIELDS.map(([k]) => num(row[k]));
+
+  let valid = true;
+  if (Number.isNaN(salary) || salary < 0) valid = false;
+  if (att.some((a) => Number.isNaN(a) || a < 0 || (a * 2) % 1 !== 0)) valid = false;
+  if (ded.some((d) => Number.isNaN(d) || d < 0 || !hasMax2Decimals(d))) valid = false;
+
+  const attTotal = att.reduce((s, a) => s + (Number.isNaN(a) ? 0 : a), 0);
+  if (attTotal !== days) valid = false;
+
+  // Worked days, holidays, EL and GL are paid; LWP is unpaid.
+  const paidDays = att.slice(0, 4).reduce((s, a) => s + (Number.isNaN(a) ? 0 : a), 0);
+  const earnings = round2(((Number.isNaN(salary) ? 0 : salary) * paidDays) / days);
+  const deductions = round2(ded.reduce((s, d) => s + (Number.isNaN(d) ? 0 : d), 0));
+  if (deductions > earnings) valid = false;
+
+  return { earnings, deductions, net: round2(earnings - deductions), valid };
+};
+
+/* =====================================================
+   SALARY MODAL (Add / Edit)
+===================================================== */
+
+type SalaryModalProps = {
+  title: string;
+  submitLabel: string;
+  employees: Employee[];
+  initialEmployeeId: string;
+  onClose: () => void;
+  onSubmit: (employeeId: string, earn: FieldRow[], ded: FieldRow[], net: number) => void;
+  initialEarn: FieldRow[];
+  initialDed: FieldRow[];
+};
+
+const SalaryModal: React.FC<SalaryModalProps> = ({
+  title,
+  submitLabel,
+  employees,
+  initialEmployeeId,
+  onClose,
+  onSubmit,
+  initialEarn,
+  initialDed,
+}) => {
+  const [employeeId, setEmployeeId] = useState(initialEmployeeId);
+  const [earn, setEarn] = useState<FieldRow[]>(initialEarn);
+  const [ded, setDed] = useState<FieldRow[]>(initialDed);
+
+  useEffect(() => {
+    document.body.classList.add("modal-open");
+    return () => document.body.classList.remove("modal-open");
+  }, []);
+
+  const net = useMemo(
+    () =>
+      round2(
+        earn.reduce((s, r) => s + parseAmt(r.value), 0) - ded.reduce((s, r) => s + parseAmt(r.value), 0)
+      ),
+    [earn, ded]
   );
 
-  /* =====================================================
-     DELETE MODAL
-  ===================================================== */
+  const isDefault = (label: string, defaults: string[], idx: number) => idx < defaults.length && defaults[idx] === label;
 
-  const [showDeleteModal, setShowDeleteModal] =
-    useState(false);
-
-  const [deletingEmployee, setDeletingEmployee] =
-    useState<SalaryType | null>(null);
-
-  /* =====================================================
-     FILTER
-  ===================================================== */
-
-  const filteredData = useMemo(() => {
-    let result = [...data];
-
-    if (search.trim()) {
-      const searchValue = search.toLowerCase();
-
-      result = result.filter(
-        (item) =>
-          item.name.toLowerCase().includes(searchValue) ||
-          item.empId.toLowerCase().includes(searchValue) ||
-          item.email.toLowerCase().includes(searchValue) ||
-          item.phone.toLowerCase().includes(searchValue) ||
-          item.designation
-            .toLowerCase()
-            .includes(searchValue)
-      );
-    }
-
-    if (designationFilter !== "Designation") {
-      result = result.filter(
-        (item) =>
-          item.designation === designationFilter
-      );
-    }
-
-    if (sortFilter === "Ascending") {
-      result.sort((a, b) =>
-        a.name.localeCompare(b.name)
-      );
-    }
-
-    if (sortFilter === "Descending") {
-      result.sort((a, b) =>
-        b.name.localeCompare(a.name)
-      );
-    }
-
-    return result;
-  }, [
-    data,
-    search,
-    designationFilter,
-    sortFilter,
-  ]);
-
-  const visibleData = filteredData.slice(
-    0,
-    rowsPerPage
-  );
-
-  /* =====================================================
-     CHECKBOX
-  ===================================================== */
-
-  const handleSelectAll = (
-    e: React.ChangeEvent<HTMLInputElement>
-  ) => {
-    if (e.target.checked) {
-      setSelectedRows(
-        visibleData.map((item) => item.id)
-      );
-    } else {
-      setSelectedRows([]);
-    }
-  };
-
-  const handleSelectRow = (id: number) => {
-    setSelectedRows((prev) =>
-      prev.includes(id)
-        ? prev.filter((rowId) => rowId !== id)
-        : [...prev, id]
-    );
-  };
-
-  /* =====================================================
-     EDIT
-  ===================================================== */
-
-  const handleEdit = (item: SalaryType) => {
-    setEditingEmployee(item);
-
-    setEditForm({
-      ...item,
-    });
-
-    setShowEditModal(true);
-  };
-
-  const closeEditModal = () => {
-    setShowEditModal(false);
-    setEditingEmployee(null);
-    setEditForm(null);
-  };
-
-  const handleEditChange = (
-    field: keyof SalaryType,
-    value: string
-  ) => {
-    setEditForm((prev) => {
-      if (!prev) return prev;
-
-      return {
-        ...prev,
-        [field]: value,
-      };
-    });
-  };
-
-  const handleSaveSalary = () => {
-    if (!editForm || !editingEmployee) return;
-
-    setData((prev) =>
-      prev.map((item) =>
-        item.id === editingEmployee.id
-          ? {
-              ...editForm,
+  const renderRows = (
+    rows: FieldRow[],
+    setRows: React.Dispatch<React.SetStateAction<FieldRow[]>>,
+    defaults: string[]
+  ) =>
+    rows.map((r, idx) => (
+      <div className="col-md-3" key={r.id}>
+        <div className="mb-3">
+          {isDefault(r.label, defaults, idx) ? (
+            <label className="form-label">{r.label}</label>
+          ) : (
+            <input
+              type="text"
+              className="form-control form-control-sm mb-1"
+              placeholder="Name"
+              value={r.label}
+              onChange={(e) =>
+                setRows((prev) => prev.map((x) => (x.id === r.id ? { ...x, label: e.target.value } : x)))
+              }
+            />
+          )}
+          <input
+            type="text"
+            className="form-control"
+            value={r.value}
+            onChange={(e) =>
+              setRows((prev) => prev.map((x) => (x.id === r.id ? { ...x, value: e.target.value } : x)))
             }
-          : item
-      )
-    );
+          />
+        </div>
+      </div>
+    ));
 
-    closeEditModal();
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!employeeId) {
+      alert("Please select an employee.");
+      return;
+    }
+    onSubmit(employeeId, earn, ded, net);
   };
-
-  /* =====================================================
-     DELETE
-  ===================================================== */
-
-  const handleDeleteClick = (item: SalaryType) => {
-    setDeletingEmployee(item);
-    setShowDeleteModal(true);
-  };
-
-  const closeDeleteModal = () => {
-    setShowDeleteModal(false);
-    setDeletingEmployee(null);
-  };
-
-  const confirmDelete = () => {
-    if (!deletingEmployee) return;
-
-    setData((prev) =>
-      prev.filter(
-        (item) =>
-          item.id !== deletingEmployee.id
-      )
-    );
-
-    setSelectedRows((prev) =>
-      prev.filter(
-        (id) => id !== deletingEmployee.id
-      )
-    );
-
-    closeDeleteModal();
-  };
-
-  const designationOptions = [
-    "Designation",
-    "Finance",
-    "Developer",
-    "Executive",
-    "Manager",
-  ];
 
   return (
     <>
-      <style>{`
-        * {
-          box-sizing: border-box;
-        }
-
-        body {
-          margin: 0;
-        }
-
-        /* =================================================
-           PAGE
-        ================================================= */
-
-        .employee-salary-page {
-          width: 100%;
-          height: calc(100vh - 48px);
-          min-height: 0;
-          overflow-y: auto;
-          overflow-x: hidden;
-          background: #f5f6f8;
-          padding: 24px;
-          color: #172033;
-          font-family: Arial, Helvetica, sans-serif;
-        }
-
-        .employee-salary-page::-webkit-scrollbar {
-          width: 6px;
-        }
-
-        .employee-salary-page::-webkit-scrollbar-thumb {
-          background: #d1d5db;
-          border-radius: 20px;
-        }
-
-        /* =================================================
-           PAGE HEADER
-        ================================================= */
-
-        .salary-page-header {
-          margin-bottom: 25px;
-        }
-
-        .salary-page-title {
-          margin: 0 0 7px;
-          font-size: 24px;
-          font-weight: 700;
-          color: #17233d;
-        }
-
-        .salary-breadcrumb {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-          font-size: 12px;
-          color: #6b7280;
-        }
-
-        .salary-home-link {
-          color: #527589;
-          display: flex;
-          text-decoration: none;
-        }
-
-        /* =================================================
-           CARD
-        ================================================= */
-
-        .salary-card {
-          background: #fff;
-          border: 1px solid #e0e4e9;
-          border-radius: 6px;
-          overflow: hidden;
-        }
-
-        .salary-card-header {
-          min-height: 71px;
-          padding: 15px 19px;
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          border-bottom: 1px solid #e2e5e9;
-          gap: 20px;
-        }
-
-        .salary-card-title {
-          margin: 0;
-          font-size: 15px;
-          font-weight: 600;
-          color: #17243b;
-        }
-
-        .salary-filter-group {
-          display: flex;
-          align-items: center;
-          gap: 15px;
-        }
-
-        .salary-select-wrapper {
-          position: relative;
-        }
-
-        .salary-filter-select {
-          height: 39px;
-          border: 1px solid #dce1e7;
-          border-radius: 5px;
-          background: #fff;
-          color: #142138;
-          font-size: 13px;
-          padding: 0 36px 0 12px;
-          appearance: none;
-          outline: none;
-        }
-
-        .salary-date-filter {
-          width: 195px;
-        }
-
-        .salary-designation-filter {
-          width: 125px;
-        }
-
-        .salary-sort-filter {
-          width: 180px;
-        }
-
-        .salary-select-icon {
-          position: absolute;
-          right: 11px;
-          top: 50%;
-          transform: translateY(-50%);
-          pointer-events: none;
-        }
-
-        /* =================================================
-           TOOLBAR
-        ================================================= */
-
-        .salary-toolbar {
-          min-height: 60px;
-          padding: 10px 16px;
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          border-bottom: 1px solid #e3e7eb;
-        }
-
-        .salary-row-control {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-          font-size: 13px;
-          color: #48576a;
-        }
-
-        .salary-row-select-wrapper {
-          position: relative;
-        }
-
-        .salary-row-select {
-          width: 50px;
-          height: 30px;
-          border: 1px solid #dbe0e6;
-          border-radius: 5px;
-          background: #fff;
-          appearance: none;
-          padding: 0 20px 0 8px;
-          outline: none;
-        }
-
-        .salary-row-chevron {
-          position: absolute;
-          right: 5px;
-          top: 50%;
-          transform: translateY(-50%);
-          pointer-events: none;
-        }
-
-        .salary-search-wrapper {
-          position: relative;
-          width: 160px;
-        }
-
-        .salary-search {
-          width: 100%;
-          height: 31px;
-          border: 1px solid #dae0e7;
-          border-radius: 5px;
-          padding: 0 32px 0 11px;
-          font-size: 12px;
-          outline: none;
-        }
-
-        .salary-search-icon {
-          position: absolute;
-          right: 10px;
-          top: 50%;
-          transform: translateY(-50%);
-          color: #99a2af;
-          pointer-events: none;
-        }
-
-        /* =================================================
-           TABLE
-        ================================================= */
-
-        .salary-table-scroll {
-          overflow-x: auto;
-        }
-
-        .salary-table {
-          width: 100%;
-          min-width: 1050px;
-          border-collapse: collapse;
-          table-layout: fixed;
-        }
-
-        .salary-table thead {
-          background: #e4e7eb;
-        }
-
-        .salary-table th {
-          height: 43px;
-          padding: 0 11px;
-          font-size: 13px;
-          color: #101d31;
-          font-weight: 600;
-          text-align: left;
-          border-bottom: 1px solid #dce0e5;
-          white-space: nowrap;
-        }
-
-        .salary-table td {
-          height: 62px;
-          padding: 7px 11px;
-          border-bottom: 1px solid #e2e6eb;
-          color: #5b687a;
-          font-size: 13px;
-          background: white;
-        }
-
-        .salary-table tbody tr:hover td {
-          background: #fafafa;
-        }
-
-        .salary-table th:nth-child(1),
-        .salary-table td:nth-child(1) {
-          width: 60px;
-          text-align: center;
-        }
-
-        .salary-table th:nth-child(2),
-        .salary-table td:nth-child(2) {
-          width: 100px;
-        }
-
-        .salary-table th:nth-child(3),
-        .salary-table td:nth-child(3) {
-          width: 190px;
-        }
-
-        .salary-table th:nth-child(4),
-        .salary-table td:nth-child(4) {
-          width: 195px;
-        }
-
-        .salary-table th:nth-child(5),
-        .salary-table td:nth-child(5) {
-          width: 140px;
-        }
-
-        .salary-table th:nth-child(6),
-        .salary-table td:nth-child(6) {
-          width: 160px;
-        }
-
-        .salary-table th:nth-child(7),
-        .salary-table td:nth-child(7) {
-          width: 125px;
-        }
-
-        .salary-table th:nth-child(8),
-        .salary-table td:nth-child(8) {
-          width: 100px;
-        }
-
-        .salary-table th:nth-child(9),
-        .salary-table td:nth-child(9) {
-          width: 85px;
-        }
-
-        .salary-header-with-sort {
-          display: flex;
-          align-items: center;
-          gap: 7px;
-        }
-
-        .salary-sort-icon {
-          color: #c3c9d1;
-        }
-
-        .salary-checkbox {
-          width: 18px;
-          height: 18px;
-          accent-color: #bd9138;
-          cursor: pointer;
-        }
-
-        /* =================================================
-           EMPLOYEE
-        ================================================= */
-
-        .salary-employee {
-          display: flex;
-          align-items: center;
-          gap: 10px;
-        }
-
-        .salary-avatar {
-          width: 33px;
-          height: 33px;
-          flex: 0 0 33px;
-          border-radius: 50%;
-          background: #d4d4d4;
-          display: flex;
-          justify-content: center;
-          align-items: center;
-          color: #eee;
-          font-size: 8px;
-        }
-
-        .salary-employee-name {
-          display: block;
-          color: #0d1b30;
-          font-weight: 500;
-          margin-bottom: 4px;
-        }
-
-        .salary-employee-role {
-          display: block;
-          color: #687588;
-          font-size: 12px;
-        }
-
-        /* =================================================
-           DESIGNATION
-        ================================================= */
-
-        .table-designation-wrapper {
-          position: relative;
-          width: 118px;
-        }
-
-        .table-designation-select {
-          width: 100%;
-          height: 40px;
-          border: 1px solid #dce1e7;
-          border-radius: 5px;
-          appearance: none;
-          background: white;
-          padding: 0 29px 0 20px;
-          font-size: 13px;
-          outline: none;
-        }
-
-        .table-designation-chevron {
-          position: absolute;
-          right: 9px;
-          top: 50%;
-          transform: translateY(-50%);
-          pointer-events: none;
-        }
-
-        /* =================================================
-           ACTIONS
-        ================================================= */
-
-        .salary-actions {
-          display: flex;
-          gap: 12px;
-          align-items: center;
-        }
-
-        .salary-action-button {
-          border: none;
-          background: transparent;
-          color: #5d6c7f;
-          padding: 3px;
-          cursor: pointer;
-        }
-
-        .salary-action-button:hover {
-          color: #bd9138;
-        }
-
-        .salary-delete-button:hover {
-          color: #ef1111;
-        }
-
-        /* =================================================
-           FOOTER
-        ================================================= */
-
-        .salary-table-footer {
-          height: 59px;
-          padding: 0 16px;
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          font-size: 13px;
-          color: #647185;
-        }
-
-        .salary-pagination {
-          display: flex;
-          align-items: center;
-          gap: 7px;
-        }
-
-        .salary-page-button {
-          border: none;
-          background: transparent;
-          color: #a5adb8;
-          width: 27px;
-          height: 27px;
-          display: flex;
-          justify-content: center;
-          align-items: center;
-        }
-
-        .salary-current-page {
-          width: 27px;
-          height: 27px;
-          border-radius: 50%;
-          background: #bd9138;
-          color: #fff;
-          display: flex;
-          justify-content: center;
-          align-items: center;
-        }
-
-        /* =================================================
-           COMMON MODAL OVERLAY
-        ================================================= */
-
-        .salary-modal-overlay {
-          position: fixed;
-          inset: 0;
-          z-index: 99999;
-          background: rgba(0, 0, 0, 0.46);
-          display: flex;
-          justify-content: center;
-          align-items: flex-start;
-          padding: 11px 24px 24px;
-          overflow-y: auto;
-        }
-
-        /* =================================================
-           EDIT SALARY MODAL
-        ================================================= */
-
-        .edit-salary-modal {
-          width: 800px;
-          max-width: 100%;
-          background: #fff;
-          border-radius: 5px;
-          box-shadow: 0 14px 45px rgba(0, 0, 0, 0.25);
-          overflow: hidden;
-          animation: salaryModalOpen .16s ease-out;
-        }
-
-        @keyframes salaryModalOpen {
-          from {
-            opacity: 0;
-            transform: translateY(-5px);
-          }
-
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-
-        .edit-salary-header {
-          height: 63px;
-          padding: 0 17px;
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          border-bottom: 1px solid #e0e4e9;
-        }
-
-        .edit-salary-title {
-          margin: 0;
-          font-size: 20px;
-          font-weight: 600;
-          color: #273653;
-        }
-
-        .edit-close {
-          width: 20px;
-          height: 20px;
-          border: none;
-          border-radius: 50%;
-          background: #707987;
-          color: #fff;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          padding: 0;
-          cursor: pointer;
-        }
-
-        .edit-salary-body {
-          padding: 19px 17px 9px;
-        }
-
-        .salary-form-top {
-          display: grid;
-          grid-template-columns: 1fr 1fr;
-          gap: 24px;
-          margin-bottom: 18px;
-        }
-
-        .salary-form-label {
-          display: block;
-          margin-bottom: 9px;
-          color: #293751;
-          font-size: 14px;
-        }
-
-        .salary-form-input,
-        .salary-form-select {
-          width: 100%;
-          height: 38px;
-          border: 1px solid #dce1e7;
-          border-radius: 5px;
-          background: white;
-          padding: 0 11px;
-          color: #293548;
-          font-size: 14px;
-          outline: none;
-        }
-
-        .salary-form-input:focus,
-        .salary-form-select:focus {
-          border-color: #bd9138;
-        }
-
-        .salary-edit-select {
-          position: relative;
-        }
-
-        .salary-form-select {
-          appearance: none;
-          padding-right: 35px;
-        }
-
-        .salary-edit-select-icon {
-          position: absolute;
-          right: 10px;
-          top: 50%;
-          transform: translateY(-50%);
-          pointer-events: none;
-          color: #596677;
-        }
-
-        .salary-section-heading-row {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          margin: 2px 0 26px;
-        }
-
-        .salary-section-heading {
-          font-size: 14px;
-          color: #293751;
-          font-weight: 400;
-        }
-
-        .salary-add-new {
-          border: none;
-          background: transparent;
-          color: #bc8730;
-          display: flex;
-          align-items: center;
-          gap: 7px;
-          padding: 0;
-          font-size: 14px;
-          cursor: pointer;
-        }
-
-        .salary-form-grid-four {
-          display: grid;
-          grid-template-columns: repeat(4, 1fr);
-          gap: 24px;
-          margin-bottom: 18px;
-        }
-
-        .salary-form-grid-three {
-          display: grid;
-          grid-template-columns: repeat(4, 1fr);
-          gap: 24px;
-          margin-bottom: 17px;
-        }
-
-        .salary-field {
-          min-width: 0;
-        }
-
-        .salary-modal-footer {
-          height: 64px;
-          padding: 0 13px;
-          border-top: 1px solid #e2e5e9;
-          display: flex;
-          justify-content: flex-end;
-          align-items: center;
-          gap: 9px;
-        }
-
-        .salary-cancel-btn {
-          height: 39px;
-          padding: 0 15px;
-          border: none;
-          border-radius: 5px;
-          background: #f6f7f8;
-          color: #283348;
-          font-size: 14px;
-          cursor: pointer;
-        }
-
-        .salary-save-btn {
-          height: 39px;
-          padding: 0 16px;
-          border: none;
-          border-radius: 5px;
-          background: #bd9138;
-          color: #fff;
-          font-size: 14px;
-          font-weight: 500;
-          cursor: pointer;
-        }
-
-        .salary-save-btn:hover {
-          background: #aa802f;
-        }
-
-        /* =================================================
-           DELETE MODAL
-        ================================================= */
-
-        .delete-modal-overlay {
-          align-items: center;
-          padding: 20px;
-        }
-
-        .salary-delete-modal {
-          width: 400px;
-          max-width: 100%;
-          background: #fff;
-          border-radius: 4px;
-          padding: 16px 25px 16px;
-          box-shadow: 0 12px 40px rgba(0, 0, 0, 0.24);
-          text-align: center;
-          animation: deleteModalOpen .15s ease-out;
-        }
-
-        @keyframes deleteModalOpen {
-          from {
-            opacity: 0;
-            transform: scale(.98);
-          }
-
-          to {
-            opacity: 1;
-            transform: scale(1);
-          }
-        }
-
-        .delete-icon-box {
-          width: 58px;
-          height: 59px;
-          margin: 0 auto 14px;
-          background: #facdce;
-          border-radius: 4px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          color: #f11111;
-        }
-
-        .delete-modal-title {
-          margin: 0 0 5px;
-          color: #293854;
-          font-size: 19px;
-          font-weight: 600;
-        }
-
-        .delete-modal-text {
-          width: 315px;
-          max-width: 100%;
-          margin: 0 auto 17px;
-          color: #353b45;
-          font-size: 14px;
-          line-height: 21px;
-        }
-
-        .delete-buttons {
-          display: flex;
-          justify-content: center;
-          align-items: center;
-          gap: 16px;
-        }
-
-        .delete-cancel-btn {
-          min-width: 73px;
-          height: 39px;
-          border: none;
-          border-radius: 5px;
-          background: #f7f8f9;
-          color: #252e3e;
-          font-size: 14px;
-          cursor: pointer;
-        }
-
-        .delete-confirm-btn {
-          min-width: 99px;
-          height: 39px;
-          border: none;
-          border-radius: 5px;
-          background: #ef0707;
-          color: white;
-          font-size: 14px;
-          font-weight: 600;
-          cursor: pointer;
-        }
-
-        .delete-confirm-btn:hover {
-          background: #d90000;
-        }
-
-        /* =================================================
-           RESPONSIVE
-        ================================================= */
-
-        @media (max-width: 900px) {
-          .salary-card-header {
-            flex-direction: column;
-            align-items: flex-start;
-          }
-
-          .salary-filter-group {
-            flex-wrap: wrap;
-          }
-
-          .salary-form-grid-four,
-          .salary-form-grid-three {
-            grid-template-columns: repeat(2, 1fr);
-          }
-        }
-
-        @media (max-width: 600px) {
-          .employee-salary-page {
-            padding: 15px 10px;
-          }
-
-          .salary-filter-group {
-            width: 100%;
-            flex-direction: column;
-          }
-
-          .salary-select-wrapper,
-          .salary-filter-select {
-            width: 100% !important;
-          }
-
-          .salary-toolbar {
-            flex-direction: column;
-            align-items: flex-start;
-            gap: 12px;
-          }
-
-          .salary-search-wrapper {
-            width: 100%;
-          }
-
-          .salary-modal-overlay {
-            padding: 10px;
-          }
-
-          .salary-form-top,
-          .salary-form-grid-four,
-          .salary-form-grid-three {
-            grid-template-columns: 1fr;
-            gap: 14px;
-          }
-
-          .salary-section-heading-row {
-            margin-bottom: 15px;
-          }
-        }
-      `}</style>
-
-      {/* =================================================
-          MAIN PAGE
-      ================================================= */}
-
-      <div className="employee-salary-page">
-        {/* PAGE HEADER */}
-
-        <div className="salary-page-header">
-          <h1 className="salary-page-title">
-            Employee Salary
-          </h1>
-
-          <div className="salary-breadcrumb">
-            <Link
-              to="/HR/HrDashboard"
-              className="salary-home-link"
-            >
-              <Home size={13} />
-            </Link>
-
-            <span>/</span>
-
-            <span>Employee Salary</span>
-          </div>
-        </div>
-
-        {/* SALARY CARD */}
-
-        <div className="salary-card">
-          {/* CARD HEADER */}
-
-          <div className="salary-card-header">
-            <h2 className="salary-card-title">
-              Employee Salary List
-            </h2>
-
-            <div className="salary-filter-group">
-              {/* DATE */}
-
-              <div className="salary-select-wrapper">
-                <select
-                  className="
-                    salary-filter-select
-                    salary-date-filter
-                  "
-                  value={dateFilter}
-                  onChange={(e) =>
-                    setDateFilter(e.target.value)
-                  }
-                >
-                  <option value="08/27/2026 - 09/02/2026">
-                    08/27/2026 - 09/02/2026
-                  </option>
-
-                  <option value="Last 7 Days">
-                    Last 7 Days
-                  </option>
-
-                  <option value="Last 30 Days">
-                    Last 30 Days
-                  </option>
-
-                  <option value="This Month">
-                    This Month
-                  </option>
-                </select>
-
-                <ChevronDown
-                  size={15}
-                  className="salary-select-icon"
-                />
-              </div>
-
-              {/* DESIGNATION */}
-
-              <div className="salary-select-wrapper">
-                <select
-                  className="
-                    salary-filter-select
-                    salary-designation-filter
-                  "
-                  value={designationFilter}
-                  onChange={(e) =>
-                    setDesignationFilter(
-                      e.target.value
-                    )
-                  }
-                >
-                  {designationOptions.map(
-                    (designation) => (
-                      <option
-                        key={designation}
-                        value={designation}
-                      >
-                        {designation}
-                      </option>
-                    )
-                  )}
-                </select>
-
-                <ChevronDown
-                  size={15}
-                  className="salary-select-icon"
-                />
-              </div>
-
-              {/* SORT */}
-
-              <div className="salary-select-wrapper">
-                <select
-                  className="
-                    salary-filter-select
-                    salary-sort-filter
-                  "
-                  value={sortFilter}
-                  onChange={(e) =>
-                    setSortFilter(e.target.value)
-                  }
-                >
-                  <option value="Sort By : Last 7 Days">
-                    Sort By : Last 7 Days
-                  </option>
-
-                  <option value="Recently Added">
-                    Recently Added
-                  </option>
-
-                  <option value="Ascending">
-                    Ascending
-                  </option>
-
-                  <option value="Descending">
-                    Descending
-                  </option>
-
-                  <option value="Last Month">
-                    Last Month
-                  </option>
-                </select>
-
-                <ChevronDown
-                  size={15}
-                  className="salary-select-icon"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* TOOLBAR */}
-
-          <div className="salary-toolbar">
-            <div className="salary-row-control">
-              <span>Row Per Page</span>
-
-              <div className="salary-row-select-wrapper">
-                <select
-                  className="salary-row-select"
-                  value={rowsPerPage}
-                  onChange={(e) =>
-                    setRowsPerPage(
-                      Number(e.target.value)
-                    )
-                  }
-                >
-                  <option value={10}>10</option>
-                  <option value={20}>20</option>
-                  <option value={30}>30</option>
-                  <option value={40}>40</option>
-                  <option value={50}>50</option>
-                </select>
-
-                <ChevronDown
-                  size={13}
-                  className="salary-row-chevron"
-                />
-              </div>
-
-              <span>Entries</span>
-            </div>
-
-            <div className="salary-search-wrapper">
-              <input
-                className="salary-search"
-                value={search}
-                placeholder="Search"
-                onChange={(e) =>
-                  setSearch(e.target.value)
-                }
-              />
-
-              <Search
-                size={14}
-                className="salary-search-icon"
-              />
-            </div>
-          </div>
-
-          {/* TABLE */}
-
-          <div className="salary-table-scroll">
-            <table className="salary-table">
-              <thead>
-                <tr>
-                  <th>
-                    <input
-                      type="checkbox"
-                      className="salary-checkbox"
-                      checked={
-                        visibleData.length > 0 &&
-                        visibleData.every((item) =>
-                          selectedRows.includes(item.id)
-                        )
-                      }
-                      onChange={handleSelectAll}
-                    />
-                  </th>
-
-                  <th>
-                    <div className="salary-header-with-sort">
-                      Emp ID
-                      <ArrowUpDown
-                        size={13}
-                        className="salary-sort-icon"
-                      />
-                    </div>
-                  </th>
-
-                  <th>
-                    <div className="salary-header-with-sort">
-                      Name
-                      <ArrowUpDown
-                        size={13}
-                        className="salary-sort-icon"
-                      />
-                    </div>
-                  </th>
-
-                  <th>
-                    <div className="salary-header-with-sort">
-                      Email
-                      <ArrowUpDown
-                        size={13}
-                        className="salary-sort-icon"
-                      />
-                    </div>
-                  </th>
-
-                  <th>
-                    <div className="salary-header-with-sort">
-                      Phone
-                      <ArrowUpDown
-                        size={13}
-                        className="salary-sort-icon"
-                      />
-                    </div>
-                  </th>
-
-                  <th>
-                    <div className="salary-header-with-sort">
-                      Designation
-                      <ArrowUpDown
-                        size={13}
-                        className="salary-sort-icon"
-                      />
-                    </div>
-                  </th>
-
-                  <th>
-                    <div className="salary-header-with-sort">
-                      Joining Date
-                      <ArrowUpDown
-                        size={13}
-                        className="salary-sort-icon"
-                      />
-                    </div>
-                  </th>
-
-                  <th>
-                    <div className="salary-header-with-sort">
-                      Salary
-                      <ArrowUpDown
-                        size={13}
-                        className="salary-sort-icon"
-                      />
-                    </div>
-                  </th>
-
-                  <th />
-                </tr>
-              </thead>
-
-              <tbody>
-                {visibleData.map((item) => (
-                  <tr key={item.id}>
-                    {/* CHECKBOX */}
-
-                    <td>
-                      <input
-                        type="checkbox"
-                        className="salary-checkbox"
-                        checked={selectedRows.includes(
-                          item.id
-                        )}
-                        onChange={() =>
-                          handleSelectRow(item.id)
-                        }
-                      />
-                    </td>
-
-                    {/* ID */}
-
-                    <td>{item.empId}</td>
-
-                    {/* EMPLOYEE */}
-
-                    <td>
-                      <div className="salary-employee">
-                        <div className="salary-avatar">
-                          •••
-                        </div>
-
-                        <div>
-                          <span className="salary-employee-name">
-                            {item.name}
-                          </span>
-
-                          <span className="salary-employee-role">
-                            {item.role}
-                          </span>
-                        </div>
-                      </div>
-                    </td>
-
-                    {/* EMAIL */}
-
-                    <td>{item.email}</td>
-
-                    {/* PHONE */}
-
-                    <td>{item.phone}</td>
-
-                    {/* DESIGNATION */}
-
-                    <td>
-                      <div className="table-designation-wrapper">
-                        <select
-                          className="table-designation-select"
-                          value={item.designation}
-                          onChange={(e) => {
-                            const value =
-                              e.target.value;
-
-                            setData((prev) =>
-                              prev.map((salary) =>
-                                salary.id === item.id
-                                  ? {
-                                      ...salary,
-                                      designation:
-                                        value,
-                                    }
-                                  : salary
-                              )
-                            );
-                          }}
-                        >
-                          <option value="Finance">
-                            Finance
-                          </option>
-
-                          <option value="Developer">
-                            Developer
-                          </option>
-
-                          <option value="Executive">
-                            Executive
-                          </option>
-
-                          <option value="Manager">
-                            Manager
-                          </option>
-                        </select>
-
-                        <ChevronDown
-                          size={15}
-                          className="table-designation-chevron"
-                        />
-                      </div>
-                    </td>
-
-                    {/* JOINING */}
-
-                    <td>
-                      {item.joiningDate}
-                    </td>
-
-                    {/* SALARY */}
-
-                    <td>{item.salary}</td>
-
-                    {/* ACTIONS */}
-
-                    <td>
-                      <div className="salary-actions">
-                        {/* EDIT */}
-
-                        <button
-                          type="button"
-                          title="Edit Employee Salary"
-                          className="salary-action-button"
-                          onClick={() =>
-                            handleEdit(item)
-                          }
-                        >
-                          <Edit3 size={15} />
-                        </button>
-
-                        {/* DELETE */}
-
-                        <button
-                          type="button"
-                          title="Delete"
-                          className="
-                            salary-action-button
-                            salary-delete-button
-                          "
-                          onClick={() =>
-                            handleDeleteClick(item)
-                          }
-                        >
-                          <Trash2 size={15} />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-
-                {visibleData.length === 0 && (
-                  <tr>
-                    <td
-                      colSpan={9}
-                      style={{
-                        height: "120px",
-                        textAlign: "center",
-                      }}
-                    >
-                      No employee salary records found
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-
-          {/* FOOTER */}
-
-          <div className="salary-table-footer">
-            <span>
-              Showing{" "}
-              {visibleData.length === 0 ? 0 : 1} -{" "}
-              {visibleData.length} of{" "}
-              {filteredData.length} entries
-            </span>
-
-            <div className="salary-pagination">
-              <button
-                type="button"
-                className="salary-page-button"
-              >
-                <ChevronLeft size={16} />
-              </button>
-
-              <span className="salary-current-page">
-                1
-              </span>
-
-              <button
-                type="button"
-                className="salary-page-button"
-              >
-                <ChevronRight size={16} />
+      <div className="modal fade show" style={{ display: "block" }} tabIndex={-1} role="dialog" aria-modal="true">
+        <div className="modal-dialog modal-dialog-centered modal-lg">
+          <div className="modal-content">
+            <div className="modal-header">
+              <h4 className="modal-title">{title}</h4>
+              <button type="button" className="btn-close custom-btn-close" aria-label="Close" onClick={onClose}>
+                <i className="ti ti-x"></i>
               </button>
             </div>
-          </div>
-        </div>
-      </div>
-
-      {/* =================================================
-          EDIT EMPLOYEE SALARY MODAL
-      ================================================= */}
-
-      {showEditModal && editForm && (
-        <div
-          className="salary-modal-overlay"
-          onMouseDown={(e) => {
-            if (e.currentTarget === e.target) {
-              closeEditModal();
-            }
-          }}
-        >
-          <div
-            className="edit-salary-modal"
-            onMouseDown={(e) =>
-              e.stopPropagation()
-            }
-          >
-            {/* HEADER */}
-
-            <div className="edit-salary-header">
-              <h2 className="edit-salary-title">
-                Edit Employee Salary
-              </h2>
-
-              <button
-                type="button"
-                className="edit-close"
-                onClick={closeEditModal}
-              >
-                <X size={13} strokeWidth={3} />
-              </button>
-            </div>
-
-            {/* BODY */}
-
-            <div className="edit-salary-body">
-              {/* EMPLOYEE + NET SALARY */}
-
-              <div className="salary-form-top">
-                <div className="salary-field">
-                  <label className="salary-form-label">
-                    Employee Name
-                  </label>
-
-                  <div className="salary-edit-select">
-                    <select
-                      className="salary-form-select"
-                      value={editForm.name}
-                      onChange={(e) => {
-                        const employee =
-                          data.find(
-                            (item) =>
-                              item.name ===
-                              e.target.value
-                          );
-
-                        if (employee) {
-                          setEditForm({
-                            ...employee,
-                            id: editForm.id,
-                          });
-                        }
-                      }}
-                    >
-                      {data.map((employee) => (
-                        <option
-                          value={employee.name}
-                          key={employee.id}
-                        >
-                          {employee.name}
-                        </option>
-                      ))}
-                    </select>
-
-                    <ChevronDown
-                      size={15}
-                      className="salary-edit-select-icon"
-                    />
+            <form onSubmit={handleSubmit}>
+              <div className="modal-body pb-0">
+                <div className="row">
+                  <div className="col-md-6">
+                    <div className="mb-3">
+                      <label className="form-label">Employee Name </label>
+                      <select className="form-select" value={employeeId} onChange={(e) => setEmployeeId(e.target.value)}>
+                        <option value="">Select</option>
+                        {employees.map((emp) => (
+                          <option key={emp.id} value={emp.id}>{emp.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                  <div className="col-md-6">
+                    <label className="form-label">Net Salary </label>
+                    <input type="text" className="form-control" value={net ? String(net) : ""} readOnly />
                   </div>
                 </div>
 
-                <div className="salary-field">
-                  <label className="salary-form-label">
-                    Net Salary
-                  </label>
+                <div className="row earning-row">
+                  <div className="d-flex justify-content-between mb-3">
+                    <label className="form-label">Earnings</label>
+                    <a
+                      href="#"
+                      className="add-earnings text-primary mb-2"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        setEarn((p) => [...p, { id: nextId(), label: "", value: "" }]);
+                      }}
+                    >
+                      <i className="ti ti-plus me-2"></i>Add New
+                    </a>
+                  </div>
+                  {renderRows(earn, setEarn, DEFAULT_EARN_LABELS)}
+                </div>
 
-                  <input
-                    className="salary-form-input"
-                    value={editForm.salary}
-                    onChange={(e) =>
-                      handleEditChange(
-                        "salary",
-                        e.target.value
-                      )
-                    }
-                  />
+                <div className="row deduction-row">
+                  <div className="d-flex justify-content-between mb-3">
+                    <label className="form-label">Deductions</label>
+                    <a
+                      href="#"
+                      className="add-deduction text-primary mb-2"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        setDed((p) => [...p, { id: nextId(), label: "", value: "" }]);
+                      }}
+                    >
+                      <i className="ti ti-plus me-2"></i>Add New
+                    </a>
+                  </div>
+                  {renderRows(ded, setDed, DEFAULT_DED_LABELS)}
                 </div>
               </div>
-
-              {/* ==========================================
-                  EARNINGS
-              ========================================== */}
-
-              <div className="salary-section-heading-row">
-                <span className="salary-section-heading">
-                  Earnings
-                </span>
-
-                <button
-                  type="button"
-                  className="salary-add-new"
-                >
-                  <Plus size={15} />
-                  Add New
+              <div className="modal-footer">
+                <button type="button" className="btn btn-white border me-2" onClick={onClose}>
+                  Cancel
+                </button>
+                <button type="submit" className="btn btn-primary">
+                  {submitLabel}
                 </button>
               </div>
-
-              <div className="salary-form-grid-four">
-                {/* BASIC */}
-
-                <div className="salary-field">
-                  <label className="salary-form-label">
-                    Basic
-                  </label>
-
-                  <input
-                    className="salary-form-input"
-                    value={editForm.basic}
-                    onChange={(e) =>
-                      handleEditChange(
-                        "basic",
-                        e.target.value
-                      )
-                    }
-                  />
-                </div>
-
-                {/* DA */}
-
-                <div className="salary-field">
-                  <label className="salary-form-label">
-                    DA(40%)
-                  </label>
-
-                  <input
-                    className="salary-form-input"
-                    value={editForm.da}
-                    onChange={(e) =>
-                      handleEditChange(
-                        "da",
-                        e.target.value
-                      )
-                    }
-                  />
-                </div>
-
-                {/* HRA */}
-
-                <div className="salary-field">
-                  <label className="salary-form-label">
-                    HRA(15%)
-                  </label>
-
-                  <input
-                    className="salary-form-input"
-                    value={editForm.hra}
-                    onChange={(e) =>
-                      handleEditChange(
-                        "hra",
-                        e.target.value
-                      )
-                    }
-                  />
-                </div>
-
-                {/* CONVEYANCE */}
-
-                <div className="salary-field">
-                  <label className="salary-form-label">
-                    Conveyance
-                  </label>
-
-                  <input
-                    className="salary-form-input"
-                    value={editForm.conveyance}
-                    onChange={(e) =>
-                      handleEditChange(
-                        "conveyance",
-                        e.target.value
-                      )
-                    }
-                  />
-                </div>
-              </div>
-
-              {/* ALLOWANCE ROW */}
-
-              <div className="salary-form-grid-three">
-                <div className="salary-field">
-                  <label className="salary-form-label">
-                    Allowance
-                  </label>
-
-                  <input
-                    className="salary-form-input"
-                    value={editForm.allowance}
-                    onChange={(e) =>
-                      handleEditChange(
-                        "allowance",
-                        e.target.value
-                      )
-                    }
-                  />
-                </div>
-
-                <div className="salary-field">
-                  <label className="salary-form-label">
-                    Medical Allowance
-                  </label>
-
-                  <input
-                    className="salary-form-input"
-                    value={
-                      editForm.medicalAllowance
-                    }
-                    onChange={(e) =>
-                      handleEditChange(
-                        "medicalAllowance",
-                        e.target.value
-                      )
-                    }
-                  />
-                </div>
-
-                <div className="salary-field">
-                  <label className="salary-form-label">
-                    Others
-                  </label>
-
-                  <input
-                    className="salary-form-input"
-                    value={
-                      editForm.earningOthers
-                    }
-                    onChange={(e) =>
-                      handleEditChange(
-                        "earningOthers",
-                        e.target.value
-                      )
-                    }
-                  />
-                </div>
-              </div>
-
-              {/* ==========================================
-                  DEDUCTIONS
-              ========================================== */}
-
-              <div className="salary-section-heading-row">
-                <span className="salary-section-heading">
-                  Deductions
-                </span>
-
-                <button
-                  type="button"
-                  className="salary-add-new"
-                >
-                  <Plus size={15} />
-                  Add New
-                </button>
-              </div>
-
-              {/* FIRST DEDUCTION ROW */}
-
-              <div className="salary-form-grid-four">
-                <div className="salary-field">
-                  <label className="salary-form-label">
-                    TDS
-                  </label>
-
-                  <input
-                    className="salary-form-input"
-                    value={editForm.tds}
-                    onChange={(e) =>
-                      handleEditChange(
-                        "tds",
-                        e.target.value
-                      )
-                    }
-                  />
-                </div>
-
-                <div className="salary-field">
-                  <label className="salary-form-label">
-                    ESI
-                  </label>
-
-                  <input
-                    className="salary-form-input"
-                    value={editForm.esi}
-                    onChange={(e) =>
-                      handleEditChange(
-                        "esi",
-                        e.target.value
-                      )
-                    }
-                  />
-                </div>
-
-                <div className="salary-field">
-                  <label className="salary-form-label">
-                    PF
-                  </label>
-
-                  <input
-                    className="salary-form-input"
-                    value={editForm.pf}
-                    onChange={(e) =>
-                      handleEditChange(
-                        "pf",
-                        e.target.value
-                      )
-                    }
-                  />
-                </div>
-
-                <div className="salary-field">
-                  <label className="salary-form-label">
-                    Leave
-                  </label>
-
-                  <input
-                    className="salary-form-input"
-                    value={editForm.leave}
-                    onChange={(e) =>
-                      handleEditChange(
-                        "leave",
-                        e.target.value
-                      )
-                    }
-                  />
-                </div>
-              </div>
-
-              {/* SECOND DEDUCTION ROW */}
-
-              <div className="salary-form-grid-three">
-                <div className="salary-field">
-                  <label className="salary-form-label">
-                    Prof.Tax
-                  </label>
-
-                  <input
-                    className="salary-form-input"
-                    value={
-                      editForm.professionalTax
-                    }
-                    onChange={(e) =>
-                      handleEditChange(
-                        "professionalTax",
-                        e.target.value
-                      )
-                    }
-                  />
-                </div>
-
-                <div className="salary-field">
-                  <label className="salary-form-label">
-                    Labour Welfare
-                  </label>
-
-                  <input
-                    className="salary-form-input"
-                    value={
-                      editForm.labourWelfare
-                    }
-                    onChange={(e) =>
-                      handleEditChange(
-                        "labourWelfare",
-                        e.target.value
-                      )
-                    }
-                  />
-                </div>
-
-                <div className="salary-field">
-                  <label className="salary-form-label">
-                    Others
-                  </label>
-
-                  <input
-                    className="salary-form-input"
-                    value={
-                      editForm.deductionOthers
-                    }
-                    onChange={(e) =>
-                      handleEditChange(
-                        "deductionOthers",
-                        e.target.value
-                      )
-                    }
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* FOOTER */}
-
-            <div className="salary-modal-footer">
-              <button
-                type="button"
-                className="salary-cancel-btn"
-                onClick={closeEditModal}
-              >
-                Cancel
-              </button>
-
-              <button
-                type="button"
-                className="salary-save-btn"
-                onClick={handleSaveSalary}
-              >
-              Add Employee Salary
-              </button>
-            </div>
+            </form>
           </div>
         </div>
+      </div>
+      <div className="modal-backdrop fade show"></div>
+    </>
+  );
+};
+
+/* =====================================================
+   PAGE
+===================================================== */
+
+const EmployeeSalary: React.FC = () => {
+  const [employees, setEmployees] = useState<Employee[]>(INITIAL_EMPLOYEES);
+
+  const [month, setMonth] = useState("");
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [preview, setPreview] = useState<Record<string, PreviewRow>>({});
+  const [result, setResult] = useState<{ month: string; rows: ResultRow[] } | null>(null);
+
+  const [addOpen, setAddOpen] = useState(false);
+  const [editTarget, setEditTarget] = useState<Employee | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<Employee | null>(null);
+
+  const previewTitleRef = useRef<HTMLHeadingElement>(null);
+  const resultTitleRef = useRef<HTMLHeadingElement>(null);
+
+  const monthChosen = !!month;
+  const days = monthChosen ? daysInMonth(month) : 0;
+  const allSelected = employees.length > 0 && employees.every((e) => selectedIds.includes(e.id));
+
+  const selectedEmployees = employees.filter((e) => selectedIds.includes(e.id));
+
+  /* ---------- selection ---------- */
+
+  const resetFlow = () => {
+    setPreviewOpen(false);
+    setResult(null);
+  };
+
+  const handleMonthChange = (value: string) => {
+    setMonth(value);
+    setSelectedIds([]);
+    setPreview({});
+    resetFlow();
+  };
+
+  const toggleAll = (checked: boolean) => {
+    setSelectedIds(checked ? employees.map((e) => e.id) : []);
+    resetFlow();
+  };
+
+  const toggleOne = (id: string, checked: boolean) => {
+    setSelectedIds((prev) => (checked ? Array.from(new Set([...prev, id])) : prev.filter((x) => x !== id)));
+    resetFlow();
+  };
+
+  /* ---------- next / preview ---------- */
+
+  const handleNext = () => {
+    const rows: Record<string, PreviewRow> = {};
+    selectedEmployees.forEach((emp) => {
+      rows[emp.id] = preview[emp.id] ?? defaultPreviewRow(emp, days);
+    });
+    setPreview(rows);
+    setResult(null);
+    setPreviewOpen(true);
+  };
+
+  useEffect(() => {
+    if (previewOpen) previewTitleRef.current?.focus();
+  }, [previewOpen]);
+
+  useEffect(() => {
+    if (result) resultTitleRef.current?.focus();
+  }, [result]);
+
+  const updatePreview = (id: string, key: keyof PreviewRow, value: string) => {
+    setPreview((prev) => ({ ...prev, [id]: { ...prev[id], [key]: value } }));
+    setResult(null);
+  };
+
+  const evaluated = useMemo(() => {
+    const map: Record<string, ReturnType<typeof evaluateRow>> = {};
+    selectedEmployees.forEach((emp) => {
+      if (preview[emp.id]) map[emp.id] = evaluateRow(preview[emp.id], days || 1);
+    });
+    return map;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [preview, selectedIds, days, employees]);
+
+  const previewEmployees = selectedEmployees.filter((e) => evaluated[e.id]);
+  const allValid = previewEmployees.length > 0 && previewEmployees.every((e) => evaluated[e.id].valid);
+
+  const totals = previewEmployees.reduce(
+    (t, e) => ({
+      gross: t.gross + evaluated[e.id].earnings,
+      ded: t.ded + evaluated[e.id].deductions,
+      net: t.net + evaluated[e.id].net,
+    }),
+    { gross: 0, ded: 0, net: 0 }
+  );
+
+  /* ---------- generate / download ---------- */
+
+  const handleGenerate = () => {
+    if (!allValid) return;
+    setResult({
+      month,
+      rows: previewEmployees.map((e) => ({
+        id: e.id,
+        name: e.name,
+        account: e.account,
+        earnings: evaluated[e.id].earnings,
+        deductions: evaluated[e.id].deductions,
+        net: evaluated[e.id].net,
+      })),
+    });
+  };
+
+  const resultTotal = result ? round2(result.rows.reduce((s, r) => s + r.net, 0)) : 0;
+
+  const handleDownload = () => {
+    if (!result) return;
+    const aoa: (string | number)[][] = [
+      ["Emp ID", "Name", "Account Number", "Earnings (₹)", "Deductions (₹)", "Net Salary (₹)"],
+      ...result.rows.map((r) => [r.id, r.name, r.account, r.earnings, r.deductions, r.net]),
+      ["", "", "Total Net Salary", "", "", resultTotal],
+    ];
+    const ws = XLSX.utils.aoa_to_sheet(aoa);
+    ws["!cols"] = [{ wch: 10 }, { wch: 22 }, { wch: 18 }, { wch: 14 }, { wch: 16 }, { wch: 16 }];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Salary");
+    XLSX.writeFile(wb, `Salary_${result.month}.xlsx`);
+  };
+
+  /* ---------- modals ---------- */
+
+  const handleAddSubmit = (employeeId: string, earn: FieldRow[], ded: FieldRow[], net: number) => {
+    setEmployees((prev) =>
+      prev.map((e) => (e.id === employeeId ? { ...e, earn, ded, salary: net > 0 ? net : e.salary } : e))
+    );
+    setAddOpen(false);
+  };
+
+  const handleEditSubmit = (employeeId: string, earn: FieldRow[], ded: FieldRow[], net: number) => {
+    setEmployees((prev) =>
+      prev.map((e) => (e.id === employeeId ? { ...e, earn, ded, salary: net > 0 ? net : e.salary } : e))
+    );
+    setEditTarget(null);
+  };
+
+  const confirmDelete = () => {
+    if (!deleteTarget) return;
+    setEmployees((prev) => prev.filter((e) => e.id !== deleteTarget.id));
+    setSelectedIds((prev) => prev.filter((id) => id !== deleteTarget.id));
+    setDeleteTarget(null);
+    resetFlow();
+  };
+
+  useEffect(() => {
+    if (deleteTarget) {
+      document.body.classList.add("modal-open");
+      return () => document.body.classList.remove("modal-open");
+    }
+  }, [deleteTarget]);
+
+  const editInitial = (emp: Employee) => {
+    const isAnthony = emp.id === "Emp-001";
+    return {
+      earn: buildRows(
+        DEFAULT_EARN_LABELS,
+        isAnthony ? ANTHONY_EARN : [`₹${emp.salary}`],
+        emp.earn
+      ),
+      ded: buildRows(DEFAULT_DED_LABELS, isAnthony ? ANTHONY_DED : [], emp.ded),
+    };
+  };
+
+  /* =====================================================
+     RENDER
+  ===================================================== */
+
+  return (
+    <>
+   <style>{`
+  /* =========================================
+     OCHRE YELLOW - ALL BUTTONS
+  ========================================= */
+
+  .employee-salary-page .btn,
+  .modal .btn {
+    background-color: #D4A017 !important;
+    border-color: #D4A017 !important;
+    color: #fff !important;
+  }
+
+  /* Hover */
+  .employee-salary-page .btn:hover,
+  .employee-salary-page .btn:focus,
+  .employee-salary-page .btn:active,
+  .employee-salary-page .btn.active,
+  .modal .btn:hover,
+  .modal .btn:focus,
+  .modal .btn:active,
+  .modal .btn.active {
+    background-color: #D4A017 !important;
+    border-color: #D4A017 !important;
+    color: #fff !important;
+    box-shadow: none !important;
+  }
+
+  /* Disabled button */
+  .employee-salary-page .btn:disabled,
+  .employee-salary-page .btn.disabled {
+    background-color: #D4A017 !important;
+    border-color: #D4A017 !important;
+    color: #fff !important;
+    opacity: 0.6;
+  }
+
+  /* Icons inside buttons */
+  .employee-salary-page .btn i,
+  .modal .btn i {
+    color: #fff !important;
+  }
+
+  /* Add New links */
+  .modal .add-earnings,
+  .modal .add-deduction {
+    color: #D4A017 !important;
+  }
+
+  .modal .add-earnings:hover,
+  .modal .add-deduction:hover {
+    color: #D4A017 !important;
+  }
+`}</style>
+    
+ 
+
+<div className="employee-salary-page">
+  <div className="content">          {/* Breadcrumb */}
+          <div className="d-md-flex d-block align-items-center justify-content-between page-breadcrumb mb-3">
+            <div className="my-auto mb-2">
+              <h2 className="mb-1">Employee Salary</h2>
+              <nav>
+                <ol className="breadcrumb mb-0">
+                  <li className="breadcrumb-item">
+                    <Link to="/admin/Dashboard"><i className="ti ti-smart-home"></i></Link>
+                  </li>
+                  <li className="breadcrumb-item active" aria-current="page">Employee Salary</li>
+                </ol>
+              </nav>
+            </div>
+            <div className="d-flex my-xl-auto right-content align-items-center flex-wrap">
+              <div className="mb-2">
+                <a
+                  href="#"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    setAddOpen(true);
+                  }}
+                  className="btn btn-primary d-flex align-items-center"
+                >
+                  <i className="ti ti-circle-plus me-2"></i>Add Salary
+                </a>
+              </div>
+            </div>
+          </div>
+          {/* /Breadcrumb */}
+
+          {/* 1. Month */}
+          <div id="salary-month-section" className="card">
+            <div className="card-body">
+              <label htmlFor="generation-month" className="form-label">1. Select Salary Month</label>
+              <input
+                type="month"
+                id="generation-month"
+                className="form-control w-auto"
+                required
+                value={month}
+                onChange={(e) => handleMonthChange(e.target.value)}
+                aria-describedby="salary-selection-help"
+              />
+              <p id="salary-selection-help" className="text-muted mt-2 mb-0">
+                Select a month, then select employees below and click Next.
+              </p>
+            </div>
+          </div>
+
+          {/* 2. Employees */}
+          {monthChosen && (
+            <div id="salary-employees-section" className="card">
+              <div className="card-header"><h5>2. Select Employees</h5></div>
+              <div className="card-body p-0">
+                <div className="custom-datatable-filter table-responsive">
+                  <table id="employee-salary-table" className="table">
+                    <thead className="thead-light">
+                      <tr>
+                        <th className="no-sort">
+                          <div className="form-check form-check-md">
+                            <input
+                              className="form-check-input"
+                              type="checkbox"
+                              id="salary-select-all"
+                              aria-label="Select all employees"
+                              checked={allSelected}
+                              onChange={(e) => toggleAll(e.target.checked)}
+                            />
+                          </div>
+                        </th>
+                        <th>Emp ID</th>
+                        <th>Name</th>
+                        <th>Email</th>
+                        <th>Phone</th>
+                        <th>Account Number</th>
+                        <th>Salary</th>
+                        <th></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {employees.map((emp) => (
+                        <tr key={emp.id}>
+                          <td>
+                            <div className="form-check form-check-md">
+                              <input
+                                className="form-check-input"
+                                type="checkbox"
+                                checked={selectedIds.includes(emp.id)}
+                                onChange={(e) => toggleOne(emp.id, e.target.checked)}
+                              />
+                            </div>
+                          </td>
+                          <td>{emp.id}</td>
+                          <td>
+                            <div className="d-flex align-items-center file-name-icon">
+                              <a href="#" className="avatar avatar-md" onClick={(e) => e.preventDefault()}>
+                                <img src={emp.avatar} className="img-fluid rounded-circle" alt="img" />
+                              </a>
+                              <div className="ms-2">
+                                <h6 className="fw-medium">
+                                  <a href="#" onClick={(e) => e.preventDefault()}>{emp.name}</a>
+                                </h6>
+                                <span className="d-block mt-1">{emp.role}</span>
+                              </div>
+                            </div>
+                          </td>
+                          <td>{emp.email}</td>
+                          <td>{emp.phone}</td>
+                          <td>{emp.account}</td>
+                          <td>₹{emp.salary}</td>
+                          <td>
+                            <div className="action-icon d-inline-flex">
+                              <a
+                                href="#"
+                                className="me-2"
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  setEditTarget(emp);
+                                }}
+                              >
+                                <i className="ti ti-edit"></i>
+                              </a>
+                              <a
+                                href="#"
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  setDeleteTarget(emp);
+                                }}
+                              >
+                                <i className="ti ti-trash"></i>
+                              </a>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                      {employees.length === 0 && (
+                        <tr>
+                          <td colSpan={8} className="text-center">No employees found.</td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+              <div className="card-footer d-flex justify-content-end">
+                <button
+                  type="button"
+                  id="salary-next"
+                  className="btn btn-primary"
+                  disabled={selectedIds.length === 0}
+                  onClick={handleNext}
+                >
+                  Next<i className="ti ti-arrow-right ms-2" aria-hidden="true"></i>
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* 3. Preview */}
+          {previewOpen && (
+            <section id="generated-salary" className="card" aria-labelledby="generated-salary-title">
+              <div className="card-header">
+                <h5 id="generated-salary-title" tabIndex={-1} ref={previewTitleRef}>
+                  3. Generated Salary Preview
+                </h5>
+              </div>
+              <div className="card-body">
+                <p id="generated-salary-summary" role="status">
+                  {previewEmployees.length} employee{previewEmployees.length === 1 ? "" : "s"} selected for{" "}
+                  {monthLabel(month)} ({days} calendar days).
+                </p>
+                <div className="table-responsive mb-3">
+                  <table id="salary-preview-table" className="table">
+                    <thead className="thead-light">
+                      <tr>
+                        <th scope="col">Emp ID</th>
+                        <th scope="col">Name</th>
+                        <th scope="col">Earnings (₹)</th>
+                        <th scope="col">Deduction (₹)</th>
+                        <th scope="col">Total Salary (₹)</th>
+                      </tr>
+                    </thead>
+                    <tbody id="salary-preview-body">
+                      {previewEmployees.map((emp) => {
+                        const row = preview[emp.id];
+                        const calc = evaluated[emp.id];
+                        return (
+                          <tr key={emp.id}>
+                            <td className="employee-id">{emp.id}</td>
+                            <td className="employee-name">{emp.name}</td>
+                            <td>
+                              <label className="d-flex align-items-center justify-content-between gap-2 mb-2">
+                                <span>Monthly Salary (₹)</span>
+                                <input
+                                  type="number"
+                                  min="0"
+                                  step="0.01"
+                                  required
+                                  className="form-control form-control-sm earnings-input"
+                                  value={row.salary}
+                                  onChange={(e) => updatePreview(emp.id, "salary", e.target.value)}
+                                />
+                              </label>
+                              {ATTENDANCE_FIELDS.map(([key, label]) => (
+                                <label key={key} className="d-flex align-items-center justify-content-between gap-2 mb-2">
+                                  <span>{label}</span>
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    step="0.5"
+                                    required
+                                    className="form-control form-control-sm attendance-input"
+                                    style={{ width: 100, minWidth: 100 }}
+                                    aria-describedby="salary-preview-error"
+                                    value={row[key]}
+                                    onChange={(e) => updatePreview(emp.id, key, e.target.value)}
+                                  />
+                                </label>
+                              ))}
+                              <strong className="earnings-total d-block border-top pt-2">{inr(calc.earnings)}</strong>
+                            </td>
+                            <td>
+                              {DEDUCTION_FIELDS.map(([key, label]) => (
+                                <label key={key} className="d-flex align-items-center justify-content-between gap-2 mb-2">
+                                  <span>{label}</span>
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    step="0.01"
+                                    required
+                                    className="form-control form-control-sm deduction-input"
+                                    style={{ width: 120, minWidth: 120 }}
+                                    aria-describedby="salary-preview-error"
+                                    value={row[key]}
+                                    onChange={(e) => updatePreview(emp.id, key, e.target.value)}
+                                  />
+                                </label>
+                              ))}
+                              <strong className="deduction-total d-block border-top pt-2">{inr(calc.deductions)}</strong>
+                            </td>
+                            <td className="salary-total">{inr(calc.net)}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                    <tfoot>
+                      <tr>
+                        <th scope="row" colSpan={2}>Total</th>
+                        <td id="preview-gross-total">{inr(round2(totals.gross))}</td>
+                        <td id="preview-deduction-total">{inr(round2(totals.ded))}</td>
+                        <td id="preview-net-total" className="text-success fw-bold">{inr(round2(totals.net))}</td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+
+                <p id="salary-preview-error" className="text-danger" role="alert" hidden={allValid}>
+                  Enter non-negative deductions with up to two decimal places. Combined deductions cannot exceed
+                  earnings. Enter a valid monthly salary. Attendance values must be whole or half days and add up to
+                  the selected month's day count.
+                </p>
+
+                <div className="d-flex justify-content-end gap-2 flex-wrap">
+                  <button type="button" id="generate-salary" className="btn btn-primary" disabled={!allValid} onClick={handleGenerate}>
+                    <i className="ti ti-file-spreadsheet me-2" aria-hidden="true"></i>Generate Salary
+                  </button>
+                </div>
+              </div>
+            </section>
+          )}
+
+          {/* Result */}
+          {result && (
+            <section id="salary-result" className="card" aria-labelledby="salary-result-title">
+              <div className="card-header">
+                <h5 id="salary-result-title" tabIndex={-1} ref={resultTitleRef}>Generated Salary</h5>
+              </div>
+              <div className="card-body">
+                <p id="salary-result-month">Salary Month: {monthLabel(result.month)}</p>
+                <div className="table-responsive">
+                  <table className="table">
+                    <thead className="thead-light">
+                      <tr>
+                        <th scope="col">Emp ID</th>
+                        <th scope="col">Name</th>
+                        <th scope="col">Account Number</th>
+                        <th scope="col">Net Salary (&#8377;)</th>
+                      </tr>
+                    </thead>
+                    <tbody id="salary-result-body">
+                      {result.rows.map((r) => (
+                        <tr key={r.id}>
+                          <td>{r.id}</td>
+                          <td>{r.name}</td>
+                          <td>{r.account}</td>
+                          <td>{inr(r.net)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                    <tfoot>
+                      <tr>
+                        <th scope="row" colSpan={3}>Total Net Salary</th>
+                        <td id="salary-result-total" className="text-success fw-bold">{inr(resultTotal)}</td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+                <div className="d-flex justify-content-end mt-3">
+                  <button type="button" id="download-salary" className="btn btn-success" onClick={handleDownload}>
+                    <i className="ti ti-download me-2" aria-hidden="true"></i>Download Excel (.xlsx)
+                  </button>
+                </div>
+              </div>
+            </section>
+          )}
+        </div>
+      </div>
+
+      {/* Add Salary Modal */}
+      {addOpen && (
+        <SalaryModal
+          title="Add Employee Salary"
+          submitLabel="Add Employee Salary"
+          employees={employees}
+          initialEmployeeId=""
+          initialEarn={buildRows(DEFAULT_EARN_LABELS)}
+          initialDed={buildRows(DEFAULT_DED_LABELS)}
+          onClose={() => setAddOpen(false)}
+          onSubmit={handleAddSubmit}
+        />
       )}
 
-      {/* =================================================
-          DELETE CONFIRMATION MODAL
-      ================================================= */}
+      {/* Edit Salary Modal */}
+      {editTarget && (() => {
+        const init = editInitial(editTarget);
+        return (
+          <SalaryModal
+            key={editTarget.id}
+            title="Edit Employee Salary"
+            submitLabel="Update Employee Salary"
+            employees={employees}
+            initialEmployeeId={editTarget.id}
+            initialEarn={init.earn}
+            initialDed={init.ded}
+            onClose={() => setEditTarget(null)}
+            onSubmit={handleEditSubmit}
+          />
+        );
+      })()}
 
-      {showDeleteModal && deletingEmployee && (
-        <div
-          className="
-            salary-modal-overlay
-            delete-modal-overlay
-          "
-          onMouseDown={(e) => {
-            if (e.currentTarget === e.target) {
-              closeDeleteModal();
-            }
-          }}
-        >
-          <div
-            className="salary-delete-modal"
-            onMouseDown={(e) =>
-              e.stopPropagation()
-            }
-          >
-            {/* DELETE ICON */}
-
-            <div className="delete-icon-box">
-              <Trash2
-                size={31}
-                strokeWidth={2.5}
-              />
-            </div>
-
-            {/* TITLE */}
-
-            <h2 className="delete-modal-title">
-              Confirm Delete
-            </h2>
-
-            {/* TEXT */}
-
-            <p className="delete-modal-text">
-              You want to delete all the marked items,
-              this cant be undone once you delete.
-            </p>
-
-            {/* BUTTONS */}
-
-            <div className="delete-buttons">
-              <button
-                type="button"
-                className="delete-cancel-btn"
-                onClick={closeDeleteModal}
-              >
-                Cancel
-              </button>
-
-              <button
-                type="button"
-                className="delete-confirm-btn"
-                onClick={confirmDelete}
-              >
-                Yes, Delete
-              </button>
+      {/* Delete Modal */}
+      {deleteTarget && (
+        <>
+          <div className="modal fade show" style={{ display: "block" }} tabIndex={-1} role="dialog" aria-modal="true">
+            <div className="modal-dialog modal-dialog-centered">
+              <div className="modal-content">
+                <div className="modal-body text-center">
+                  <span className="avatar avatar-xl bg-transparent-danger text-danger mb-3">
+                    <i className="ti ti-trash-x fs-36"></i>
+                  </span>
+                  <h4 className="mb-1">Confirm Delete</h4>
+                  <p className="mb-3">
+                    You want to delete all the marked items, this cant be undone once you delete.
+                  </p>
+                  <div className="d-flex justify-content-center">
+                    <a
+                      href="#"
+                      className="btn btn-light me-3"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        setDeleteTarget(null);
+                      }}
+                    >
+                      Cancel
+                    </a>
+                    <a
+                      href="#"
+                      className="btn btn-danger"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        confirmDelete();
+                      }}
+                    >
+                      Yes, Delete
+                    </a>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
-        </div>
+          <div className="modal-backdrop fade show"></div>
+        </>
       )}
     </>
   );
 };
 
-export default EmployeSalary;
+export default EmployeeSalary;

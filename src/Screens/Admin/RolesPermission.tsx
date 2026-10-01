@@ -23,7 +23,7 @@ import {
   addRole,
   updateRole,
   deleteRole,
-} from "../../services/hrservices";
+} from "../../services/adminservices";
 
 /* =====================================================
    TYPES
@@ -2085,7 +2085,7 @@ const [toDate, setToDate] = useState("");
   </select>
 
 </div>
-             
+
 
               <select
                 className="roles-filter roles-sort-filter"

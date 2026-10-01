@@ -33,6 +33,7 @@ import {
   unwrapApiValue,
   updateUser,
   type AddUserPayload,
+  type UpdateUserPayload,
   type UserApiModel,
 } from "../../services/adminservices";
 
@@ -56,7 +57,7 @@ interface UserItem {
   designation: string;
   about: string;
   createdDate: string;
-  createdAtRaw: string; // ISO string - date filter / sorting ke liye
+  createdAtRaw: string;
   role: UserRole;
   status: UserStatus;
   roleId?: string;
@@ -113,7 +114,8 @@ interface ApplicationForm {
   veteran: string;
   convicted: string;
 
-  positionDesired: string;
+  positionDesired: string; // designation NAME
+  designationId: string; // designation ID (API)
   availableStartDate: string;
   desiredPay: string;
 
@@ -148,6 +150,7 @@ const createEmptyApplicationForm = (): ApplicationForm => ({
   convicted: "",
 
   positionDesired: "",
+  designationId: "",
   availableStartDate: "",
   desiredPay: "",
 
@@ -185,9 +188,8 @@ const createEmptyApplicationForm = (): ApplicationForm => ({
   ],
 });
 
-//  DROPDOWN DATA
 
-const designations = [
+const fallbackDesignations = [
   "Manager",
   "HR Manager",
   "HR Executive",
@@ -214,16 +216,283 @@ const getRoleBadgeClass = (role: UserRole) => {
   }
 };
 
-//  "All" option ki value (select me placeholder ke saath conflict na ho)
 const ALL_VALUE = "__all__";
 
-//  Calendar open karne ka helper
 const openCalendar = (e: React.MouseEvent<HTMLInputElement>) => {
   try {
     (e.currentTarget as any).showPicker?.();
   } catch {
     // browser support na ho toh default behaviour chalega
   }
+};
+
+//  GENERIC LOOKUP HELPERS (roles / designations)
+
+const getItemId = (item: any): string =>
+  String(item?.id ?? item?.Id ?? "");
+
+const getItemName = (item: any): string =>
+  String(
+    item?.name ??
+      item?.roleName ??
+      item?.designationName ??
+      item?.Name ??
+      item?.RoleName ??
+      item?.DesignationName ??
+      ""
+  ).trim();
+
+const findIdByName = (items: any[], name: string): string => {
+  const normalized = name.trim().toLowerCase();
+  if (!normalized) return "";
+  const match = items.find(
+    (item) => getItemName(item).toLowerCase() === normalized
+  );
+  return match ? getItemId(match) : "";
+};
+
+//  DATE HELPERS
+
+const toIsoDate = (value: string): string => {
+  if (!value?.trim()) return "";
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? "" : date.toISOString();
+};
+
+// Backend date-time field me "" bhejne se 400 aata hai, isliye fallback = abhi ka time
+const isoOrNow = (value: string): string =>
+  toIsoDate(value) || new Date().toISOString();
+
+const parseDateRange = (value: string) => {
+  const trimmed = (value ?? "").trim();
+  const now = new Date().toISOString();
+
+  if (!trimmed) {
+    return { fromDate: now, toDate: now, isCurrent: false };
+  }
+
+  const isCurrent = /present|current|till date|ongoing/i.test(trimmed);
+
+  // "2022-01-01 - 2025-01-01" / "2022 to 2025" (spaces ke saath)
+  let parts = trimmed.split(/\s+(?:-|to|–|—)\s+/i).map((x) => x.trim());
+
+  // "2022-2025" (spaces ke bina, sirf year)
+  if (parts.length < 2) {
+    const m = trimmed.match(/^(\d{4})\s*(?:-|to|–|—)\s*(\d{4})$/i);
+    if (m) parts = [m[1], m[2]];
+  }
+
+  if (parts.length >= 2) {
+    return {
+      fromDate: isoOrNow(parts[0]),
+      toDate: isCurrent ? now : isoOrNow(parts[1]),
+      isCurrent,
+    };
+  }
+
+  const single = isoOrNow(trimmed);
+  return { fromDate: single, toDate: isCurrent ? now : single, isCurrent };
+};
+
+const parseFullName = (value: string) => {
+  const parts = value.trim().split(/\s+/).filter(Boolean);
+  return {
+    firstName: parts.shift() || "New",
+    lastName: parts.join(" "),
+  };
+};
+
+// Role detect karne ka logic
+const detectRole = (roleName: string, userType: number): UserRole => {
+  const lower = roleName.trim().toLowerCase();
+
+  if (/\badmin/.test(lower)) return "Admin";
+  if (/\baccountant/.test(lower)) return "Accountant";
+  if (/\bhr\b/.test(lower) || lower.includes("human resource")) return "HR";
+  if (userType === 1) return "HR";
+  return "Employee";
+};
+
+const mapApiUserToItem = (raw: any): UserItem => {
+  const firstName = String(raw?.firstName ?? raw?.FirstName ?? "");
+  const lastName = String(raw?.lastName ?? raw?.LastName ?? "");
+  const name =
+    `${firstName} ${lastName}`.trim() ||
+    String(raw?.userName ?? raw?.UserName ?? raw?.name ?? raw?.Name ?? "User");
+  const userStatus = Number(raw?.userStatus ?? raw?.UserStatus ?? 1);
+  const userType = Number(raw?.userType ?? raw?.UserType ?? 0);
+  const roleName = String(
+    raw?.roleName ??
+      raw?.RoleName ??
+      raw?.role?.roleName ??
+      raw?.role?.name ??
+      raw?.Role?.roleName ??
+      raw?.Role?.name ??
+      ""
+  );
+  const designationName = String(
+    raw?.designationName ??
+      raw?.DesignationName ??
+      raw?.designation?.designationName ??
+      raw?.designation?.name ??
+      raw?.Designation?.designationName ??
+      raw?.Designation?.name ??
+      ""
+  );
+
+  const createdRaw = raw?.createdAt ?? raw?.CreatedAt ?? "";
+  const createdDateObj = createdRaw ? new Date(createdRaw) : null;
+  const validCreated =
+    createdDateObj && !Number.isNaN(createdDateObj.getTime());
+
+  return {
+    id: String(raw?.id ?? raw?.Id ?? ""),
+    firstName,
+    lastName,
+    username: String(raw?.userName ?? raw?.UserName ?? ""),
+    name,
+    email: String(raw?.email ?? raw?.Email ?? ""),
+    phone: String(
+      raw?.phoneNumber ?? raw?.PhoneNumber ?? raw?.phone ?? raw?.Phone ?? ""
+    ),
+    company: String(raw?.company ?? raw?.Company ?? "Adequate"),
+    department: String(
+      raw?.departmentName ??
+        raw?.DepartmentName ??
+        raw?.department?.departmentName ??
+        raw?.department?.name ??
+        raw?.Department?.departmentName ??
+        raw?.Department?.name ??
+        ""
+    ),
+    designation: designationName,
+    about: String(raw?.about ?? raw?.About ?? ""),
+    createdDate: validCreated
+      ? createdDateObj!.toLocaleDateString("en-GB", {
+          day: "2-digit",
+          month: "short",
+          year: "numeric",
+        })
+      : "",
+    createdAtRaw: validCreated ? createdDateObj!.toISOString() : "",
+    role: detectRole(roleName, userType),
+    status: userStatus === 0 ? "Inactive" : "Active",
+    roleId: String(
+      raw?.roleId ?? raw?.RoleId ?? raw?.role?.id ?? raw?.Role?.id ?? ""
+    ),
+    designationId: String(
+      raw?.designationId ??
+        raw?.DesignationId ??
+        raw?.designation?.id ??
+        raw?.Designation?.id ??
+        ""
+    ),
+    userType,
+    userStatus,
+    apiUser: raw as UserApiModel,
+  };
+};
+
+const formatDateOnly = (value: any) => {
+  if (!value) return "";
+  const date = new Date(value);
+  return Number.isNaN(date.getTime())
+    ? String(value)
+    : date.toISOString().slice(0, 10);
+};
+
+const formatDateRange = (from: any, to: any) => {
+  const start = formatDateOnly(from);
+  const end = formatDateOnly(to);
+  if (start && end) return `${start} - ${end}`;
+  return start || end || "";
+};
+
+const mapUserToApplicationForm = (
+  user: UserItem,
+  raw: any = {}
+): ApplicationForm => {
+  const educationSource = Array.isArray(raw?.educations) ? raw.educations : [];
+  const referenceSource = Array.isArray(raw?.references) ? raw.references : [];
+  const experienceSource = Array.isArray(raw?.experiences)
+    ? raw.experiences
+    : [];
+
+  const blank = createEmptyApplicationForm();
+
+  return {
+    fullName: user.name,
+    password: "",
+    confirmPassword: "",
+    country: String(raw?.country ?? raw?.Country ?? "India"),
+    address: String(raw?.address ?? raw?.Address ?? ""),
+    city: String(raw?.city ?? raw?.City ?? ""),
+    state: String(raw?.state ?? raw?.State ?? ""),
+    zip: String(
+      raw?.postalCode ?? raw?.PostalCode ?? raw?.zip ?? raw?.Zip ?? ""
+    ),
+    phoneNumber: user.phone,
+    emailAddress: user.email,
+    eligibleToWork: raw?.isLegallyEligibleToWork === false ? "No" : "Yes",
+    veteran: raw?.isVeteran === true ? "Yes" : "No",
+    convicted: raw?.isWillingForBackgroundCheck === true ? "Yes" : "No",
+    positionDesired: user.designation,
+    designationId: String(
+      raw?.designationId ?? raw?.DesignationId ?? user.designationId ?? ""
+    ),
+    availableStartDate: formatDateOnly(
+      raw?.availableStartDate ?? raw?.AvailableStartDate
+    ),
+    desiredPay: raw?.desiredPay != null ? String(raw.desiredPay) : "",
+    employmentType: raw?.isFullTimeDesired
+      ? "Full time"
+      : raw?.isPartTimeDesired
+      ? "Part time"
+      : raw?.isSeasonalOrTemporaryDesired
+      ? "Seasonal/Temporary"
+      : "",
+    education: educationSource.length
+      ? educationSource.map((row: any) => ({
+          schoolName: String(row?.institutionName ?? row?.schoolName ?? ""),
+          location: String(row?.location ?? ""),
+          yearsAttended: formatDateRange(
+            row?.startDate ?? row?.fromDate,
+            row?.endDate ?? row?.toDate
+          ),
+          degreeReceived: String(
+            row?.degreeOrCourse ?? row?.degreeReceived ?? ""
+          ),
+          major: String(row?.specialization ?? row?.major ?? ""),
+        }))
+      : blank.education,
+    references: referenceSource.length
+      ? referenceSource.map((row: any) => ({
+          name: String(row?.name ?? ""),
+          title: String(row?.title ?? ""),
+          company: String(row?.company ?? ""),
+          phone: String(row?.phoneNumber ?? row?.phone ?? ""),
+        }))
+      : blank.references,
+    employmentHistory: experienceSource.length
+      ? experienceSource.map((row: any) => ({
+          employer: String(row?.companyName ?? row?.employer ?? ""),
+          jobTitle: String(row?.jobTitle ?? ""),
+          datesEmployed: formatDateRange(
+            row?.fromDate ?? row?.startDate,
+            row?.toDate ?? row?.endDate
+          ),
+          workPhone: String(row?.workPhone ?? ""),
+          startingPayRate:
+            row?.startingPayRate != null ? String(row.startingPayRate) : "",
+          endingPayRate:
+            row?.endingPayRate != null ? String(row.endingPayRate) : "",
+          address: String(row?.address ?? ""),
+          city: String(row?.city ?? ""),
+          state: String(row?.state ?? ""),
+          zip: String(row?.postalCode ?? row?.zip ?? ""),
+        }))
+      : blank.employmentHistory,
+  };
 };
 
 //  COMPONENT
@@ -233,12 +502,10 @@ const Users: React.FC = () => {
 
   const [search, setSearch] = useState("");
 
-  // Filters (default "" => heading dikhega, dropdown list me heading nahi)
   const [roleFilter, setRoleFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [sortBy, setSortBy] = useState("");
 
-  // Date filter (calendar)
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
 
@@ -265,13 +532,74 @@ const Users: React.FC = () => {
   );
 
   const [loadingUsers, setLoadingUsers] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [apiError, setApiError] = useState("");
   const [roles, setRoles] = useState<any[]>([]);
   const [apiDesignations, setApiDesignations] = useState<any[]>([]);
 
-  //  SHORT FORM (Admin / Accountant => only Personal Information + Position)
-
+  //  Admin / Accountant => only Personal Information + Position
   const isShortForm = selectedRole === "Admin" || selectedRole === "Accountant";
+
+  //  Designation dropdown options (API se, fallback static)
+  const designationOptions = useMemo(
+    () =>
+      apiDesignations
+        .map((item) => ({ id: getItemId(item), name: getItemName(item) }))
+        .filter((item) => item.id && item.name),
+    [apiDesignations]
+  );
+  const useApiDesignations = designationOptions.length > 0;
+
+  //  LOAD USERS
+
+  const loadUsers = async (isMounted: () => boolean = () => true) => {
+    setLoadingUsers(true);
+    try {
+      const response = await getUsers({ PageNumber: 1, PageSize: 100 });
+      const rows = unwrapApiArray(response);
+      if (isMounted()) {
+        setUsers(rows.map(mapApiUserToItem).filter((item) => item.id));
+        setApiError("");
+      }
+    } catch (error) {
+      if (isMounted()) {
+        setApiError(
+          error instanceof Error ? error.message : "Unable to load users."
+        );
+      }
+    } finally {
+      if (isMounted()) setLoadingUsers(false);
+    }
+  };
+
+  //  LOAD USERS / ROLES / DESIGNATIONS (on mount)
+
+  useEffect(() => {
+    let mounted = true;
+
+    const loadLookups = async () => {
+      try {
+        const [roleResponse, designationResponse] = await Promise.all([
+          getRoles({ PageNumber: 1, PageSize: 100 }),
+          getDesignations({ PageNumber: 1, PageSize: 100 }),
+        ]);
+        if (!mounted) return;
+        setRoles(unwrapApiArray(roleResponse));
+        setApiDesignations(unwrapApiArray(designationResponse));
+      } catch {
+        // lookups fail ho jaye toh form fallback list use karega
+      }
+    };
+
+    void loadUsers(() => mounted);
+    void loadLookups();
+
+    return () => {
+      mounted = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   //  FILTER / SEARCH / SORT
 
@@ -300,7 +628,6 @@ const Users: React.FC = () => {
       result = result.filter((item) => item.status === statusFilter);
     }
 
-    // Calendar date range filter
     if (dateFrom) {
       const from = new Date(`${dateFrom}T00:00:00`).getTime();
       result = result.filter((item) => {
@@ -317,7 +644,6 @@ const Users: React.FC = () => {
       });
     }
 
-    // Sort By options
     if (sortBy === "Last 7 Days" || sortBy === "Last Month") {
       const days = sortBy === "Last 7 Days" ? 7 : 30;
       const limit = Date.now() - days * 24 * 60 * 60 * 1000;
@@ -371,7 +697,9 @@ const Users: React.FC = () => {
     if (allVisibleSelected) {
       setSelected((prev) => prev.filter((id) => !ids.includes(id)));
     } else {
-      setSelected((prev) => [...new Set([...prev, ...ids])]);
+
+      
+            setSelected((prev) => [...new Set([...prev, ...ids])]);
     }
   };
 
@@ -419,6 +747,23 @@ const Users: React.FC = () => {
       [field]: value,
     }));
   }
+
+  const handleDesignationChange = (value: string) => {
+    if (useApiDesignations) {
+      const match = designationOptions.find((item) => item.id === value);
+      setApplicationForm((prev) => ({
+        ...prev,
+        designationId: match?.id ?? "",
+        positionDesired: match?.name ?? "",
+      }));
+    } else {
+      setApplicationForm((prev) => ({
+        ...prev,
+        designationId: "",
+        positionDesired: value,
+      }));
+    }
+  };
 
   //  EDUCATION
 
@@ -542,210 +887,33 @@ const Users: React.FC = () => {
     }));
   };
 
-  //  API HELPERS
-
-  const findIdByName = (items: any[], name: string) => {
-    const normalized = name.trim().toLowerCase();
-    const match = items.find(
-      (item) =>
-        String(
-          item?.name ??
-            item?.roleName ??
-            item?.designationName ??
-            item?.Name ??
-            item?.RoleName ??
-            item?.DesignationName ??
-            ""
-        )
-          .trim()
-          .toLowerCase() === normalized
-    );
-    return String(match?.id ?? match?.Id ?? "");
-  };
-
-  const parseFullName = (value: string) => {
-    const parts = value.trim().split(/\s+/).filter(Boolean);
-    return {
-      firstName: parts.shift() || "New",
-      lastName: parts.join(" "),
-    };
-  };
-
-  const toIsoDate = (value: string) => {
-    if (!value?.trim()) return "";
-    const date = new Date(value);
-    return Number.isNaN(date.getTime()) ? "" : date.toISOString();
-  };
-
-  const parseDateRange = (value: string) => {
-    if (!value?.trim()) return { fromDate: "", toDate: "" };
-    const parts = value.split(/\s*(?:-|to|–|—)\s*/i).map((x) => x.trim());
-    if (parts.length >= 2) {
-      return {
-        fromDate: toIsoDate(parts[0]),
-        toDate: toIsoDate(parts[1]),
-      };
-    }
-    const single = toIsoDate(value);
-    return { fromDate: single, toDate: single };
-  };
-
-  // Role detect karne ka sahi logic (HR => HR form, Employee => Employee form)
-  const detectRole = (roleName: string, userType: number): UserRole => {
-    const lower = roleName.trim().toLowerCase();
-
-    if (/\badmin/.test(lower)) return "Admin";
-    if (/\baccountant/.test(lower)) return "Accountant";
-    if (/\bhr\b/.test(lower) || lower.includes("human resource")) return "HR";
-    if (userType === 1) return "HR";
-    return "Employee";
-  };
-
-  const mapApiUserToItem = (raw: any): UserItem => {
-    const firstName = String(raw?.firstName ?? raw?.FirstName ?? "");
-    const lastName = String(raw?.lastName ?? raw?.LastName ?? "");
-    const name =
-      `${firstName} ${lastName}`.trim() ||
-      String(raw?.userName ?? raw?.UserName ?? raw?.name ?? raw?.Name ?? "User");
-    const userStatus = Number(raw?.userStatus ?? raw?.UserStatus ?? 1);
-    const userType = Number(raw?.userType ?? raw?.UserType ?? 0);
-    const roleName = String(
-      raw?.roleName ??
-        raw?.RoleName ??
-        raw?.role?.roleName ??
-        raw?.role?.name ??
-        raw?.Role?.roleName ??
-        raw?.Role?.name ??
-        ""
-    );
-    const designationName = String(
-      raw?.designationName ??
-        raw?.DesignationName ??
-        raw?.designation?.designationName ??
-        raw?.designation?.name ??
-        raw?.Designation?.designationName ??
-        raw?.Designation?.name ??
-        ""
-    );
-
-    const mappedRole = detectRole(roleName, userType);
-
-    const createdRaw = raw?.createdAt ?? raw?.CreatedAt ?? "";
-    const createdDateObj = createdRaw ? new Date(createdRaw) : null;
-    const validCreated = createdDateObj && !Number.isNaN(createdDateObj.getTime());
-
-    return {
-      id: String(raw?.id ?? raw?.Id ?? ""),
-      firstName,
-      lastName,
-      username: String(raw?.userName ?? raw?.UserName ?? ""),
-      name,
-      email: String(raw?.email ?? raw?.Email ?? ""),
-      phone: String(
-        raw?.phoneNumber ?? raw?.PhoneNumber ?? raw?.phone ?? raw?.Phone ?? ""
-      ),
-      company: String(raw?.company ?? raw?.Company ?? "Adequate"),
-      department: String(
-        raw?.departmentName ??
-          raw?.DepartmentName ??
-          raw?.department?.departmentName ??
-          raw?.department?.name ??
-          raw?.Department?.departmentName ??
-          raw?.Department?.name ??
-          ""
-      ),
-      designation: designationName,
-      about: String(raw?.about ?? raw?.About ?? ""),
-      createdDate: validCreated
-        ? createdDateObj!.toLocaleDateString("en-GB", {
-            day: "2-digit",
-            month: "short",
-            year: "numeric",
-          })
-        : "",
-      createdAtRaw: validCreated ? createdDateObj!.toISOString() : "",
-      role: mappedRole,
-      status: userStatus === 0 ? "Inactive" : "Active",
-      roleId: String(
-        raw?.roleId ?? raw?.RoleId ?? raw?.role?.id ?? raw?.Role?.id ?? ""
-      ),
-      designationId: String(
-        raw?.designationId ??
-          raw?.DesignationId ??
-          raw?.designation?.id ??
-          raw?.Designation?.id ??
-          ""
-      ),
-      userType,
-      userStatus,
-      apiUser: raw as UserApiModel,
-    };
-  };
-
-  //  LOAD USERS / ROLES / DESIGNATIONS
-
-  useEffect(() => {
-    let mounted = true;
-
-    const loadUsers = async () => {
-      setLoadingUsers(true);
-      try {
-        const response = await getUsers({ PageNumber: 1, PageSize: 100 });
-        const rows = unwrapApiArray(response);
-        if (mounted) {
-          setUsers(rows.map(mapApiUserToItem).filter((item) => item.id));
-          setApiError("");
-        }
-      } catch (error) {
-        if (mounted) {
-          setApiError(
-            error instanceof Error ? error.message : "Unable to load users."
-          );
-        }
-      } finally {
-        if (mounted) setLoadingUsers(false);
-      }
-    };
-
-    const loadLookups = async () => {
-      try {
-        const [roleResponse, designationResponse] = await Promise.all([
-          getRoles({ PageNumber: 1, PageSize: 100 }),
-          getDesignations({ PageNumber: 1, PageSize: 100 }),
-        ]);
-        if (!mounted) return;
-        setRoles(unwrapApiArray(roleResponse));
-        setApiDesignations(unwrapApiArray(designationResponse));
-      } catch {
-        // ignore
-      }
-    };
-
-    void loadUsers();
-    void loadLookups();
-
-    return () => {
-      mounted = false;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  //  SAVE APPLICATION
+  //  SAVE APPLICATION  (POST /User/add-user  |  PUT /User/update-user/{id})
 
   const handleApplicationSubmit = async (e: FormEvent) => {
     e.preventDefault();
+    if (saving) return;
     setApiError("");
 
     const { firstName, lastName } = parseFullName(applicationForm.fullName);
+
+    // Designation ID: dropdown se, warna naam se dhoondo, warna edit user ki purani ID
     const designationId =
+      applicationForm.designationId ||
       findIdByName(apiDesignations, applicationForm.positionDesired) ||
       String(editingUser?.designationId ?? "");
+
+    // Role ID: edit me user ki purani, warna role name se match
     const selectedRoleName: UserRole = (selectedRole ?? "Employee") as UserRole;
-    const selectedRoleId =
-      String(editingUser?.roleId ?? "") ||
-      findIdByName(roles, selectedRoleName) ||
-      (selectedRoleName === "Employee" ? findIdByName(roles, "User") : "") ||
-      String(roles[0]?.id ?? roles[0]?.Id ?? "");
+    // const selectedRoleId =
+    //   String(editingUser?.roleId ?? "") ||
+    //   findIdByName(roles, selectedRoleName) ||
+    //   (selectedRoleName === "Employee"
+    //     ? findIdByName(roles, "User") || findIdByName(roles, "Staff")
+    //     : "");
+
+        console.log("ROLES API DATA:", roles);
+console.log("SELECTED ROLE NAME:", selectedRoleName);
+// console.log("SELECTED ROLE ID:", selectedRoleId);
 
     if (!applicationForm.fullName.trim()) {
       setApiError("Full name is required.");
@@ -766,14 +934,14 @@ const Users: React.FC = () => {
       setApiError("Password and confirm password do not match.");
       return;
     }
-    if (!selectedRoleId) {
-      setApiError(
-        `${selectedRoleName} role ID could not be found. Please check the Roles API.`
-      );
-      return;
-    }
+    // if (!selectedRoleId) {
+    //   setApiError(
+    //     `${selectedRoleName} role ID could not be found. Please check the Roles API (role name must match "${selectedRoleName}").`
+    //   );
+    //   return;
+    // }
     if (!designationId) {
-      setApiError("Designation ID could not be found for the selected position.");
+      setApiError("Please select a position (Designation) from the list.");
       return;
     }
 
@@ -823,7 +991,7 @@ const Users: React.FC = () => {
               jobTitle: row.jobTitle.trim(),
               fromDate: range.fromDate,
               toDate: range.toDate,
-              isCurrentlyWorking: false,
+              isCurrentlyWorking: range.isCurrent,
               workPhone: row.workPhone.trim(),
               startingPayRate: Number(row.startingPayRate) || 0,
               endingPayRate: Number(row.endingPayRate) || 0,
@@ -835,16 +1003,28 @@ const Users: React.FC = () => {
             };
           });
 
+    const email = applicationForm.emailAddress.trim();
+
     const payload: AddUserPayload = {
       firstName: firstName.trim(),
       lastName: lastName.trim(),
-      userName: applicationForm.fullName.trim().toLowerCase().replace(/\s+/g, ""),
-      email: applicationForm.emailAddress.trim(),
+      // Email unique hota hai, isliye userName = email (name se duplicate error aa sakta hai)
+      userName: email,
+      email,
       phoneNumber: applicationForm.phoneNumber.trim(),
       password: applicationForm.password,
       confirmPassword: applicationForm.confirmPassword,
-      userType: selectedRoleName === "HR" ? 1 : 0,
-      roleId: selectedRoleId,
+    userType:
+  selectedRoleName === "Admin"
+    ? 0
+    : selectedRoleName === "HR"
+    ? 1
+    : selectedRoleName === "Employee"
+    ? 2
+      : selectedRoleName === "Accountant"
+      ? 3
+      : 2,
+       roleId: null,
       address: applicationForm.address.trim(),
       city: applicationForm.city.trim(),
       state: applicationForm.state.trim(),
@@ -854,7 +1034,7 @@ const Users: React.FC = () => {
       isVeteran: applicationForm.veteran === "Yes",
       isWillingForBackgroundCheck: applicationForm.convicted === "Yes",
       designationId,
-      availableStartDate: toIsoDate(applicationForm.availableStartDate),
+      availableStartDate: isoOrNow(applicationForm.availableStartDate),
       desiredPay: Number(applicationForm.desiredPay) || 0,
       isFullTimeDesired: applicationForm.employmentType === "Full time",
       isPartTimeDesired: applicationForm.employmentType === "Part time",
@@ -866,103 +1046,41 @@ const Users: React.FC = () => {
       permissions: [],
     };
 
+    setSaving(true);
+
     try {
       if (editingUser) {
-        const raw = editingUser.apiUser ?? {};
-        const updatePayload: AddUserPayload & {
-          id: string;
-          userStatus: number;
-        } = {
-          ...raw,
+        const raw: any = editingUser.apiUser ?? {};
+
+        // Edit me username change na karo (purana hi bhejo)
+        const updatePayload: UpdateUserPayload = {
           ...payload,
           id: editingUser.id,
-          password: applicationForm.password || String(raw.password ?? ""),
-          confirmPassword:
-            applicationForm.confirmPassword || String(raw.confirmPassword ?? ""),
+          userName: editingUser.username || payload.userName,
+          password: applicationForm.password || "",
+          confirmPassword: applicationForm.confirmPassword || "",
           userStatus:
             editingUser.userStatus ?? (editingUser.status === "Active" ? 1 : 0),
-          roleId: selectedRoleId,
-          designationId,
-          educations,
-          references,
-          experiences,
           permissions: Array.isArray(raw.permissions) ? raw.permissions : [],
         };
 
-        if (!updatePayload.roleId) {
-          setApiError("Role ID is missing for this user.");
-          return;
-        }
-        if (!updatePayload.designationId) {
-          setApiError("Designation ID is missing for this user.");
-          return;
-        }
-
         await updateUser(editingUser.id, updatePayload);
-
-        setUsers((prev) =>
-          prev.map((item) =>
-            item.id === editingUser.id
-              ? {
-                  ...item,
-                  firstName: updatePayload.firstName,
-                  lastName: updatePayload.lastName,
-                  username: updatePayload.userName,
-                  name: `${updatePayload.firstName} ${updatePayload.lastName}`.trim(),
-                  email: updatePayload.email,
-                  phone: updatePayload.phoneNumber,
-                  designation: applicationForm.positionDesired,
-                  role: selectedRoleName,
-                  roleId: updatePayload.roleId,
-                  designationId: updatePayload.designationId,
-                  apiUser: updatePayload,
-                }
-              : item
-          )
-        );
       } else {
         const response = await addUser(payload);
+        // response se naya user mil jaye toh list me turant dikhao
         const createdRaw = unwrapApiValue(response);
         const created =
-          createdRaw && typeof createdRaw === "object"
+          createdRaw && typeof createdRaw === "object" && !Array.isArray(createdRaw)
             ? mapApiUserToItem(createdRaw)
             : null;
 
         if (created?.id) {
-          // Backend role name galat/missing aaye toh selected role hi use karo
           setUsers((prev) => [...prev, { ...created, role: selectedRoleName }]);
-        } else {
-          const now = new Date();
-          const localUser: UserItem = {
-            id: `local-${Date.now()}`,
-            firstName: payload.firstName,
-            lastName: payload.lastName,
-            username: payload.userName,
-            name: `${payload.firstName} ${payload.lastName}`.trim(),
-            email: payload.email,
-            phone: payload.phoneNumber,
-            company: "Adequate",
-            department: "",
-            designation: applicationForm.positionDesired,
-            about: "",
-            createdDate: now.toLocaleDateString("en-GB", {
-              day: "2-digit",
-              month: "short",
-              year: "numeric",
-            }),
-            createdAtRaw: now.toISOString(),
-            role: selectedRoleName,
-            status: "Active",
-            roleId: payload.roleId,
-            designationId: payload.designationId,
-            userType: selectedRoleName === "HR" ? 1 : 0,
-            userStatus: 1,
-            apiUser: payload,
-          };
-          setUsers((prev) => [...prev, localUser]);
         }
       }
 
+      // Server se fresh list lao taaki list hamesha API ke saath sync rahe
+      await loadUsers();
       closeAddPage();
     } catch (error) {
       setApiError(
@@ -972,107 +1090,13 @@ const Users: React.FC = () => {
           ? "Unable to update user."
           : "Unable to create user."
       );
+    } finally {
+      setSaving(false);
     }
   };
 
-  //  EDIT USER -> SAME APPLICATION PAGE
+  //  EDIT USER -> GET /User/get-user-by-id/{id}
 
-  const mapUserToApplicationForm = (
-    user: UserItem,
-    raw: any = {}
-  ): ApplicationForm => {
-    const educationSource = Array.isArray(raw?.educations) ? raw.educations : [];
-    const referenceSource = Array.isArray(raw?.references) ? raw.references : [];
-    const experienceSource = Array.isArray(raw?.experiences)
-      ? raw.experiences
-      : [];
-
-    const formatDate = (value: any) => {
-      if (!value) return "";
-      const date = new Date(value);
-      return Number.isNaN(date.getTime())
-        ? String(value)
-        : date.toISOString().slice(0, 10);
-    };
-
-    const formatDateRange = (from: any, to: any) => {
-      const start = formatDate(from);
-      const end = formatDate(to);
-      if (start && end) return `${start} - ${end}`;
-      return start || end || "";
-    };
-
-    const blank = createEmptyApplicationForm();
-
-    return {
-      fullName: user.name,
-      password: "",
-      confirmPassword: "",
-      country: String(raw?.country ?? raw?.Country ?? "India"),
-      address: String(raw?.address ?? raw?.Address ?? ""),
-      city: String(raw?.city ?? raw?.City ?? ""),
-      state: String(raw?.state ?? raw?.State ?? ""),
-      zip: String(raw?.postalCode ?? raw?.PostalCode ?? raw?.zip ?? raw?.Zip ?? ""),
-      phoneNumber: user.phone,
-      emailAddress: user.email,
-      eligibleToWork: raw?.isLegallyEligibleToWork === false ? "No" : "Yes",
-      veteran: raw?.isVeteran === true ? "Yes" : "No",
-      convicted: raw?.isWillingForBackgroundCheck === true ? "Yes" : "No",
-      positionDesired: user.designation,
-      availableStartDate: formatDate(
-        raw?.availableStartDate ?? raw?.AvailableStartDate
-      ),
-      desiredPay: raw?.desiredPay != null ? String(raw.desiredPay) : "",
-      employmentType: raw?.isFullTimeDesired
-        ? "Full time"
-        : raw?.isPartTimeDesired
-        ? "Part time"
-        : raw?.isSeasonalOrTemporaryDesired
-        ? "Seasonal/Temporary"
-        : "",
-      education: educationSource.length
-        ? educationSource.map((row: any) => ({
-            schoolName: String(row?.institutionName ?? row?.schoolName ?? ""),
-            location: String(row?.location ?? ""),
-            yearsAttended: formatDateRange(
-              row?.startDate ?? row?.fromDate,
-              row?.endDate ?? row?.toDate
-            ),
-            degreeReceived: String(row?.degreeOrCourse ?? row?.degreeReceived ?? ""),
-            major: String(row?.specialization ?? row?.major ?? ""),
-          }))
-        : blank.education,
-      references: referenceSource.length
-        ? referenceSource.map((row: any) => ({
-            name: String(row?.name ?? ""),
-            title: String(row?.title ?? ""),
-            company: String(row?.company ?? ""),
-            phone: String(row?.phoneNumber ?? row?.phone ?? ""),
-          }))
-        : blank.references,
-      employmentHistory: experienceSource.length
-        ? experienceSource.map((row: any) => ({
-            employer: String(row?.companyName ?? row?.employer ?? ""),
-            jobTitle: String(row?.jobTitle ?? ""),
-            datesEmployed: formatDateRange(
-              row?.fromDate ?? row?.startDate,
-              row?.toDate ?? row?.endDate
-            ),
-            workPhone: String(row?.workPhone ?? ""),
-            startingPayRate:
-              row?.startingPayRate != null ? String(row.startingPayRate) : "",
-            endingPayRate:
-              row?.endingPayRate != null ? String(row.endingPayRate) : "",
-            address: String(row?.address ?? ""),
-            city: String(row?.city ?? ""),
-            state: String(row?.state ?? ""),
-            zip: String(row?.postalCode ?? row?.zip ?? ""),
-          }))
-        : blank.employmentHistory,
-    };
-  };
-
-  // Edit click => user ke role ka hi form khulega (HR => Edit HR, Employee => Edit Employee)
   const openEditModal = async (user: UserItem) => {
     setApiError("");
     setEditingUser(user);
@@ -1083,19 +1107,29 @@ const Users: React.FC = () => {
     try {
       const response = await getUserById(user.id);
       const raw = unwrapApiValue(response);
-      if (raw && typeof raw === "object") {
+      if (raw && typeof raw === "object" && !Array.isArray(raw)) {
         const mapped = mapApiUserToItem(raw);
-        // List me jo role dikh raha tha wahi rakho (API detail me roleName na aaye toh role na badle)
+
+        // List me jo role dikh raha tha wahi rakho
         const freshUser: UserItem = {
           ...mapped,
-          role: mapped.roleId || (raw as any).roleName || (raw as any).userType != null
-            ? mapped.role === "Employee" && user.role !== "Employee"
-              ? user.role
-              : mapped.role
-            : user.role,
+          role: user.role,
+          roleId: mapped.roleId || user.roleId,
+          designation: mapped.designation || user.designation,
+          designationId: mapped.designationId || user.designationId,
+          username: mapped.username || user.username,
           createdDate: mapped.createdDate || user.createdDate,
           createdAtRaw: mapped.createdAtRaw || user.createdAtRaw,
         };
+
+        // Designation name detail me na aaye toh lookup list se nikaalo
+        if (!freshUser.designation && freshUser.designationId) {
+          const found = designationOptions.find(
+            (d) => d.id === freshUser.designationId
+          );
+          if (found) freshUser.designation = found.name;
+        }
+
         setEditingUser(freshUser);
         setSelectedRole(freshUser.role);
         setApplicationForm(mapUserToApplicationForm(freshUser, raw));
@@ -1110,7 +1144,7 @@ const Users: React.FC = () => {
     }
   };
 
-  //  DELETE
+  //  DELETE -> DELETE /User/delete-user/{id}
 
   const openDeleteModal = (id: string) => {
     setDeleteId(id);
@@ -1123,8 +1157,9 @@ const Users: React.FC = () => {
   };
 
   const handleDelete = async () => {
-    if (deleteId === null) return;
+    if (deleteId === null || deleting) return;
     setApiError("");
+    setDeleting(true);
 
     try {
       await deleteUser(deleteId);
@@ -1135,10 +1170,14 @@ const Users: React.FC = () => {
       setApiError(
         error instanceof Error ? error.message : "Unable to delete user."
       );
+      closeDeleteModal();
+    } finally {
+      setDeleting(false);
     }
   };
 
-  //  Filter dropdown change helper ("All" => filter clear => heading wapas)
+  //  Filter dropdown change helper
+
   const handleFilterChange =
     (setter: (v: string) => void) =>
     (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -1656,6 +1695,13 @@ const Users: React.FC = () => {
             transform: translateY(-1px);
           }
 
+          .application-save:disabled,
+          .application-cancel:disabled {
+            opacity: .6;
+            cursor: not-allowed;
+            transform: none;
+          }
+
           @media(max-width: 900px) {
             .application-page {
               padding: 22px 16px 30px;
@@ -1896,7 +1942,10 @@ const Users: React.FC = () => {
                       <td>
                         <input
                           type="password"
-                          placeholder="Password"
+                          placeholder={
+                            editingUser ? "Leave blank to keep" : "Password"
+                          }
+                          autoComplete="new-password"
                           value={applicationForm.password}
                           onChange={(e) =>
                             updateApplicationField("password", e.target.value)
@@ -1907,6 +1956,7 @@ const Users: React.FC = () => {
                         <input
                           type="password"
                           placeholder="Confirm password"
+                          autoComplete="new-password"
                           value={applicationForm.confirmPassword}
                           onChange={(e) =>
                             updateApplicationField(
@@ -2046,18 +2096,26 @@ const Users: React.FC = () => {
                     </div>
 
                     <select
-                      value={applicationForm.positionDesired}
-                      onChange={(e) =>
-                        updateApplicationField("positionDesired", e.target.value)
+                      value={
+                        useApiDesignations
+                          ? applicationForm.designationId
+                          : applicationForm.positionDesired
                       }
+                      onChange={(e) => handleDesignationChange(e.target.value)}
                     >
                       <option value="">Select Position</option>
 
-                      {designations.map((designation) => (
-                        <option key={designation} value={designation}>
-                          {designation}
-                        </option>
-                      ))}
+                      {useApiDesignations
+                        ? designationOptions.map((item) => (
+                            <option key={item.id} value={item.id}>
+                              {item.name}
+                            </option>
+                          ))
+                        : fallbackDesignations.map((name) => (
+                            <option key={name} value={name}>
+                              {name}
+                            </option>
+                          ))}
                     </select>
                   </div>
 
@@ -2194,7 +2252,7 @@ const Users: React.FC = () => {
                               <td>
                                 <input
                                   type="text"
-                                  placeholder="Years"
+                                  placeholder="e.g. 2018 - 2022"
                                   value={education.yearsAttended}
                                   onChange={(e) =>
                                     updateEducation(index, "yearsAttended", e.target.value)
@@ -2509,10 +2567,17 @@ const Users: React.FC = () => {
                                   </td>
 
                                   <td colSpan={3}>
-                                    <input
-                                      type="text"
-                                      placeholder="Additional employment information"
-                                    />
+                                    <small
+                                      style={{
+                                        color: "#a0a8b5",
+                                        padding: "0 11px",
+                                        display: "block",
+                                        fontSize: "12px",
+                                      }}
+                                    >
+                                      Tip: write "Present" in Dates employed if
+                                      currently working here.
+                                    </small>
                                   </td>
                                 </tr>
                               </React.Fragment>
@@ -2561,12 +2626,21 @@ const Users: React.FC = () => {
                   type="button"
                   className="application-cancel"
                   onClick={closeAddPage}
+                  disabled={saving}
                 >
                   Cancel
                 </button>
 
-                <button type="submit" className="application-save">
-                  {editingUser ? "Update User" : "Save User"}
+                <button
+                  type="submit"
+                  className="application-save"
+                  disabled={saving}
+                >
+                  {saving
+                    ? "Saving..."
+                    : editingUser
+                    ? "Update User"
+                    : "Save User"}
                 </button>
               </div>
             </form>
@@ -2661,6 +2735,12 @@ const Users: React.FC = () => {
           background: #c91f1f;
         }
 
+        .users-delete-confirm:disabled,
+        .users-delete-cancel:disabled {
+          opacity: .6;
+          cursor: not-allowed;
+        }
+
         .users-page {
           width: 100%;
           min-height: calc(100vh - 50px);
@@ -2697,6 +2777,16 @@ const Users: React.FC = () => {
           color: #315c75;
           display: inline-flex;
           text-decoration: none;
+        }
+
+        .users-api-error {
+          margin-bottom: 14px;
+          padding: 10px 14px;
+          border-radius: 8px;
+          background: #fff5f5;
+          border: 1px solid #f2d5d5;
+          color: #dc3545;
+          font-size: 13px;
         }
 
         .users-role-modal-overlay {
@@ -2923,7 +3013,6 @@ const Users: React.FC = () => {
           border-color: #c39237;
         }
 
-        /* DATE RANGE (CALENDAR) */
         .users-date-range {
           display: flex;
           align-items: center;
@@ -3327,6 +3416,10 @@ const Users: React.FC = () => {
           </button>
         </div>
 
+        {/* API ERROR (list page) */}
+
+        {apiError && <div className="users-api-error">{apiError}</div>}
+
         {/* ROLE SELECTION MODAL */}
 
         {showRoleModal && (
@@ -3443,7 +3536,7 @@ const Users: React.FC = () => {
             <h5>Users List</h5>
 
             <div className="users-filters">
-              {/* DATE RANGE - CALENDAR OPEN HOGA */}
+              {/* DATE RANGE */}
               <div className="users-date-range">
                 <input
                   type="date"
@@ -3776,8 +3869,8 @@ const Users: React.FC = () => {
             <h3>Confirm Delete</h3>
 
             <p>
-              You want to delete all the marked items, this cant be undone once
-              you delete.
+              You want to delete this user, this can't be undone once you
+              delete.
             </p>
 
             <div className="users-delete-actions">
@@ -3785,6 +3878,7 @@ const Users: React.FC = () => {
                 type="button"
                 className="users-delete-cancel"
                 onClick={closeDeleteModal}
+                disabled={deleting}
               >
                 Cancel
               </button>
@@ -3793,8 +3887,9 @@ const Users: React.FC = () => {
                 type="button"
                 className="users-delete-confirm"
                 onClick={handleDelete}
+                disabled={deleting}
               >
-                Yes, Delete
+                {deleting ? "Deleting..." : "Yes, Delete"}
               </button>
             </div>
           </div>

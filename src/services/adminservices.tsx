@@ -379,11 +379,12 @@ export interface AddUserPayload {
 }
 
 export interface UpdateUserPayload
-  extends AddUserPayload {
+  extends Omit<AddUserPayload, "password" | "confirmPassword"> {
   id?: string;
   userStatus?: number;
+  password?: string;
+  confirmPassword?: string;
 }
-
 export interface GetUsersParams {
   Search?: string;
   UserType?: number;
@@ -498,12 +499,17 @@ export const updateUser = async (
     throw new Error("User ID is required.");
   }
 
+
+  const body: Record<string, any> = { ...data, id: id.trim() };
+  if (!body.password) {
+    delete body.password;
+    delete body.confirmPassword;
+  }
+
   try {
     const response = await axios.put(
-      `${BASE_URL}/User/update-user/${encodeURIComponent(
-        id.trim()
-      )}`,
-      data,
+      `${BASE_URL}/User/update-user/${encodeURIComponent(id.trim())}`,
+      body,
       getJsonConfig()
     );
 
@@ -512,7 +518,6 @@ export const updateUser = async (
     throw new Error(getApiErrorMessage(error));
   }
 };
-
 export const deleteUser = async (id: string) => {
   if (!id?.trim()) {
     throw new Error("User ID is required.");

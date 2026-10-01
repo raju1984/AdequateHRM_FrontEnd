@@ -1318,7 +1318,7 @@ const Attendance = () => {
     <>
       <div
         style={{
-          background: "#f5f6f8",
+           background: "transparent",
           minHeight:
             "100vh",
           padding:

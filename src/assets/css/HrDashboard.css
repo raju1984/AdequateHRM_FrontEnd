@@ -3,13 +3,12 @@
 ====================================================== */
 
 .hr-dashboard {
-  padding: 10px 24px 24px;
-  background: #f7f8fa;
-  min-height: 100vh;
-  color: #0f2147;
-  font-family: inherit;
+  background: transparent !important;
+  box-shadow: none !important;
+  border: none !important;
+  border-radius: 0 !important;
+   padding: 20px;
 }
-
 /* ======================================================
    PAGE HEADER
 ====================================================== */

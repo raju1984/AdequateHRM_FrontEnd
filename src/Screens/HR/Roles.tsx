@@ -656,15 +656,17 @@ const Roles: React.FC = () => {
 
   return (
     <div
-      style={{
-        minHeight: "100vh",
-        backgroundColor: "#f7f8fa",
-        padding: "24px",
-        fontFamily:
-          "'Inter', 'Nunito Sans', 'Segoe UI', Arial, sans-serif",
-        color: textDark,
-      }}
-    >
+  style={{
+    minHeight: "100vh",
+    backgroundColor: "transparent",
+    padding: "24px",
+    fontFamily:
+      "'Inter', 'Nunito Sans', 'Segoe UI', Arial, sans-serif",
+    color: textDark,
+    boxShadow: "none",
+    borderRadius: 0,
+  }}
+>
       {/* ========================================================
           PAGE HEADER
       ======================================================== */}

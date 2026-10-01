@@ -1433,7 +1433,7 @@ const Atendance: React.FC = () => {
           box-sizing: border-box;
         }
 
-        .attendance-page {
+        .attendances-page {
           min-height: 100vh;
           background: #f5f6f8;
           padding: 28px 24px 30px;

@@ -2,11 +2,13 @@
   box-sizing: border-box;
 }
 
-.employee-page {
+.employees-page {
   width: 100%;
   min-height: 100vh;
   padding: 24px 24px 30px;
-  background: #f8f9fb;
+  background: transparent;
+  box-shadow: none;
+  border-radius: 0;
   color: #0f1f3d;
   font-family: "Inter", "Segoe UI", sans-serif;
 }

@@ -490,7 +490,7 @@ const LeaveType: React.FC = () => {
   return (
     <>
       <style>{`
-        .lt-page{
+        .lts-page{
           min-height:100vh;
           background:#f6f7f9;
           padding:24px 24px 32px;

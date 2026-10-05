@@ -14,7 +14,6 @@ import {
   getLeaveById,
   getLeaveTypes,
   getMyLeaves,
-  getEmployeeLeaves,
   updateLeave,
   type LeavePayload,
   type MyLeavesParams,
@@ -673,11 +672,6 @@ const Leave: React.FC = () => {
   const [error, setError] =
     useState<string | null>(null);
 
-  const [activeTab, setActiveTab] =
-    useState<
-      "myLeaves" | "employeeLeaves"
-    >("myLeaves");
-
   const [search, setSearch] =
     useState("");
 
@@ -857,10 +851,7 @@ const Leave: React.FC = () => {
           params.SortBy = sortBy;
         }
 
-        const response =
-          activeTab === "employeeLeaves"
-            ? await getEmployeeLeaves(token, params)
-            : await getMyLeaves(token, params);
+        const response = await getMyLeaves(token, params);
 
         console.log(
           "LEAVE API RESPONSE:",
@@ -974,8 +965,7 @@ const Leave: React.FC = () => {
     }, [
       currentPage,
       rowsPerPage,
-      activeTab,
-      leaveTypeFilter,
+leaveTypeFilter,
       statusFilter,
       sortBy,
       leaveTypeNameById,
@@ -2611,44 +2601,15 @@ const Leave: React.FC = () => {
         </div>
 
         {/* =====================================================
-            TABS
+            MY LEAVES TAB ONLY
         ===================================================== */}
 
         <div className="leave-tabs">
           <button
             type="button"
-            className={`leave-tab ${
-              activeTab ===
-              "myLeaves"
-                ? "active"
-                : ""
-            }`}
-            onClick={() => {
-              setActiveTab("myLeaves");
-              setCurrentPage(1);
-              setSelectedIds([]);
-            }}
+            className="leave-tab active"
           >
             My Leaves
-          </button>
-
-          <button
-            type="button"
-            className={`leave-tab ${
-              activeTab ===
-              "employeeLeaves"
-                ? "active"
-                : ""
-            }`}
-            onClick={() => {
-              setActiveTab(
-                "employeeLeaves"
-              );
-              setCurrentPage(1);
-              setSelectedIds([]);
-            }}
-          >
-            Employee Leaves
           </button>
         </div>
 
@@ -2858,14 +2819,7 @@ const Leave: React.FC = () => {
 
           <div className="leave-table-scroll">
 
-            <table
-              className={`leave-table ${
-                activeTab ===
-                "employeeLeaves"
-                  ? "employee"
-                  : ""
-              }`}
-            >
+            <table className="leave-table">
 
               <thead>
                 <tr>
@@ -2882,16 +2836,6 @@ const Leave: React.FC = () => {
                       }
                     />
                   </th>
-
-                  {activeTab ===
-                    "employeeLeaves" && (
-                    <th>
-                      Name
-                      <span className="sort-icon">
-                        ↑↓
-                      </span>
-                    </th>
-                  )}
 
                   <th>
                     Leave Reason
@@ -2951,12 +2895,7 @@ const Leave: React.FC = () => {
                 {loading && (
                   <tr>
                     <td
-                      colSpan={
-                        activeTab ===
-                        "employeeLeaves"
-                          ? 10
-                          : 9
-                      }
+                      colSpan={9}
                       style={{
                         height: "90px",
                         textAlign:
@@ -2989,22 +2928,6 @@ const Leave: React.FC = () => {
                             }
                           />
                         </td>
-
-                        {activeTab ===
-                          "employeeLeaves" && (
-                          <td>
-                            <UserDisplay
-                              name={
-                                item.employee ||
-                                "-"
-                              }
-                              role={
-                                item.department ||
-                                ""
-                              }
-                            />
-                          </td>
-                        )}
 
                         <td>
                           <div className="reason-box">
@@ -3057,40 +2980,7 @@ const Leave: React.FC = () => {
 
                           <div className="leave-actions">
 
-                            {activeTab ===
-                              "employeeLeaves" &&
-                              item.status ===
-                                "Pending" && (
-                                <>
-                                  <button
-                                    type="button"
-                                    className="approve-btn"
-                                    onClick={() =>
-                                      openChatModal(
-                                        item
-                                      )
-                                    }
-                                  >
-                                    Approve 
-                                  </button>
-
-                                  <button
-                                    type="button"
-                                    className="reject-btn"
-                                    onClick={() =>
-                                      openChatModal(
-                                        item
-                                      )
-                                    }
-                                  >
-                                    Reject
-                                  </button>
-                                </>
-                              )}
-
-                            {activeTab !==
-                              "employeeLeaves" && (
-                              <button
+                                                          <button
                                 type="button"
                                 className="action-icon"
                                 title="Message"
@@ -3102,7 +2992,6 @@ const Leave: React.FC = () => {
                               >
                                 <i className="ti ti-messages" />
                               </button>
-                            )}
 
                             <button
                               type="button"
@@ -3161,12 +3050,7 @@ const Leave: React.FC = () => {
                     0 && (
                     <tr>
                       <td
-                        colSpan={
-                          activeTab ===
-                          "employeeLeaves"
-                            ? 10
-                            : 9
-                        }
+                        colSpan={9}
                         style={{
                           height:
                             "90px",

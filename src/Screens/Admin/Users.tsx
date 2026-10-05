@@ -306,13 +306,20 @@ const parseFullName = (value: string) => {
 const detectRole = (roleName: string, userType: number): UserRole => {
   const lower = roleName.trim().toLowerCase();
 
-  if (/\badmin/.test(lower)) return "Admin";
-  if (/\baccountant/.test(lower)) return "Accountant";
+  // roleName available ho to pehle usse detect karo
+  if (/\badmin\b/.test(lower)) return "Admin";
+  if (/\baccountant\b/.test(lower)) return "Accountant";
   if (/\bhr\b/.test(lower) || lower.includes("human resource")) return "HR";
+  if (/\bemployee\b/.test(lower)) return "Employee";
+
+  // roleName na mile to userType se detect karo
+  if (userType === 0) return "Admin";
   if (userType === 1) return "HR";
+  if (userType === 2) return "Employee";
+  if (userType === 3) return "Accountant";
+
   return "Employee";
 };
-
 const mapApiUserToItem = (raw: any): UserItem => {
   const firstName = String(raw?.firstName ?? raw?.FirstName ?? "");
   const lastName = String(raw?.lastName ?? raw?.LastName ?? "");

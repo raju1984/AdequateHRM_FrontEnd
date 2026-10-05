@@ -32,6 +32,7 @@ import {
   getLeaveById,
   updateLeave,
   updateLeaveStatus,
+  getAdminDashboard,
 
   // LEAVE CHAT APIs
   getLeaveChat,
@@ -1347,6 +1348,12 @@ const Leaves = () => {
   const [leaveData, setLeaveData] =
     useState<LeaveItem[]>([]);
 
+  const [totalPresent, setTotalPresent] =
+    useState(0);
+
+  const [totalEmployees, setTotalEmployees] =
+    useState(0);
+
   const [employees, setEmployees] =
     useState<EmployeeOption[]>(
       []
@@ -1695,6 +1702,68 @@ const [declineError, setDeclineError] =
     refreshAll();
   }, []);
 
+  useEffect(() => {
+    const fetchAttendanceSummary = async () => {
+      try {
+           console.log("🔥 Admin Dashboard API CALL STARTED");
+        const response = await getAdminDashboard({
+          AttendancePeriod: "Today",
+          LateEmployeeCount: 10,
+        });
+            console.log("✅ Admin Dashboard API RESPONSE:", response);
+
+        const data = response?.data ?? response ?? {};
+
+        console.log("📦 Dashboard Data:", data);
+      console.log(
+        "📊 Attendance Overview:",
+        data?.attendanceOverview
+      );
+
+        const attendanceOverview =
+          data?.attendanceOverview ??
+          data?.AttendanceOverview ??
+          data?.summary?.attendanceOverview ??
+          data?.summary?.AttendanceOverview ??
+          data?.Summary?.attendanceOverview ??
+          data?.Summary?.AttendanceOverview ??
+          {};
+
+        const present =
+          attendanceOverview?.presentToday ??
+          attendanceOverview?.PresentToday ??
+          attendanceOverview?.present?.count ??
+          attendanceOverview?.Present?.Count ??
+          data?.presentToday ??
+          data?.PresentToday ??
+          0;
+
+        const employees =
+          data?.summary?.totalEmployees ??
+          data?.summary?.TotalEmployees ??
+          data?.Summary?.totalEmployees ??
+          data?.Summary?.TotalEmployees ??
+          data?.totalEmployees ??
+          data?.TotalEmployees ??
+          attendanceOverview?.totalEmployees ??
+          attendanceOverview?.TotalEmployees ??
+          0;
+
+           console.log("🟢 TOTAL PRESENT:", present);
+      console.log("👥 TOTAL EMPLOYEES:", employees);
+
+   setTotalPresent(Number(present));
+      setTotalEmployees(Number(employees));
+    } catch (error) {
+      console.error(
+        "❌ ADMIN DASHBOARD API ERROR:",
+        error
+      );
+    }
+  };
+
+  fetchAttendanceSummary();
+}, []);
   /* =====================================================
      AUTO CALCULATE DAYS
   ===================================================== */
@@ -3963,7 +4032,7 @@ const handleDeclineConfirm = async () => {
               title:
                 "Total Present",
               value:
-                "180/200",
+                `${totalPresent}/${totalEmployees}`,
               color:
                 "#05c95a",
             },

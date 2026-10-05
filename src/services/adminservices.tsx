@@ -600,14 +600,8 @@ const extractProfileData = (
 };
 
 export const getEmployeeProfile = async (
-  idOrToken?: string,
-  maybeToken?: string
+  token?: string
 ) => {
-  const token =
-    maybeToken ||
-    idOrToken ||
-    getToken();
-
   try {
     const response = await axios.get(
       `${BASE_URL}/Profile/Get-Profile`,
@@ -621,7 +615,6 @@ export const getEmployeeProfile = async (
     throw new Error(getApiErrorMessage(error));
   }
 };
-
 export interface UpdateProfilePayload {
   Id: string;
   FirstName: string;
@@ -2323,7 +2316,7 @@ export const updateLeaveStatus = async (
     );
   }
 
-  if (![1, 2, 3].includes(data.status)) {
+  if (![1, 2, 3].includes(data.status)) { 
     throw new Error(
       "Status must be 1 (New), 2 (Approved), or 3 (Declined)."
     );

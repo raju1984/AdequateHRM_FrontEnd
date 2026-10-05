@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 
@@ -61,17 +62,9 @@ const HrDashboard = () => {
 
   const firstDayOfMonth = new Date(year, month, 1).getDay();
 
-  const daysInMonth = new Date(
-    year,
-    month + 1,
-    0
-  ).getDate();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
 
-  const prevMonthDays = new Date(
-    year,
-    month,
-    0
-  ).getDate();
+  const prevMonthDays = new Date(year, month, 0).getDate();
 
   const calendarDays: {
     day: number;
@@ -110,14 +103,11 @@ const HrDashboard = () => {
   // API STATE
   // =====================================================
 
-  const [dashboardData, setDashboardData] =
-    useState<any>(null);
+  const [dashboardData, setDashboardData] = useState<any>(null);
 
-  const [dashboardLoading, setDashboardLoading] =
-    useState(true);
+  const [dashboardLoading, setDashboardLoading] = useState(true);
 
-  const [dashboardError, setDashboardError] =
-    useState("");
+  const [dashboardError, setDashboardError] = useState("");
 
   // =====================================================
   // FETCH HR DASHBOARD
@@ -135,10 +125,7 @@ const HrDashboard = () => {
           LateEmployeeCount: 10,
         });
 
-        console.log(
-          "HR DASHBOARD RESPONSE:",
-          response
-        );
+        console.log("HR DASHBOARD RESPONSE:", response);
 
         /*
          * API response:
@@ -152,14 +139,10 @@ const HrDashboard = () => {
          *
          * Keep the inner data object.
          */
-        setDashboardData(
-          response?.data ?? response
-        );
+
+        setDashboardData(response?.data ?? response);
       } catch (error: any) {
-        console.error(
-          "HR DASHBOARD API ERROR:",
-          error
-        );
+        console.error("HR DASHBOARD API ERROR:", error);
 
         setDashboardError(
           error?.response?.data?.message ||
@@ -180,60 +163,35 @@ const HrDashboard = () => {
 
   const data = dashboardData || {};
 
-  /*
-   * These mappings support the dashboard response shape
-   * already available from your API examples.
-   *
-   * If HRDashboard returns slightly different property
-   * names, console.log above will show the exact response.
-   */
-
   const welcome = data?.welcome || {};
-
   const summary = data?.summary || {};
 
   const attendanceOverview =
-    data?.attendanceOverview ||
-    summary?.attendanceOverview ||
-    {};
+    data?.attendanceOverview || summary?.attendanceOverview || {};
 
-  const employeesByDepartment =
-    data?.employeesByDepartment || {};
+  const employeesByDepartment = data?.employeesByDepartment || {};
 
-  const employeeStatus =
-    data?.employeeStatus || {};
+  const employeeStatus = data?.employeeStatus || {};
 
-  const topPerformer =
-    data?.topPerformer || {};
+  const topPerformer = data?.topPerformer || {};
 
-  const clockInOut =
-    Array.isArray(data?.clockInOut)
-      ? data.clockInOut
-      : [];
+  const clockInOut = Array.isArray(data?.clockInOut) ? data.clockInOut : [];
 
-  const lateEmployees =
-    Array.isArray(data?.lateEmployees)
-      ? data.lateEmployees
-      : [];
+  const lateEmployees = Array.isArray(data?.lateEmployees)
+    ? data.lateEmployees
+    : [];
 
   // =====================================================
   // DASHBOARD VALUES
   // =====================================================
 
   const totalEmployees =
-    summary?.totalEmployees ??
-    data?.totalEmployees ??
-    25;
+    summary?.totalEmployees ?? data?.totalEmployees ?? 25;
 
   const totalDepartments =
-    summary?.totalDepartments ??
-    data?.totalDepartments ??
-    8;
+    summary?.totalDepartments ?? data?.totalDepartments ?? 8;
 
-  const leaves =
-    summary?.leaves ??
-    data?.leaves ??
-    25;
+  const leaves = summary?.leaves ?? data?.leaves ?? 25;
 
   const presentToday =
     attendanceOverview?.presentToday ??
@@ -251,27 +209,22 @@ const HrDashboard = () => {
   // =====================================================
 
   const presentPercentage =
-    attendanceOverview?.present?.percentage ??
-    59;
+    attendanceOverview?.present?.percentage ?? 59;
 
   const latePercentage =
-    attendanceOverview?.late?.percentage ??
-    21;
+    attendanceOverview?.late?.percentage ?? 21;
 
   const permissionPercentage =
-    attendanceOverview?.permission?.percentage ??
-    2;
+    attendanceOverview?.permission?.percentage ?? 2;
 
   const absentPercentage =
-    attendanceOverview?.absent?.percentage ??
-    15;
+    attendanceOverview?.absent?.percentage ?? 15;
 
-  const absentEmployees =
-    Array.isArray(
-      attendanceOverview?.absent?.employees
-    )
-      ? attendanceOverview.absent.employees
-      : [];
+  const absentEmployees = Array.isArray(
+    attendanceOverview?.absent?.employees
+  )
+    ? attendanceOverview.absent.employees
+    : [];
 
   // =====================================================
   // EMPLOYEE STATUS
@@ -310,16 +263,13 @@ const HrDashboard = () => {
     48;
 
   const contractPercentage =
-    employeeStatus?.contractPercentage ??
-    20;
+    employeeStatus?.contractPercentage ?? 20;
 
   const probationPercentage =
-    employeeStatus?.probationPercentage ??
-    22;
+    employeeStatus?.probationPercentage ?? 22;
 
   const wfhPercentage =
-    employeeStatus?.wfhPercentage ??
-    20;
+    employeeStatus?.wfhPercentage ?? 20;
 
   // =====================================================
   // TOP PERFORMER
@@ -472,7 +422,6 @@ const HrDashboard = () => {
         <div className="welcome-info">
 
           <div className="welcome-title-row">
-
             <h2>
               Welcome Back,{" "}
               {welcome?.name || "Adrian"}
@@ -481,7 +430,6 @@ const HrDashboard = () => {
             <span className="welcome-edit">
               <i className="ti ti-edit"></i>
             </span>
-
           </div>
 
           <p>
@@ -518,10 +466,19 @@ const HrDashboard = () => {
 
           <div className="hr-stats-grid">
 
-            {/* ATTENDANCE */}
-
-            <div className="hr-stat-card">
-
+            {/* ATTENDANCE - FULL CARD CLICKABLE */}
+            <div
+              className="hr-stat-card"
+              role="button"
+              tabIndex={0}
+              onClick={() => navigate("/HR/Atendance")}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  navigate("/HR/Atendance");
+                }
+              }}
+              style={{ cursor: "pointer" }}
+            >
               <div className="hr-stat-icon stat-gold">
                 <CalendarDays size={20} />
               </div>
@@ -535,22 +492,21 @@ const HrDashboard = () => {
               <h3>
                 {presentToday}/{totalEmployees}
               </h3>
-
-              <span
-                className="hr-stat-link"
-                onClick={() =>
-                  navigate("/HR/Atendance")
-                }
-              >
-                View Details
-              </span>
-
             </div>
 
-            {/* EMPLOYEE */}
-
-            <div className="hr-stat-card">
-
+            {/* EMPLOYEE - FULL CARD CLICKABLE */}
+            <div
+              className="hr-stat-card"
+              role="button"
+              tabIndex={0}
+              onClick={() => navigate("/Hr/Employee")}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  navigate("/Hr/Employee");
+                }
+              }}
+              style={{ cursor: "pointer" }}
+            >
               <div className="hr-stat-icon stat-teal">
                 <Users size={20} />
               </div>
@@ -559,23 +515,22 @@ const HrDashboard = () => {
                 Total Employee
               </p>
 
-              <h3>
-                {totalEmployees}
-              </h3>
-
-            <span
-  className="hr-stat-link"
-  onClick={() => navigate("/Hr/Employee")}
->
-  View All
-</span>
-
+              <h3>{totalEmployees}</h3>
             </div>
 
-            {/* DEPARTMENTS */}
-
-            <div className="hr-stat-card">
-
+            {/* DEPARTMENTS - FULL CARD CLICKABLE */}
+            <div
+              className="hr-stat-card"
+              role="button"
+              tabIndex={0}
+              onClick={() => navigate("/HR/Departments")}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  navigate("/HR/Departments");
+                }
+              }}
+              style={{ cursor: "pointer" }}
+            >
               <div className="hr-stat-icon stat-blue">
                 <Grid2X2 size={20} />
               </div>
@@ -585,25 +540,23 @@ const HrDashboard = () => {
               </p>
 
               <h3>
-                {String(totalDepartments).padStart(
-                  2,
-                  "0"
-                )}
+                {String(totalDepartments).padStart(2, "0")}
               </h3>
-
-             <span
-  className="hr-stat-link"
-  onClick={() => navigate("/HR/Departments")}
->
-  View All
-</span>
-
             </div>
 
-            {/* LEAVES */}
-
-            <div className="hr-stat-card">
-
+            {/* LEAVES - FULL CARD CLICKABLE */}
+            <div
+              className="hr-stat-card"
+              role="button"
+              tabIndex={0}
+              onClick={() => navigate("/HR/Leave")}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  navigate("/HR/Leave");
+                }
+              }}
+              style={{ cursor: "pointer" }}
+            >
               <div className="hr-stat-icon stat-pink">
                 <FileText size={20} />
               </div>
@@ -612,17 +565,7 @@ const HrDashboard = () => {
                 Leaves
               </p>
 
-              <h3>
-                {leaves}
-              </h3>
-
-             <span
-  className="hr-stat-link"
-  onClick={() => navigate("/HR/Leave")}
->
-  View All
-</span>
-
+              <h3>{leaves}</h3>
             </div>
 
           </div>
@@ -635,9 +578,7 @@ const HrDashboard = () => {
 
             <div className="employee-status-header">
 
-              <h2>
-                Employee Status
-              </h2>
+              <h2>Employee Status</h2>
 
               <button type="button">
                 <Calendar size={13} />
@@ -650,9 +591,7 @@ const HrDashboard = () => {
 
               <div className="employee-total">
 
-                <span>
-                  Total Employee
-                </span>
+                <span>Total Employee</span>
 
                 <strong>
                   {employeeStatusTotal}
@@ -709,14 +648,11 @@ const HrDashboard = () => {
                       }}
                     ></span>
 
-                    Fulltime (
-                    {fullTimePercentage}%)
+                    Fulltime ({fullTimePercentage}%)
 
                   </div>
 
-                  <strong>
-                    {fullTime}
-                  </strong>
+                  <strong>{fullTime}</strong>
 
                 </div>
 
@@ -731,14 +667,11 @@ const HrDashboard = () => {
                       }}
                     ></span>
 
-                    Contract (
-                    {contractPercentage}%)
+                    Contract ({contractPercentage}%)
 
                   </div>
 
-                  <strong>
-                    {contract}
-                  </strong>
+                  <strong>{contract}</strong>
 
                 </div>
 
@@ -753,14 +686,11 @@ const HrDashboard = () => {
                       }}
                     ></span>
 
-                    Probation (
-                    {probationPercentage}%)
+                    Probation ({probationPercentage}%)
 
                   </div>
 
-                  <strong>
-                    {probation}
-                  </strong>
+                  <strong>{probation}</strong>
 
                 </div>
 
@@ -775,8 +705,7 @@ const HrDashboard = () => {
                       }}
                     ></span>
 
-                    WFH (
-                    {wfhPercentage}%)
+                    WFH ({wfhPercentage}%)
 
                   </div>
 
@@ -792,9 +721,7 @@ const HrDashboard = () => {
 
               <div className="top-performer-section">
 
-                <h3>
-                  Top Performer
-                </h3>
+                <h3>Top Performer</h3>
 
                 <div className="performer-card">
 
@@ -806,47 +733,34 @@ const HrDashboard = () => {
                     />
 
                     <div className="performer-avatar">
+
                       {topPerformer?.profilePicture ? (
                         <img
-                          src={
-                            topPerformer.profilePicture
-                          }
-                          alt={
-                            performerName
-                          }
+                          src={topPerformer.profilePicture}
+                          alt={performerName}
                           style={{
                             width: "100%",
                             height: "100%",
-                            objectFit:
-                              "cover",
-                            borderRadius:
-                              "50%",
+                            objectFit: "cover",
+                            borderRadius: "50%",
                           }}
                         />
                       ) : (
                         <span>300</span>
                       )}
+
                     </div>
 
                     <div>
-
-                      <h4>
-                        {performerName}
-                      </h4>
-
-                      <p>
-                        {performerDesignation}
-                      </p>
-
+                      <h4>{performerName}</h4>
+                      <p>{performerDesignation}</p>
                     </div>
 
                   </div>
 
                   <div className="performer-score">
 
-                    <span>
-                      Performance
-                    </span>
+                    <span>Performance</span>
 
                     <strong>
                       {performerPerformance}%
@@ -858,13 +772,13 @@ const HrDashboard = () => {
 
               </div>
 
-            <button
-  type="button"
-  className="view-employees-btn"
-  onClick={() => navigate("/Hr/Employee")}
->
-  View All Employees
-</button>
+              <button
+                type="button"
+                className="view-employees-btn"
+                onClick={() => navigate("/Hr/Employee")}
+              >
+                View All Employees
+              </button>
 
             </div>
 
@@ -884,9 +798,7 @@ const HrDashboard = () => {
 
               <div className="small-card-header">
 
-                <h2>
-                  Attendance Overview
-                </h2>
+                <h2>Attendance Overview</h2>
 
                 <button type="button">
                   <Calendar size={13} />
@@ -900,22 +812,15 @@ const HrDashboard = () => {
                 <div className="attendance-chart">
 
                   <div className="arc arc-teal"></div>
-
                   <div className="arc arc-green"></div>
-
                   <div className="arc arc-yellow"></div>
-
                   <div className="arc arc-red"></div>
 
                   <div className="attendance-center">
 
-                    <p>
-                      Total Attendance
-                    </p>
+                    <p>Total Attendance</p>
 
-                    <h2>
-                      {attendanceTotal}
-                    </h2>
+                    <h2>{attendanceTotal}</h2>
 
                   </div>
 
@@ -928,64 +833,42 @@ const HrDashboard = () => {
                 <div className="attendance-status-list">
 
                   <div className="status-row">
-
                     <div>
                       <span className="status-dot present"></span>
                       Present
                     </div>
-
-                    <strong>
-                      {presentPercentage}%
-                    </strong>
-
+                    <strong>{presentPercentage}%</strong>
                   </div>
 
                   <div className="status-row">
-
                     <div>
                       <span className="status-dot late"></span>
                       Late
                     </div>
-
-                    <strong>
-                      {latePercentage}%
-                    </strong>
-
+                    <strong>{latePercentage}%</strong>
                   </div>
 
                   <div className="status-row">
-
                     <div>
                       <span className="status-dot permission"></span>
                       Permission
                     </div>
-
-                    <strong>
-                      {permissionPercentage}%
-                    </strong>
-
+                    <strong>{permissionPercentage}%</strong>
                   </div>
 
                   <div className="status-row">
-
                     <div>
                       <span className="status-dot absent"></span>
                       Absent
                     </div>
-
-                    <strong>
-                      {absentPercentage}%
-                    </strong>
-
+                    <strong>{absentPercentage}%</strong>
                   </div>
 
                 </div>
 
                 <div className="absentees-row">
 
-                  <span>
-                    Total Absentees
-                  </span>
+                  <span>Total Absentees</span>
 
                   <div className="absentee-images">
 
@@ -1020,32 +903,16 @@ const HrDashboard = () => {
                         )
                     ) : (
                       <>
-                        <img
-                          src={avatar27}
-                          alt=""
-                        />
-
-                        <img
-                          src={avatar30}
-                          alt=""
-                        />
-
-                        <img
-                          src={avatar14}
-                          alt=""
-                        />
-
-                        <img
-                          src={avatar29}
-                          alt=""
-                        />
+                        <img src={avatar27} alt="" />
+                        <img src={avatar30} alt="" />
+                        <img src={avatar14} alt="" />
+                        <img src={avatar29} alt="" />
                       </>
                     )}
 
                     {absentEmployees.length > 4 && (
                       <span className="plus-avatar">
-                        +
-                        {absentEmployees.length - 4}
+                        +{absentEmployees.length - 4}
                       </span>
                     )}
 
@@ -1078,15 +945,11 @@ const HrDashboard = () => {
 
               <div className="clock-card-header">
 
-                <h2>
-                  Clock-In/Out
-                </h2>
+                <h2>Clock-In/Out</h2>
 
                 <div className="clock-filters">
 
-                  <span>
-                    All Departments
-                  </span>
+                  <span>All Departments</span>
 
                   <ChevronRight
                     size={14}
@@ -1114,7 +977,6 @@ const HrDashboard = () => {
                         employee: any,
                         index: number
                       ) => {
-
                         const employeeAvatar =
                           employee?.profilePicture ||
                           [
@@ -1127,19 +989,18 @@ const HrDashboard = () => {
                           employee?.checkIn ||
                           employee?.checkInTime;
 
-                        const formattedTime =
-                          checkIn
-                            ? new Date(
-                                checkIn
-                              ).toLocaleTimeString(
-                                [],
-                                {
-                                  hour: "2-digit",
-                                  minute: "2-digit",
-                                  hour12: false,
-                                }
-                              )
-                            : "--:--";
+                        const formattedTime = checkIn
+                          ? new Date(
+                              checkIn
+                            ).toLocaleTimeString(
+                              [],
+                              {
+                                hour: "2-digit",
+                                minute: "2-digit",
+                                hour12: false,
+                              }
+                            )
+                          : "--:--";
 
                         return (
                           <div
@@ -1158,9 +1019,7 @@ const HrDashboard = () => {
                             <div className="clock-user">
 
                               <img
-                                src={
-                                  employeeAvatar
-                                }
+                                src={employeeAvatar}
                                 alt={
                                   employee?.name ||
                                   "Employee"
@@ -1168,7 +1027,6 @@ const HrDashboard = () => {
                               />
 
                               <div>
-
                                 <h4>
                                   {employee?.name ||
                                     "Employee"}
@@ -1178,7 +1036,6 @@ const HrDashboard = () => {
                                   {employee?.designation ||
                                     "Employee"}
                                 </p>
-
                               </div>
 
                             </div>
@@ -1188,8 +1045,7 @@ const HrDashboard = () => {
                               <Clock3 size={14} />
 
                               <span className="time-green">
-                                •{" "}
-                                {formattedTime}
+                                • {formattedTime}
                               </span>
 
                             </div>
@@ -1200,6 +1056,7 @@ const HrDashboard = () => {
                     )
                 ) : (
                   <>
+
                     {/* FALLBACK */}
 
                     <div className="clock-person dashed">
@@ -1212,15 +1069,8 @@ const HrDashboard = () => {
                         />
 
                         <div>
-
-                          <h4>
-                            Daniel Esbella
-                          </h4>
-
-                          <p>
-                            UI/UX Designer
-                          </p>
-
+                          <h4>Daniel Esbella</h4>
+                          <p>UI/UX Designer</p>
                         </div>
 
                       </div>
@@ -1247,15 +1097,8 @@ const HrDashboard = () => {
                         />
 
                         <div>
-
-                          <h4>
-                            Doglas Martini
-                          </h4>
-
-                          <p>
-                            Project Manager
-                          </p>
-
+                          <h4>Doglas Martini</h4>
+                          <p>Project Manager</p>
                         </div>
 
                       </div>
@@ -1284,7 +1127,6 @@ const HrDashboard = () => {
                           />
 
                           <div>
-
                             <h4>
                               Brian Villalobos
                             </h4>
@@ -1292,7 +1134,6 @@ const HrDashboard = () => {
                             <p>
                               PHP Developer
                             </p>
-
                           </div>
 
                         </div>
@@ -1312,44 +1153,30 @@ const HrDashboard = () => {
                       <div className="clock-details-row">
 
                         <div>
-
                           <p className="detail-green">
                             • Clock In
                           </p>
-
-                          <strong>
-                            10:30 AM
-                          </strong>
-
+                          <strong>10:30 AM</strong>
                         </div>
 
                         <div>
-
                           <p className="detail-red">
                             • Clock Out
                           </p>
-
-                          <strong>
-                            09:45 AM
-                          </strong>
-
+                          <strong>09:45 AM</strong>
                         </div>
 
                         <div>
-
                           <p className="detail-yellow">
                             • Production
                           </p>
-
-                          <strong>
-                            09:21 Hrs
-                          </strong>
-
+                          <strong>09:21 Hrs</strong>
                         </div>
 
                       </div>
 
                     </div>
+
                   </>
                 )}
 
@@ -1359,9 +1186,7 @@ const HrDashboard = () => {
 
                 <div className="late-section">
 
-                  <h3>
-                    Late
-                  </h3>
+                  <h3>Late</h3>
 
                   {lateEmployees.length > 0 ? (
                     lateEmployees
@@ -1371,7 +1196,6 @@ const HrDashboard = () => {
                           employee: any,
                           index: number
                         ) => {
-
                           const lateAvatar =
                             employee?.profilePicture ||
                             [
@@ -1383,21 +1207,18 @@ const HrDashboard = () => {
                           const checkIn =
                             employee?.checkInTime;
 
-                          const lateTime =
-                            checkIn
-                              ? new Date(
-                                  checkIn
-                                ).toLocaleTimeString(
-                                  [],
-                                  {
-                                    hour: "2-digit",
-                                    minute:
-                                      "2-digit",
-                                    hour12:
-                                      false,
-                                  }
-                                )
-                              : "--:--";
+                          const lateTime = checkIn
+                            ? new Date(
+                                checkIn
+                              ).toLocaleTimeString(
+                                [],
+                                {
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                  hour12: false,
+                                }
+                              )
+                            : "--:--";
 
                           return (
                             <div
@@ -1420,7 +1241,6 @@ const HrDashboard = () => {
                                 />
 
                                 <div>
-
                                   <h4>
                                     {employee?.name ||
                                       "Employee"}
@@ -1431,7 +1251,6 @@ const HrDashboard = () => {
                                       employee?.department ||
                                       "Employee"}
                                   </p>
-
                                 </div>
 
                               </div>
@@ -1461,7 +1280,6 @@ const HrDashboard = () => {
                         />
 
                         <div>
-
                           <h4>
                             Anthony Lewis...
                           </h4>
@@ -1469,7 +1287,6 @@ const HrDashboard = () => {
                           <p>
                             Marketing Head
                           </p>
-
                         </div>
 
                       </div>
@@ -1526,8 +1343,7 @@ const HrDashboard = () => {
               </button>
 
               <h2>
-                {monthNames[month]}{" "}
-                {year}
+                {monthNames[month]} {year}
               </h2>
 
               <button
@@ -1562,14 +1378,11 @@ const HrDashboard = () => {
 
               {calendarDays.map(
                 (date, index) => {
-
                   const selected =
                     date.currentMonth &&
                     date.day === today.getDate() &&
-                    month ===
-                      today.getMonth() &&
-                    year ===
-                      today.getFullYear();
+                    month === today.getMonth() &&
+                    year === today.getFullYear();
 
                   return (
                     <div
@@ -1604,13 +1417,9 @@ const HrDashboard = () => {
 
             <div className="events-title">
 
-              <h3>
-                Upcoming Event
-              </h3>
+              <h3>Upcoming Event</h3>
 
-              <span>
-                {events.length}
-              </span>
+              <span>{events.length}</span>
 
             </div>
 
@@ -1626,8 +1435,7 @@ const HrDashboard = () => {
                     <span
                       className="event-border"
                       style={{
-                        background:
-                          event.color,
+                        background: event.color,
                       }}
                     ></span>
 
@@ -1638,13 +1446,8 @@ const HrDashboard = () => {
                       </h4>
 
                       <p>
-
-                        <Calendar
-                          size={12}
-                        />
-
+                        <Calendar size={12} />
                         {event.date}
-
                       </p>
 
                     </div>

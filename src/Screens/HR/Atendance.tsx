@@ -107,6 +107,14 @@ const getUTCDateOnly = (
   return `${year}-${month}-${day}`;
 };
 
+const getLocalDateOnly = (date: Date): string => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+};
+
 /* =====================================================
    VALUE HELPER
 ===================================================== */
@@ -141,9 +149,7 @@ const getValue = (
 
   Based on your existing AttendanceStatus enum:
   
-  0 = Present
-  1 = Absent
-  2 = Late
+  Status filter supports Present and Absent only.
 
   If Swagger/backend enum is different,
   change ONLY these values in hrservices.tsx.
@@ -162,12 +168,6 @@ const getStatusLabel = (
     status === AttendanceStatus.Absent
   ) {
     return "Absent";
-  }
-
-  if (
-    status === AttendanceStatus.Late
-  ) {
-    return "Late";
   }
 
   return `Status ${status}`;
@@ -370,7 +370,7 @@ const Atendance: React.FC = () => {
     statusFilter,
     setStatusFilter,
   ] = useState(
-    "Select Status"
+    "Present"
   );
 
   const [
@@ -383,8 +383,8 @@ const Atendance: React.FC = () => {
   const [
     dateFilter,
     setDateFilter,
-  ] = useState(
-    "08/27/2026 - 09/02/2026"
+  ] = useState(() =>
+    getLocalDateOnly(new Date())
   );
 
   const [
@@ -455,182 +455,22 @@ const Atendance: React.FC = () => {
 
   const getDateParams =
     useCallback(() => {
-      if (
-        dateFilter ===
-        "08/27/2026 - 09/02/2026"
-      ) {
+      if (!dateFilter) {
         return {
-          FromDate:
-            toUTCDateTime(
-              "2026-08-27",
-              false
-            ),
-
-          ToDate:
-            toUTCDateTime(
-              "2026-09-02",
-              true
-            ),
-        };
-      }
-
-      if (
-        dateFilter ===
-        "09/02/2026"
-      ) {
-        return {
-          FromDate:
-            toUTCDateTime(
-              "2026-09-02",
-              false
-            ),
-
-          ToDate:
-            toUTCDateTime(
-              "2026-09-02",
-              true
-            ),
-        };
-      }
-
-      if (
-        dateFilter ===
-        "09/01/2026"
-      ) {
-        return {
-          FromDate:
-            toUTCDateTime(
-              "2026-09-01",
-              false
-            ),
-
-          ToDate:
-            toUTCDateTime(
-              "2026-09-01",
-              true
-            ),
-        };
-      }
-
-      if (
-        dateFilter ===
-        "Last 7 Days"
-      ) {
-        const today =
-          new Date();
-
-        const toDate =
-          getUTCDateOnly(
-            today
-          );
-
-        const from =
-          new Date();
-
-        from.setUTCDate(
-          from.getUTCDate() - 6
-        );
-
-        const fromDate =
-          getUTCDateOnly(
-            from
-          );
-
-        return {
-          FromDate:
-            toUTCDateTime(
-              fromDate,
-              false
-            ),
-
-          ToDate:
-            toUTCDateTime(
-              toDate,
-              true
-            ),
-        };
-      }
-
-      if (
-        dateFilter ===
-        "Last 30 Days"
-      ) {
-        const today =
-          new Date();
-
-        const toDate =
-          getUTCDateOnly(
-            today
-          );
-
-        const from =
-          new Date();
-
-        from.setUTCDate(
-          from.getUTCDate() - 29
-        );
-
-        const fromDate =
-          getUTCDateOnly(
-            from
-          );
-
-        return {
-          FromDate:
-            toUTCDateTime(
-              fromDate,
-              false
-            ),
-
-          ToDate:
-            toUTCDateTime(
-              toDate,
-              true
-            ),
-        };
-      }
-
-      if (
-        dateFilter ===
-        "This Month"
-      ) {
-        const now =
-          new Date();
-
-        const year =
-          now.getUTCFullYear();
-
-        const month =
-          String(
-            now.getUTCMonth() + 1
-          ).padStart(2, "0");
-
-        const firstDay =
-          `${year}-${month}-01`;
-
-        const today =
-          getUTCDateOnly(
-            now
-          );
-
-        return {
-          FromDate:
-            toUTCDateTime(
-              firstDay,
-              false
-            ),
-
-          ToDate:
-            toUTCDateTime(
-              today,
-              true
-            ),
+          FromDate: undefined,
+          ToDate: undefined,
         };
       }
 
       return {
-        FromDate: undefined,
-        ToDate: undefined,
+        FromDate: toUTCDateTime(
+          dateFilter,
+          false
+        ),
+        ToDate: toUTCDateTime(
+          dateFilter,
+          true
+        ),
       };
     }, [dateFilter]);
 
@@ -711,13 +551,6 @@ const Atendance: React.FC = () => {
         "Absent"
       ) {
         return AttendanceStatus.Absent;
-      }
-
-      if (
-        statusFilter ===
-        "Late"
-      ) {
-        return AttendanceStatus.Late;
       }
 
       return undefined;
@@ -1207,13 +1040,6 @@ const Atendance: React.FC = () => {
 
     if (
       status ===
-      AttendanceStatus.Late
-    ) {
-      return "attendance-status late";
-    }
-
-    if (
-      status ===
       AttendanceStatus.Absent
     ) {
       return "attendance-status absent";
@@ -1234,13 +1060,6 @@ const Atendance: React.FC = () => {
       AttendanceStatus.Absent
     ) {
       return "production-badge red";
-    }
-
-    if (
-      status ===
-      AttendanceStatus.Late
-    ) {
-      return "production-badge blue";
     }
 
     return "production-badge green";
@@ -1634,6 +1453,46 @@ const Atendance: React.FC = () => {
           justify-content: flex-end;
         }
 
+        .date-input-wrapper {
+          position: relative;
+          width: 195px;
+        }
+
+        .date-input {
+          width: 100%;
+          height: 39px;
+          border: 1px solid #dce1e7;
+          border-radius: 5px;
+          background: #ffffff;
+          padding: 0 38px 0 12px;
+          font-size: 13px;
+          color: #182438;
+          outline: none;
+          cursor: pointer;
+        }
+
+        .date-input:focus {
+          border-color: #bd9138;
+        }
+
+        .date-input-icon {
+          position: absolute;
+          right: 11px;
+          top: 50%;
+          transform: translateY(-50%);
+          color: #657286;
+          pointer-events: none;
+        }
+
+        .date-input::-webkit-calendar-picker-indicator {
+          position: absolute;
+          right: 8px;
+          width: 22px;
+          height: 22px;
+          cursor: pointer;
+          opacity: 0;
+        }
+
         .custom-select-wrapper {
           position: relative;
         }
@@ -1897,15 +1756,6 @@ const Atendance: React.FC = () => {
 
         .attendance-status.absent::before {
           background: #ef2020;
-        }
-
-        .attendance-status.late {
-          background: #fff0d4;
-          color: #b97800;
-        }
-
-        .attendance-status.late::before {
-          background: #e2a000;
         }
 
         .attendance-status.unknown {
@@ -2263,7 +2113,9 @@ const Atendance: React.FC = () => {
           }
 
           .custom-select-wrapper,
-          .custom-select {
+          .custom-select,
+          .date-input-wrapper,
+          .date-input {
             width: 100% !important;
           }
 
@@ -2457,44 +2309,23 @@ const Atendance: React.FC = () => {
 
               {/* DATE */}
 
-              <div className="custom-select-wrapper">
-                <select
-                  className="custom-select date-select"
+              <div className="date-input-wrapper">
+                <input
+                  type="date"
+                  className="date-input"
                   value={dateFilter}
-                  onChange={(e) =>
+                  onChange={(e) => {
                     setDateFilter(
                       e.target.value
-                    )
-                  }
-                >
-                  <option>
-                    08/27/2026 - 09/02/2026
-                  </option>
+                    );
+                    setCurrentPage(1);
+                  }}
+                  aria-label="Select attendance date"
+                />
 
-                  <option>
-                    09/02/2026
-                  </option>
-
-                  <option>
-                    09/01/2026
-                  </option>
-
-                  <option>
-                    Last 7 Days
-                  </option>
-
-                  <option>
-                    Last 30 Days
-                  </option>
-
-                  <option>
-                    This Month
-                  </option>
-                </select>
-
-                <ChevronDown
-                  className="select-arrow"
-                  size={15}
+                <CalendarDays
+                  className="date-input-icon"
+                  size={16}
                 />
               </div>
 
@@ -2567,10 +2398,6 @@ const Atendance: React.FC = () => {
 
                   <option>
                     Absent
-                  </option>
-
-                  <option>
-                    Late
                   </option>
                 </select>
 
@@ -2798,19 +2625,6 @@ const Atendance: React.FC = () => {
                   <th>
                     <div className="sortable-header">
                       <span>
-                        Break
-                      </span>
-
-                      <ArrowUpDown
-                        size={13}
-                        className="sort-icon"
-                      />
-                    </div>
-                  </th>
-
-                  <th>
-                    <div className="sortable-header">
-                      <span>
                         Late
                       </span>
 
@@ -2844,7 +2658,7 @@ const Atendance: React.FC = () => {
                 {loading && (
                   <tr>
                     <td
-                      colSpan={9}
+                      colSpan={8}
                       className="loading-row"
                     >
                       Loading attendance...
@@ -2937,14 +2751,6 @@ const Atendance: React.FC = () => {
                         <td>
                           {
                             formatMinutes(
-                              item.breakInMinutes
-                            )
-                          }
-                        </td>
-
-                        <td>
-                          {
-                            formatMinutes(
                               item.lateInMinutes
                             )
                           }
@@ -2994,7 +2800,7 @@ const Atendance: React.FC = () => {
                     0 && (
                     <tr>
                       <td
-                        colSpan={9}
+                        colSpan={8}
                         style={{
                           textAlign:
                             "center",

@@ -112,6 +112,11 @@ export const unwrapApiArray = (responseData: any): any[] => {
     responseData?.Items,
     responseData?.records,
     responseData?.Records,
+
+    // USER TYPES
+    responseData?.userTypes,
+    responseData?.UserTypes,
+
     responseData?.users,
     responseData?.Users,
     responseData?.roles,
@@ -135,6 +140,9 @@ export const unwrapApiArray = (responseData: any): any[] => {
 
     if (candidate && typeof candidate === "object") {
       const nested = [
+        candidate.userTypes,
+        candidate.UserTypes,
+
         candidate.items,
         candidate.Items,
         candidate.records,
@@ -196,111 +204,137 @@ const cleanOptionalParam = (value?: string) =>
   value?.trim() || undefined;
 
 /* =====================================================
-   ROLE
+   DESIGNATIONS & PERMISSIONS / USER TYPE
 ===================================================== */
 
-export interface GetRolesParams {
+export interface GetUserTypesParams {
   Search?: string;
-  IsActive?: boolean;
-  SortBy?: string;
   FromDate?: string;
   ToDate?: string;
+  IsActive?: boolean;
+  UserType?: number;
+  SortBy?: string;
   PageNumber?: number;
   PageSize?: number;
 }
 
-export interface AddRolePayload {
-  roleName: string;
-  isActive: boolean;
+export interface UserTypePermissionPayload {
+  pageId: string;
+  canRead: boolean;
+  canWrite: boolean;
+  canDelete: boolean;
 }
 
-export interface UpdateRolePayload {
-  id: string;
-  roleName: string;
+export interface UserTypePayload {
+  userType: number;
   isActive: boolean;
+  permissions: UserTypePermissionPayload[];
 }
 
-export const getRoles = async (
-  params?: GetRolesParams
-) => {
+export interface PageApiModel {
+  id?: string;
+  Id?: string;
+  pageId?: string;
+  PageId?: string;
+  name?: string;
+  Name?: string;
+  pageName?: string;
+  PageName?: string;
+  title?: string;
+  Title?: string;
+  [key: string]: any;
+}
+
+export const getUserTypes = async (params?: GetUserTypesParams) => {
   try {
     const response = await axios.get(
-      `${BASE_URL}/Role/get-roles`,
+      `${BASE_URL}/DesignationsAndPermission/get-usertypes`,
       {
         params: {
           Search: cleanOptionalParam(params?.Search),
-          IsActive: params?.IsActive,
-          SortBy: cleanOptionalParam(params?.SortBy),
           FromDate: cleanOptionalParam(params?.FromDate),
           ToDate: cleanOptionalParam(params?.ToDate),
+          IsActive: params?.IsActive,
+          UserType: params?.UserType,
+          SortBy: cleanOptionalParam(params?.SortBy),
           PageNumber: params?.PageNumber ?? 1,
           PageSize: params?.PageSize ?? 10,
         },
         headers: getAuthHeaders(),
       }
     );
-
     return response.data;
   } catch (error) {
     throw new Error(getApiErrorMessage(error));
   }
 };
 
-export const addRole = async (
-  data: AddRolePayload
-) => {
+export const getUserTypeById = async (id: string) => {
+  if (!id?.trim()) throw new Error("User type ID is required.");
   try {
-    const response = await axios.post(
-      `${BASE_URL}/Role/add-role`,
+    return (await axios.get(
+      `${BASE_URL}/DesignationsAndPermission/get-usertype-by-id/${encodeURIComponent(id.trim())}`,
+      { headers: getAuthHeaders() }
+    )).data;
+  } catch (error) {
+    throw new Error(getApiErrorMessage(error));
+  }
+};
+
+export const addUserType = async (data: UserTypePayload) => {
+  try {
+    return (await axios.post(
+      `${BASE_URL}/DesignationsAndPermission/add-usertype`,
       data,
       getJsonConfig()
-    );
-
-    return response.data;
+    )).data;
   } catch (error) {
     throw new Error(getApiErrorMessage(error));
   }
 };
 
-export const updateRole = async (
-  data: UpdateRolePayload
-) => {
+export const updateUserType = async (id: string, data: UserTypePayload) => {
+  if (!id?.trim()) throw new Error("User type ID is required.");
   try {
-    const response = await axios.put(
-      `${BASE_URL}/Role/update-role`,
+    return (await axios.put(
+      `${BASE_URL}/DesignationsAndPermission/update-usertype/${encodeURIComponent(id.trim())}`,
       data,
       getJsonConfig()
-    );
-
-    return response.data;
+    )).data;
   } catch (error) {
     throw new Error(getApiErrorMessage(error));
   }
 };
 
-export const deleteRole = async (id: string) => {
-  if (!id?.trim()) {
-    throw new Error("Role ID is required.");
-  }
-
+export const deleteUserType = async (id: string) => {
+  if (!id?.trim()) throw new Error("User type ID is required.");
   try {
-    const response = await axios.delete(
-      `${BASE_URL}/Role/delete-role`,
-      {
-        headers: {
-          ...getAuthHeaders(),
-          "Content-Type": "application/json",
-          Accept: "*/*",
-        },
-        data: { id },
-      }
-    );
-
-    return response.data;
+    return (await axios.delete(
+      `${BASE_URL}/DesignationsAndPermission/delete-usertype/${encodeURIComponent(id.trim())}`,
+      { headers: { ...getAuthHeaders(), Accept: "application/json" } }
+    )).data;
   } catch (error) {
     throw new Error(getApiErrorMessage(error));
   }
 };
+
+export const getPermissionPages = async () => {
+  try {
+    return (await axios.get(
+      `${BASE_URL}/DesignationsAndPermission/get-pages`,
+      { headers: getAuthHeaders() }
+    )).data;
+  } catch (error) {
+    throw new Error(getApiErrorMessage(error));
+  }
+};
+
+// Backward-compatible aliases. Existing imports elsewhere will not break.
+export const getRoles = getUserTypes;
+export const addRole = addUserType;
+export const getRoleById = getUserTypeById;
+export const updateRole = updateUserType;
+export const deleteRole = deleteUserType;
 
 /* =====================================================
    USER
@@ -338,6 +372,11 @@ export interface UserExperiencePayload {
   description: string;
 }
 
+
+/* =====================================================
+   USER PERMISSIONS
+===================================================== */
+
 export interface UserPermissionPayload {
   pageId: string;
   canRead: boolean;
@@ -347,6 +386,73 @@ export interface UserPermissionPayload {
   canImport: boolean;
   canExport: boolean;
 }
+
+/**
+ * GET /api/User/{userId}/permissions
+ * Returns permissions assigned to a specific user.
+ */
+export const getUserPermissions = async (userId: string) => {
+  if (!userId?.trim()) {
+    throw new Error("User ID is required.");
+  }
+
+  try {
+    const response = await axios.get(
+      `${BASE_URL}/User/${encodeURIComponent(userId.trim())}/permissions`,
+      {
+        headers: getAuthHeaders(),
+      }
+    );
+
+    return response.data;
+  } catch (error) {
+    throw new Error(getApiErrorMessage(error));
+  }
+};
+
+/**
+ * PUT /api/User/{userId}/permissions
+ * Replaces/updates permissions assigned to a specific user.
+ */
+export const updateUserPermissions = async (
+  userId: string,
+  permissions: UserPermissionPayload[]
+) => {
+  if (!userId?.trim()) {
+    throw new Error("User ID is required.");
+  }
+
+  try {
+    const response = await axios.put(
+      `${BASE_URL}/User/${encodeURIComponent(userId.trim())}/permissions`,
+      permissions,
+      getJsonConfig()
+    );
+
+    return response.data;
+  } catch (error) {
+    throw new Error(getApiErrorMessage(error));
+  }
+};
+
+/**
+ * GET /api/User/my-permissions
+ * Returns effective permissions for the currently logged-in user.
+ */
+export const getMyPermissions = async () => {
+  try {
+    const response = await axios.get(
+      `${BASE_URL}/User/my-permissions`,
+      {
+        headers: getAuthHeaders(),
+      }
+    );
+
+    return response.data;
+  } catch (error) {
+    throw new Error(getApiErrorMessage(error));
+  }
+};
 
 export interface AddUserPayload {
   firstName: string;
@@ -546,7 +652,7 @@ export const deleteUser = async (id: string) => {
    EMPLOYEE PROFILE
 ===================================================== */
 
-const extractProfileData = (
+{/* const extractProfileData = (
   responseData: any
 ): any => {
   if (
@@ -630,61 +736,8 @@ export interface UpdateProfilePayload {
   NewPassword: string;
   ConfirmPassword: string;
   ProfilePicture?: File | null;
-}
+} */}
 
-export const updateEmployeeProfile = async (
-  data: UpdateProfilePayload,
-  token: string
-) => {
-  if (!token) {
-    throw new Error(
-      "Authentication token not found. Please login again."
-    );
-  }
-
-  if (!data.Id?.trim()) {
-    throw new Error("Profile ID is required.");
-  }
-
-  const formData = new FormData();
-
-  Object.entries(data).forEach(
-    ([key, value]) => {
-      if (key !== "ProfilePicture") {
-        formData.append(
-          key,
-          value == null ? "" : String(value)
-        );
-      }
-    }
-  );
-
-  if (
-    data.ProfilePicture instanceof File
-  ) {
-    formData.append(
-      "ProfilePicture",
-      data.ProfilePicture
-    );
-  }
-
-  try {
-    const response = await axios.put(
-      `${BASE_URL}/Profile/Update-Profile`,
-      formData,
-      {
-        headers: {
-          ...getAuthHeaders(token),
-          Accept: "*/*",
-        },
-      }
-    );
-
-    return response.data;
-  } catch (error) {
-    throw new Error(getApiErrorMessage(error));
-  }
-};
 
 /* =====================================================
    DEPARTMENT
@@ -2736,8 +2789,8 @@ export default {
   deleteUser,
 
   /* Profile */
-  getEmployeeProfile,
-  updateEmployeeProfile,
+  // getEmployeeProfile,
+  // updateEmployeeProfile,
 
   /* Employee */
   addEmployee,

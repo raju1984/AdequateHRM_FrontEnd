@@ -34,7 +34,7 @@ import {
   updateUser,
   type AddUserPayload,
   type UserApiModel,
-} from "../../services/adminservices";
+} from "../../services/hrservices";
 
 //  TYPES
 
@@ -3321,10 +3321,10 @@ const Users: React.FC = () => {
             </div>
           </div>
 
-          <button type="button" className="users-add-btn" onClick={openAddPage}>
+          {/* <button type="button" className="users-add-btn" onClick={openAddPage}>
             <CirclePlus size={15} />
             Add User
-          </button>
+          </button> */}
         </div>
 
         {/* ROLE SELECTION MODAL */}

@@ -1310,6 +1310,11 @@ const Attendance = () => {
     />
   );
 
+  const handleAbsentEmployeesClick = () => {
+  setStatusFilter("Absent");
+  setCurrentPage(1);
+};
+
   /* ===================================================
      UI
   =================================================== */
@@ -1533,17 +1538,16 @@ const Attendance = () => {
                 Total Absenties
                 today
               </span>
-
-              <div
-                style={{
-                  display:
-                    "flex",
-                  alignItems:
-                    "center",
-                  paddingLeft:
-                    "7px",
-                }}
-              >
+<div
+  onClick={handleAbsentEmployeesClick}
+  title="Show absent employees"
+  style={{
+    display: "flex",
+    alignItems: "center",
+    paddingLeft: "7px",
+    cursor: "pointer",
+  }}
+>
                 {[
                   avatar02,
                   avatar03,
@@ -1885,60 +1889,7 @@ const Attendance = () => {
 
               {/* DEPARTMENT */}
 
-              <select
-                value={
-                  department
-                }
-                onChange={(
-                  e
-                ) => {
-                  setDepartment(
-                    e.target
-                      .value
-                  );
-                  setCurrentPage(
-                    1
-                  );
-                }}
-                className="form-select"
-                style={{
-                  width:
-                    "155px",
-                  height:
-                    "40px",
-                  border:
-                    "1px solid #dfe3e8",
-                  borderRadius:
-                    "6px",
-                  fontSize:
-                    "14px",
-                  boxShadow:
-                    "none",
-                }}
-              >
-                <option value="">
-                  Department
-                </option>
-
-                {departments.map(
-                  (
-                    item
-                  ) => (
-                    <option
-                      key={
-                        item.id
-                      }
-                      value={
-                        item.id
-                      }
-                    >
-                      {
-                        item.name
-                      }
-                    </option>
-                  )
-                )}
-              </select>
+       
 
               {/* STATUS */}
 

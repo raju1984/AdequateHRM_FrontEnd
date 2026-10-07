@@ -1,9 +1,4 @@
-
-import React, {
-  useEffect,
-  useRef,
-  useState,
-} from "react";
+import React, { useRef, useState } from "react";
 
 import {
   Eye,
@@ -16,17 +11,11 @@ import {
 
 import { NavLink } from "react-router-dom";
 
-import {
-  getProfile,
-  updateEmployeeProfile,
-} from "../../services/hrservices";
-
 /* =====================================================
    TYPES
 ===================================================== */
 
 interface ProfileForm {
-  id: string;
   firstName: string;
   lastName: string;
   email: string;
@@ -43,18 +32,30 @@ interface ProfileForm {
 ===================================================== */
 
 const GOLD = "#c49332";
-const PAGE_BG = "#f7f8fa";
 const TEXT_DARK = "#14213d";
 const BORDER = "#e1e5eb";
+
+/* =====================================================
+   EMPTY FORM
+===================================================== */
+
+const emptyForm: ProfileForm = {
+  firstName: "",
+  lastName: "",
+  email: "",
+  phone: "",
+  address: "",
+  country: "",
+  state: "",
+  city: "",
+  postalCode: "",
+};
 
 /* =====================================================
    COMPONENT
 ===================================================== */
 
 const Profilee: React.FC = () => {
-  const token =
-    localStorage.getItem("token") || "";
-
   const fileInputRef =
     useRef<HTMLInputElement | null>(null);
 
@@ -94,318 +95,12 @@ const Profilee: React.FC = () => {
   const [profileImage, setProfileImage] =
     useState("");
 
-  const [profileImageFile, setProfileImageFile] =
-    useState<File | null>(null);
-
-  /* ===================================================
-     API STATE
-  =================================================== */
-
-  const [loadingProfile, setLoadingProfile] =
-    useState(false);
-
-  const [savingProfile, setSavingProfile] =
-    useState(false);
-
-  const [message, setMessage] =
-    useState("");
-
-  const [error, setError] =
-    useState("");
-
   /* ===================================================
      FORM STATE
   =================================================== */
 
   const [form, setForm] =
-    useState<ProfileForm>({
-      id: "",
-      firstName: "",
-      lastName: "",
-      email: "",
-      phone: "",
-      address: "",
-      country: "",
-      state: "",
-      city: "",
-      postalCode: "",
-    });
-
-  /* =====================================================
-     HELPER
-     Extract profile object from API response
-  ===================================================== */
-
-  const extractProfileData = (
-    response: any
-  ): any => {
-    if (!response) {
-      return null;
-    }
-
-    /*
-      Possible response structures:
-
-      {
-        data: {
-          Id: "...",
-          FirstName: "..."
-        }
-      }
-
-      OR
-
-      {
-        data: {
-          data: {
-            Id: "..."
-          }
-        }
-      }
-
-      OR
-
-      {
-        Id: "...",
-        FirstName: "..."
-      }
-    */
-
-    if (
-      response?.Id ||
-      response?.id ||
-      response?.FirstName ||
-      response?.firstName ||
-      response?.Email ||
-      response?.email
-    ) {
-      return response;
-    }
-
-    if (
-      response?.data?.Id ||
-      response?.data?.id ||
-      response?.data?.FirstName ||
-      response?.data?.firstName ||
-      response?.data?.Email ||
-      response?.data?.email
-    ) {
-      return response.data;
-    }
-
-    if (
-      response?.data?.data?.Id ||
-      response?.data?.data?.id ||
-      response?.data?.data?.FirstName ||
-      response?.data?.data?.firstName ||
-      response?.data?.data?.Email ||
-      response?.data?.data?.email
-    ) {
-      return response.data.data;
-    }
-
-    /*
-      Some APIs return result instead of data.
-    */
-
-    if (
-      response?.result?.Id ||
-      response?.result?.id ||
-      response?.result?.FirstName ||
-      response?.result?.firstName
-    ) {
-      return response.result;
-    }
-
-    return null;
-  };
-
-  /* =====================================================
-     GET PROFILE
-     
-     GET:
-     /api/Profile/Get-Profile
-  ===================================================== */
-
-  const fetchProfile = async () => {
-    try {
-      setLoadingProfile(true);
-      setError("");
-      setMessage("");
-
-      if (!token) {
-        setError(
-          "Authentication token not found. Please login again."
-        );
-
-        return;
-      }
-
-      console.log(
-        "Calling Profile/Get-Profile..."
-      );
-
-      const response =
-        await getProfile(token);
-
-      console.log(
-        "Profile API Response =>",
-        response
-      );
-
-      const profile =
-        extractProfileData(response);
-
-      console.log(
-        "Profile Data =>",
-        profile
-      );
-
-      if (!profile) {
-        setError(
-          "Profile data not found in API response."
-        );
-
-        return;
-      }
-
-      /* =================================================
-         PROFILE ID
-      ================================================= */
-
-      const profileId =
-        profile?.Id ||
-        profile?.id ||
-        profile?.userId ||
-        profile?.UserId ||
-        "";
-
-      /* =================================================
-         SET FORM
-      ================================================= */
-
-      setForm({
-        id: String(profileId),
-
-        firstName:
-          profile?.FirstName ??
-          profile?.firstName ??
-          profile?.first_name ??
-          profile?.firstname ??
-          "",
-
-        lastName:
-          profile?.LastName ??
-          profile?.lastName ??
-          profile?.last_name ??
-          profile?.lastname ??
-          "",
-
-        email:
-          profile?.Email ??
-          profile?.email ??
-          "",
-
-        phone:
-          profile?.Phone ??
-          profile?.phone ??
-          profile?.Mobile ??
-          profile?.mobile ??
-          profile?.PhoneNumber ??
-          profile?.phoneNumber ??
-          "",
-
-        address:
-          profile?.Address ??
-          profile?.address ??
-          "",
-
-        country:
-          profile?.Country ??
-          profile?.country ??
-          "",
-
-        state:
-          profile?.State ??
-          profile?.state ??
-          "",
-
-        city:
-          profile?.City ??
-          profile?.city ??
-          "",
-
-        postalCode:
-          profile?.PostalCode ??
-          profile?.postalCode ??
-          profile?.postal_code ??
-          profile?.ZipCode ??
-          profile?.zipCode ??
-          "",
-      });
-
-      /* =================================================
-         PROFILE IMAGE
-      ================================================= */
-
-      const picture =
-        profile?.ProfilePictureUrl ||
-        profile?.profilePictureUrl ||
-        profile?.ProfilePicture ||
-        profile?.profilePicture ||
-        profile?.ProfileImage ||
-        profile?.profileImage ||
-        profile?.Image ||
-        profile?.image ||
-        "";
-
-      if (
-        typeof picture === "string"
-      ) {
-        setProfileImage(picture);
-      } else {
-        setProfileImage("");
-      }
-    } catch (error: any) {
-      console.error(
-        "Get Profile Error =>",
-        error
-      );
-
-      console.error(
-        "Get Profile Backend Error =>",
-        error?.response?.data
-      );
-
-      const backendError =
-        error?.response?.data;
-
-      const errorMessage =
-        backendError?.message ||
-        backendError?.Message ||
-        backendError?.title ||
-        backendError?.error ||
-        (typeof backendError === "string"
-          ? backendError
-          : "") ||
-        error?.message ||
-        "Failed to load profile.";
-
-      setError(errorMessage);
-    } finally {
-      setLoadingProfile(false);
-    }
-  };
-
-  /* =====================================================
-     INITIAL LOAD
-  ===================================================== */
-
-  useEffect(() => {
-    fetchProfile();
-
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    useState<ProfileForm>(emptyForm);
 
   /* =====================================================
      INPUT CHANGE
@@ -416,18 +111,12 @@ const Profilee: React.FC = () => {
       HTMLInputElement | HTMLSelectElement
     >
   ) => {
-    const {
-      name,
-      value,
-    } = e.target;
+    const { name, value } = e.target;
 
     setForm((prev) => ({
       ...prev,
       [name]: value,
     }));
-
-    setMessage("");
-    setError("");
   };
 
   /* =====================================================
@@ -437,288 +126,41 @@ const Profilee: React.FC = () => {
   const handleImageChange = (
     e: React.ChangeEvent<HTMLInputElement>
   ) => {
-    const file =
-      e.target.files?.[0];
+    const file = e.target.files?.[0];
 
     if (!file) {
       return;
     }
 
-    /* -----------------------------------------------
-       Validate image
-    ------------------------------------------------ */
-
     if (
-      !file.type.startsWith("image/")
+      profileImage &&
+      profileImage.startsWith("blob:")
     ) {
-      setError(
-        "Please select a valid image file."
-      );
-
-      e.target.value = "";
-
-      return;
+      URL.revokeObjectURL(profileImage);
     }
-
-    /*
-      Optional 4 MB validation.
-    */
-
-    if (file.size > 4 * 1024 * 1024) {
-      setError(
-        "Profile image size must be less than 4 MB."
-      );
-
-      e.target.value = "";
-
-      return;
-    }
-
-    setProfileImageFile(file);
 
     const previewUrl =
       URL.createObjectURL(file);
 
     setProfileImage(previewUrl);
-
-    setMessage("");
-    setError("");
   };
 
   /* =====================================================
      CANCEL IMAGE
   ===================================================== */
 
-  const handleImageCancel = async () => {
-    setProfileImageFile(null);
+  const handleImageCancel = () => {
+    if (
+      profileImage &&
+      profileImage.startsWith("blob:")
+    ) {
+      URL.revokeObjectURL(profileImage);
+    }
+
+    setProfileImage("");
 
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
-    }
-
-    /*
-      Reload original image from server.
-    */
-
-    await fetchProfile();
-
-    setMessage("");
-    setError("");
-  };
-
-  /* =====================================================
-     SAVE PROFILE
-     
-     PUT:
-     /api/Profile/Update-Profile
-  ===================================================== */
-
-  const handleSave = async () => {
-    setMessage("");
-    setError("");
-
-    /* -----------------------------------------------
-       Token validation
-    ------------------------------------------------ */
-
-    if (!token) {
-      setError(
-        "Authentication token not found. Please login again."
-      );
-
-      return;
-    }
-
-    /* -----------------------------------------------
-       Profile ID validation
-    ------------------------------------------------ */
-
-    if (!form.id) {
-      setError(
-        "Profile ID is missing. Please reload the page and try again."
-      );
-
-      return;
-    }
-
-    /* -----------------------------------------------
-       Password validation
-    ------------------------------------------------ */
-
-    if (
-      newPassword &&
-      newPassword !== confirmPassword
-    ) {
-      setError(
-        "New password and confirm password do not match."
-      );
-
-      return;
-    }
-
-    if (
-      newPassword &&
-      !currentPassword
-    ) {
-      setError(
-        "Please enter your current password."
-      );
-
-      return;
-    }
-
-    if (
-      currentPassword &&
-      !newPassword
-    ) {
-      setError(
-        "Please enter your new password."
-      );
-
-      return;
-    }
-
-    try {
-      setSavingProfile(true);
-
-      /* =================================================
-         PAYLOAD
-      ================================================= */
-
-      const payload = {
-        Id:
-          form.id || "",
-
-        FirstName:
-          form.firstName.trim(),
-
-        LastName:
-          form.lastName.trim(),
-
-        Email:
-          form.email.trim(),
-
-        Phone:
-          form.phone.trim(),
-
-        Address:
-          form.address.trim(),
-
-        Country:
-          form.country.trim(),
-
-        State:
-          form.state.trim(),
-
-        City:
-          form.city.trim(),
-
-        PostalCode:
-          form.postalCode.trim(),
-
-        CurrentPassword:
-          currentPassword || "",
-
-        NewPassword:
-          newPassword || "",
-
-        ConfirmPassword:
-          confirmPassword || "",
-
-        ProfilePicture:
-          profileImageFile,
-      };
-
-      console.log(
-        "Profile Update Payload =>",
-        payload
-      );
-
-      /* =================================================
-         UPDATE API
-      ================================================= */
-
-      const response =
-        await updateEmployeeProfile(
-          payload,
-          token
-        );
-
-      console.log(
-        "Profile Update Response =>",
-        response
-      );
-
-      /* =================================================
-         SUCCESS
-      ================================================= */
-
-      const successMessage =
-        response?.message ||
-        response?.Message ||
-        response?.data?.message ||
-        response?.data?.Message ||
-        "Profile updated successfully.";
-
-      setMessage(
-        successMessage
-      );
-
-      /* -----------------------------------------------
-         Clear passwords
-      ------------------------------------------------ */
-
-      setCurrentPassword("");
-      setNewPassword("");
-      setConfirmPassword("");
-
-      setShowCurrent(false);
-      setShowNew(false);
-      setShowConfirm(false);
-
-      /* -----------------------------------------------
-         Clear selected image
-      ------------------------------------------------ */
-
-      setProfileImageFile(null);
-
-      if (fileInputRef.current) {
-        fileInputRef.current.value = "";
-      }
-
-      /* -----------------------------------------------
-         Reload profile from server
-      ------------------------------------------------ */
-
-      await fetchProfile();
-    } catch (error: any) {
-      console.error(
-        "Profile Update Error =>",
-        error
-      );
-
-      console.error(
-        "Profile Update Backend Error =>",
-        error?.response?.data
-      );
-
-      const backendError =
-        error?.response?.data;
-
-      const errorMessage =
-        backendError?.message ||
-        backendError?.Message ||
-        backendError?.title ||
-        backendError?.error ||
-        (typeof backendError === "string"
-          ? backendError
-          : "") ||
-        error?.message ||
-        "Failed to update profile.";
-
-      setError(errorMessage);
-    } finally {
-      setSavingProfile(false);
     }
   };
 
@@ -726,7 +168,9 @@ const Profilee: React.FC = () => {
      CANCEL FORM
   ===================================================== */
 
-  const handleCancel = async () => {
+  const handleCancel = () => {
+    setForm(emptyForm);
+
     setCurrentPassword("");
     setNewPassword("");
     setConfirmPassword("");
@@ -735,16 +179,18 @@ const Profilee: React.FC = () => {
     setShowNew(false);
     setShowConfirm(false);
 
-    setProfileImageFile(null);
+    if (
+      profileImage &&
+      profileImage.startsWith("blob:")
+    ) {
+      URL.revokeObjectURL(profileImage);
+    }
 
-    setMessage("");
-    setError("");
+    setProfileImage("");
 
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
-
-    await fetchProfile();
   };
 
   /* =====================================================
@@ -752,19 +198,19 @@ const Profilee: React.FC = () => {
   ===================================================== */
 
   return (
- <div
-  style={{
-    minHeight: "100vh",
-    background: "transparent",
-    padding: "24px",
-    boxSizing: "border-box",
-    fontFamily:
-      "'Inter', 'Nunito Sans', 'Segoe UI', Arial, sans-serif",
-    color: TEXT_DARK,
-    boxShadow: "none",
-    borderRadius: 0,
-  }}
->
+    <div
+      style={{
+        minHeight: "100vh",
+        background: "transparent",
+        padding: "24px",
+        boxSizing: "border-box",
+        fontFamily:
+          "'Inter', 'Nunito Sans', 'Segoe UI', Arial, sans-serif",
+        color: TEXT_DARK,
+        boxShadow: "none",
+        borderRadius: 0,
+      }}
+    >
       {/* =================================================
           PAGE HEADER
       ================================================= */}
@@ -773,8 +219,7 @@ const Profilee: React.FC = () => {
         style={{
           display: "flex",
           alignItems: "flex-start",
-          justifyContent:
-            "space-between",
+          justifyContent: "space-between",
           marginBottom: 26,
         }}
       >
@@ -805,8 +250,7 @@ const Profilee: React.FC = () => {
               to="/Hr/HrDashboard"
               style={{
                 textDecoration: "none",
-                display:
-                  "inline-flex",
+                display: "inline-flex",
                 color: "#52647b",
               }}
             >
@@ -838,22 +282,18 @@ const Profilee: React.FC = () => {
         <button
           type="button"
           onClick={() =>
-            setCollapsed(
-              (prev) => !prev
-            )
+            setCollapsed((prev) => !prev)
           }
           style={{
             width: 39,
             height: 39,
-            border:
-              `1px solid ${BORDER}`,
+            border: `1px solid ${BORDER}`,
             borderRadius: 6,
             background: "#ffffff",
             color: "#15223a",
             display: "flex",
             alignItems: "center",
-            justifyContent:
-              "center",
+            justifyContent: "center",
             cursor: "pointer",
           }}
         >
@@ -873,8 +313,7 @@ const Profilee: React.FC = () => {
         <div
           style={{
             background: "#ffffff",
-            border:
-              `1px solid ${BORDER}`,
+            border: `1px solid ${BORDER}`,
             borderRadius: 6,
             boxShadow:
               "0 1px 2px rgba(16,24,40,0.03)",
@@ -883,8 +322,7 @@ const Profilee: React.FC = () => {
         >
           <div
             style={{
-              padding:
-                "19px 20px 20px",
+              padding: "19px 20px 20px",
             }}
           >
             {/* =================================================
@@ -911,69 +349,6 @@ const Profilee: React.FC = () => {
             </div>
 
             {/* =================================================
-                LOADING
-            ================================================= */}
-
-            {loadingProfile && (
-              <div
-                style={{
-                  padding:
-                    "10px 0",
-                  fontSize: 12,
-                  color: "#667085",
-                }}
-              >
-                Loading profile...
-              </div>
-            )}
-
-            {/* =================================================
-                SUCCESS MESSAGE
-            ================================================= */}
-
-            {message && (
-              <div
-                style={{
-                  marginTop: 16,
-                  padding:
-                    "10px 12px",
-                  borderRadius: 5,
-                  background:
-                    "#eef8f0",
-                  border:
-                    "1px solid #cce8d1",
-                  color: "#26743a",
-                  fontSize: 12,
-                }}
-              >
-                {message}
-              </div>
-            )}
-
-            {/* =================================================
-                ERROR MESSAGE
-            ================================================= */}
-
-            {error && (
-              <div
-                style={{
-                  marginTop: 16,
-                  padding:
-                    "10px 12px",
-                  borderRadius: 5,
-                  background:
-                    "#fff3f3",
-                  border:
-                    "1px solid #f1caca",
-                  color: "#c0392b",
-                  fontSize: 12,
-                }}
-              >
-                {error}
-              </div>
-            )}
-
-            {/* =================================================
                 BASIC INFORMATION
             ================================================= */}
 
@@ -987,11 +362,9 @@ const Profilee: React.FC = () => {
             >
               <h3
                 style={{
-                  margin:
-                    "0 0 17px",
+                  margin: "0 0 17px",
                   fontSize: 13,
-                  lineHeight:
-                    "18px",
+                  lineHeight: "18px",
                   fontWeight: 600,
                   color: "#11203b",
                 }}
@@ -999,22 +372,17 @@ const Profilee: React.FC = () => {
                 Basic Information
               </h3>
 
-              {/* =================================================
-                  PROFILE PHOTO
-              ================================================= */}
+              {/* PROFILE PHOTO */}
 
               <div
                 style={{
                   minHeight: 114,
-                  background:
-                    "#f8f9fb",
+                  background: "#f8f9fb",
                   borderRadius: 5,
                   padding: "16px",
-                  boxSizing:
-                    "border-box",
+                  boxSizing: "border-box",
                   display: "flex",
-                  alignItems:
-                    "center",
+                  alignItems: "center",
                   gap: 10,
                   marginBottom: 23,
                 }}
@@ -1024,34 +392,24 @@ const Profilee: React.FC = () => {
                     width: 80,
                     height: 80,
                     minWidth: 80,
-                    borderRadius:
-                      "50%",
+                    borderRadius: "50%",
                     border:
                       "1px dashed #d9dee6",
-                    background:
-                      "#ffffff",
+                    background: "#ffffff",
                     display: "flex",
-                    alignItems:
-                      "center",
-                    justifyContent:
-                      "center",
-                    overflow:
-                      "hidden",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    overflow: "hidden",
                   }}
                 >
                   {profileImage ? (
                     <img
-                      src={
-                        profileImage
-                      }
+                      src={profileImage}
                       alt="Profile"
                       style={{
-                        width:
-                          "100%",
-                        height:
-                          "100%",
-                        objectFit:
-                          "cover",
+                        width: "100%",
+                        height: "100%",
+                        objectFit: "cover",
                       }}
                     />
                   ) : (
@@ -1066,8 +424,7 @@ const Profilee: React.FC = () => {
                 <div>
                   <div
                     style={{
-                      color:
-                        "#12203c",
+                      color: "#12203c",
                       fontSize: 13,
                       fontWeight: 600,
                       marginBottom: 6,
@@ -1078,21 +435,19 @@ const Profilee: React.FC = () => {
 
                   <div
                     style={{
-                      color:
-                        "#7b8494",
+                      color: "#7b8494",
                       fontSize: 11,
                       marginBottom: 10,
                     }}
                   >
-                    Recommended image
-                    size is 40px x 40px
+                    Recommended image size is
+                    40px x 40px
                   </div>
 
                   <div
                     style={{
                       display: "flex",
-                      alignItems:
-                        "center",
+                      alignItems: "center",
                       gap: 15,
                     }}
                   >
@@ -1101,39 +456,24 @@ const Profilee: React.FC = () => {
                       onClick={() =>
                         fileInputRef.current?.click()
                       }
-                      disabled={
-                        savingProfile
-                      }
                       style={{
                         minWidth: 56,
                         height: 28,
                         border: "none",
                         borderRadius: 5,
-                        padding:
-                          "0 10px",
-                        background:
-                          GOLD,
-                        color:
-                          "#ffffff",
+                        padding: "0 10px",
+                        background: GOLD,
+                        color: "#ffffff",
                         fontSize: 12,
                         fontWeight: 600,
-                        cursor:
-                          savingProfile
-                            ? "not-allowed"
-                            : "pointer",
-                        opacity:
-                          savingProfile
-                            ? 0.6
-                            : 1,
+                        cursor: "pointer",
                       }}
                     >
                       Upload
                     </button>
 
                     <input
-                      ref={
-                        fileInputRef
-                      }
+                      ref={fileInputRef}
                       type="file"
                       accept="image/*"
                       hidden
@@ -1147,25 +487,14 @@ const Profilee: React.FC = () => {
                       onClick={
                         handleImageCancel
                       }
-                      disabled={
-                        savingProfile
-                      }
                       style={{
                         border: "none",
                         background:
                           "transparent",
                         padding: 0,
-                        color:
-                          "#111827",
+                        color: "#111827",
                         fontSize: 12,
-                        cursor:
-                          savingProfile
-                            ? "not-allowed"
-                            : "pointer",
-                        opacity:
-                          savingProfile
-                            ? 0.6
-                            : 1,
+                        cursor: "pointer",
                       }}
                     >
                       Cancel
@@ -1174,71 +503,40 @@ const Profilee: React.FC = () => {
                 </div>
               </div>
 
-              {/* =================================================
-                  FIRST / LAST NAME
-              ================================================= */}
+              {/* FIRST / LAST NAME */}
 
               <TwoColumnRow>
                 <FormField
                   label="First Name"
                   name="firstName"
-                  value={
-                    form.firstName
-                  }
-                  onChange={
-                    handleChange
-                  }
-                  disabled={
-                    savingProfile
-                  }
+                  value={form.firstName}
+                  onChange={handleChange}
                 />
 
                 <FormField
                   label="Last Name"
                   name="lastName"
-                  value={
-                    form.lastName
-                  }
-                  onChange={
-                    handleChange
-                  }
-                  disabled={
-                    savingProfile
-                  }
+                  value={form.lastName}
+                  onChange={handleChange}
                 />
               </TwoColumnRow>
 
-              {/* =================================================
-                  EMAIL / PHONE
-              ================================================= */}
+              {/* EMAIL / PHONE */}
 
               <TwoColumnRow>
                 <FormField
                   label="Email"
                   name="email"
-                  value={
-                    form.email
-                  }
-                  onChange={
-                    handleChange
-                  }
-                  disabled={
-                    savingProfile
-                  }
+                  type="email"
+                  value={form.email}
+                  onChange={handleChange}
                 />
 
                 <FormField
                   label="Phone"
                   name="phone"
-                  value={
-                    form.phone
-                  }
-                  onChange={
-                    handleChange
-                  }
-                  disabled={
-                    savingProfile
-                  }
+                  value={form.phone}
+                  onChange={handleChange}
                 />
               </TwoColumnRow>
             </section>
@@ -1257,8 +555,7 @@ const Profilee: React.FC = () => {
             >
               <h3
                 style={{
-                  margin:
-                    "0 0 16px",
+                  margin: "0 0 16px",
                   fontSize: 13,
                   fontWeight: 600,
                   color: "#11203b",
@@ -1274,38 +571,20 @@ const Profilee: React.FC = () => {
                   display: "grid",
                   gridTemplateColumns:
                     "150px 1fr",
-                  alignItems:
-                    "center",
+                  alignItems: "center",
                   marginBottom: 16,
                 }}
               >
-                <label
-                  style={
-                    labelStyle
-                  }
-                >
+                <label style={labelStyle}>
                   Address
                 </label>
 
                 <input
                   type="text"
                   name="address"
-                  value={
-                    form.address
-                  }
-                  onChange={
-                    handleChange
-                  }
-                  disabled={
-                    savingProfile
-                  }
-                  style={{
-                    ...inputStyle,
-                    opacity:
-                      savingProfile
-                        ? 0.7
-                        : 1,
-                  }}
+                  value={form.address}
+                  onChange={handleChange}
+                  style={inputStyle}
                 />
               </div>
 
@@ -1315,9 +594,7 @@ const Profilee: React.FC = () => {
                 <SelectField
                   label="Country"
                   name="country"
-                  value={
-                    form.country
-                  }
+                  value={form.country}
                   options={[
                     "USA",
                     "Canada",
@@ -1325,20 +602,13 @@ const Profilee: React.FC = () => {
                     "France",
                     "India",
                   ]}
-                  onChange={
-                    handleChange
-                  }
-                  disabled={
-                    savingProfile
-                  }
+                  onChange={handleChange}
                 />
 
                 <SelectField
                   label="State"
                   name="state"
-                  value={
-                    form.state
-                  }
+                  value={form.state}
                   options={[
                     "California",
                     "New York",
@@ -1346,25 +616,20 @@ const Profilee: React.FC = () => {
                     "Florida",
                     "Gujarat",
                     "Maharashtra",
+                    "Rajasthan",
+                    "Delhi",
                   ]}
-                  onChange={
-                    handleChange
-                  }
-                  disabled={
-                    savingProfile
-                  }
+                  onChange={handleChange}
                 />
               </TwoColumnRow>
 
-              {/* CITY / POSTAL */}
+              {/* CITY / POSTAL CODE */}
 
               <TwoColumnRow>
                 <SelectField
                   label="City"
                   name="city"
-                  value={
-                    form.city
-                  }
+                  value={form.city}
                   options={[
                     "Los Angeles",
                     "San Diego",
@@ -1373,27 +638,16 @@ const Profilee: React.FC = () => {
                     "Ahmedabad",
                     "Surat",
                     "Mumbai",
+                    "Pune",
                   ]}
-                  onChange={
-                    handleChange
-                  }
-                  disabled={
-                    savingProfile
-                  }
+                  onChange={handleChange}
                 />
 
                 <FormField
                   label="Postal Code"
                   name="postalCode"
-                  value={
-                    form.postalCode
-                  }
-                  onChange={
-                    handleChange
-                  }
-                  disabled={
-                    savingProfile
-                  }
+                  value={form.postalCode}
+                  onChange={handleChange}
                 />
               </TwoColumnRow>
             </section>
@@ -1412,8 +666,7 @@ const Profilee: React.FC = () => {
             >
               <h3
                 style={{
-                  margin:
-                    "0 0 16px",
+                  margin: "0 0 16px",
                   fontSize: 13,
                   fontWeight: 600,
                   color: "#11203b",
@@ -1432,59 +685,30 @@ const Profilee: React.FC = () => {
               >
                 <PasswordField
                   label="Current Password"
-                  value={
-                    currentPassword
-                  }
+                  value={currentPassword}
                   onChange={
                     setCurrentPassword
                   }
-                  show={
-                    showCurrent
-                  }
-                  setShow={
-                    setShowCurrent
-                  }
-                  disabled={
-                    savingProfile
-                  }
+                  show={showCurrent}
+                  setShow={setShowCurrent}
                 />
 
                 <PasswordField
                   label="New Password"
-                  value={
-                    newPassword
-                  }
-                  onChange={
-                    setNewPassword
-                  }
-                  show={
-                    showNew
-                  }
-                  setShow={
-                    setShowNew
-                  }
-                  disabled={
-                    savingProfile
-                  }
+                  value={newPassword}
+                  onChange={setNewPassword}
+                  show={showNew}
+                  setShow={setShowNew}
                 />
 
                 <PasswordField
                   label="Confirm Password"
-                  value={
-                    confirmPassword
-                  }
+                  value={confirmPassword}
                   onChange={
                     setConfirmPassword
                   }
-                  show={
-                    showConfirm
-                  }
-                  setShow={
-                    setShowConfirm
-                  }
-                  disabled={
-                    savingProfile
-                  }
+                  show={showConfirm}
+                  setShow={setShowConfirm}
                 />
               </div>
             </section>
@@ -1496,86 +720,50 @@ const Profilee: React.FC = () => {
             <div
               style={{
                 display: "flex",
-                justifyContent:
-                  "flex-end",
-                alignItems:
-                  "center",
+                justifyContent: "flex-end",
+                alignItems: "center",
                 gap: 16,
                 paddingTop: 16,
               }}
             >
               <button
                 type="button"
-                onClick={
-                  handleCancel
-                }
-                disabled={
-                  savingProfile
-                }
+                onClick={handleCancel}
                 style={{
                   height: 39,
                   minWidth: 72,
-                  padding:
-                    "0 14px",
-                  background:
-                    "#ffffff",
+                  padding: "0 14px",
+                  background: "#ffffff",
                   border:
                     `1px solid ${BORDER}`,
                   borderRadius: 5,
-                  color:
-                    "#26344e",
+                  color: "#26344e",
                   fontSize: 13,
                   fontWeight: 500,
-                  cursor:
-                    savingProfile
-                      ? "not-allowed"
-                      : "pointer",
-                  opacity:
-                    savingProfile
-                      ? 0.6
-                      : 1,
+                  cursor: "pointer",
                 }}
               >
                 Cancel
               </button>
 
+              {/* UI ONLY - NO API CALL */}
+
               <button
                 type="button"
-                onClick={
-                  handleSave
-                }
-                disabled={
-                  savingProfile ||
-                  loadingProfile
-                }
                 style={{
                   height: 39,
                   minWidth: 60,
-                  padding:
-                    "0 14px",
-                  background:
-                    GOLD,
+                  padding: "0 14px",
+                  background: GOLD,
                   border: "none",
                   borderRadius: 5,
-                  color:
-                    "#ffffff",
+                  color: "#ffffff",
                   fontSize: 13,
                   fontWeight: 600,
-                  cursor:
-                    savingProfile ||
-                    loadingProfile
-                      ? "not-allowed"
-                      : "pointer",
-                  opacity:
-                    savingProfile ||
-                    loadingProfile
-                      ? 0.7
-                      : 1,
+                  cursor: "pointer",
                 }}
               >
-                {savingProfile
-                  ? "Saving..."
-                  : "Save"}
+                Save
               </button>
             </div>
           </div>
@@ -1617,14 +805,13 @@ interface FormFieldProps {
   label: string;
   name: string;
   value: string;
+  type?: React.HTMLInputTypeAttribute;
 
   onChange: (
     e: React.ChangeEvent<
       HTMLInputElement | HTMLSelectElement
     >
   ) => void;
-
-  disabled?: boolean;
 }
 
 const FormField: React.FC<
@@ -1633,8 +820,8 @@ const FormField: React.FC<
   label,
   name,
   value,
+  type = "text",
   onChange,
-  disabled = false,
 }) => {
   return (
     <div
@@ -1642,27 +829,19 @@ const FormField: React.FC<
         display: "grid",
         gridTemplateColumns:
           "150px 1fr",
-        alignItems:
-          "center",
+        alignItems: "center",
       }}
     >
-      <label
-        style={labelStyle}
-      >
+      <label style={labelStyle}>
         {label}
       </label>
 
       <input
-        type="text"
+        type={type}
         name={name}
         value={value}
         onChange={onChange}
-        disabled={disabled}
-        style={{
-          ...inputStyle,
-          opacity:
-            disabled ? 0.7 : 1,
-        }}
+        style={inputStyle}
       />
     </div>
   );
@@ -1683,8 +862,6 @@ interface SelectFieldProps {
       HTMLInputElement | HTMLSelectElement
     >
   ) => void;
-
-  disabled?: boolean;
 }
 
 const SelectField: React.FC<
@@ -1695,7 +872,6 @@ const SelectField: React.FC<
   value,
   options,
   onChange,
-  disabled = false,
 }) => {
   return (
     <div
@@ -1703,55 +879,42 @@ const SelectField: React.FC<
         display: "grid",
         gridTemplateColumns:
           "150px 1fr",
-        alignItems:
-          "center",
+        alignItems: "center",
       }}
     >
-      <label
-        style={labelStyle}
-      >
+      <label style={labelStyle}>
         {label}
       </label>
 
       <div
         style={{
-          position:
-            "relative",
+          position: "relative",
         }}
       >
         <select
           name={name}
           value={value}
           onChange={onChange}
-          disabled={disabled}
           style={{
             ...inputStyle,
             paddingRight: 36,
-            appearance:
-              "none",
-            WebkitAppearance:
-              "none",
-            cursor: disabled
-              ? "not-allowed"
-              : "pointer",
-            opacity:
-              disabled ? 0.7 : 1,
+            appearance: "none",
+            WebkitAppearance: "none",
+            cursor: "pointer",
           }}
         >
           <option value="">
             Select
           </option>
 
-          {options.map(
-            (item) => (
-              <option
-                key={item}
-                value={item}
-              >
-                {item}
-              </option>
-            )
-          )}
+          {options.map((item) => (
+            <option
+              key={item}
+              value={item}
+            >
+              {item}
+            </option>
+          ))}
         </select>
 
         <ChevronDown
@@ -1759,14 +922,12 @@ const SelectField: React.FC<
           strokeWidth={1.7}
           color="#526176"
           style={{
-            position:
-              "absolute",
+            position: "absolute",
             right: 10,
             top: "50%",
             transform:
               "translateY(-50%)",
-            pointerEvents:
-              "none",
+            pointerEvents: "none",
           }}
         />
       </div>
@@ -1781,6 +942,7 @@ const SelectField: React.FC<
 interface PasswordFieldProps {
   label: string;
   value: string;
+
   onChange: (
     value: string
   ) => void;
@@ -1790,8 +952,6 @@ interface PasswordFieldProps {
   setShow: React.Dispatch<
     React.SetStateAction<boolean>
   >;
-
-  disabled?: boolean;
 }
 
 const PasswordField: React.FC<
@@ -1802,7 +962,6 @@ const PasswordField: React.FC<
   onChange,
   show,
   setShow,
-  disabled = false,
 }) => {
   return (
     <div
@@ -1810,16 +969,14 @@ const PasswordField: React.FC<
         display: "grid",
         gridTemplateColumns:
           "145px 1fr",
-        alignItems:
-          "center",
+        alignItems: "center",
         minWidth: 0,
       }}
     >
       <label
         style={{
           ...labelStyle,
-          whiteSpace:
-            "nowrap",
+          whiteSpace: "nowrap",
         }}
       >
         {label}
@@ -1827,8 +984,7 @@ const PasswordField: React.FC<
 
       <div
         style={{
-          position:
-            "relative",
+          position: "relative",
           minWidth: 0,
         }}
       >
@@ -1840,16 +996,11 @@ const PasswordField: React.FC<
           }
           value={value}
           onChange={(e) =>
-            onChange(
-              e.target.value
-            )
+            onChange(e.target.value)
           }
-          disabled={disabled}
           style={{
             ...inputStyle,
             paddingRight: 38,
-            opacity:
-              disabled ? 0.7 : 1,
           }}
         />
 
@@ -1857,38 +1008,24 @@ const PasswordField: React.FC<
           type="button"
           onClick={() =>
             setShow(
-              (prev) =>
-                !prev
+              (prev) => !prev
             )
           }
-          disabled={disabled}
           style={{
-            position:
-              "absolute",
+            position: "absolute",
             right: 10,
             top: "50%",
             transform:
               "translateY(-50%)",
             border: "none",
-            background:
-              "transparent",
+            background: "transparent",
             padding: 0,
             margin: 0,
-            color:
-              "#101b30",
-            cursor:
-              disabled
-                ? "not-allowed"
-                : "pointer",
+            color: "#101b30",
+            cursor: "pointer",
             display: "flex",
-            alignItems:
-              "center",
-            justifyContent:
-              "center",
-            opacity:
-              disabled
-                ? 0.6
-                : 1,
+            alignItems: "center",
+            justifyContent: "center",
           }}
         >
           {show ? (
@@ -1912,33 +1049,27 @@ const PasswordField: React.FC<
    STYLES
 ===================================================== */
 
-const labelStyle: React.CSSProperties =
-  {
-    margin: 0,
-    color: "#12203c",
-    fontSize: 13,
-    lineHeight: "18px",
-    fontWeight: 400,
-  };
+const labelStyle: React.CSSProperties = {
+  margin: 0,
+  color: "#12203c",
+  fontSize: 13,
+  lineHeight: "18px",
+  fontWeight: 400,
+};
 
-const inputStyle: React.CSSProperties =
-  {
-    width: "100%",
-    height: 38,
-    padding: "0 10px",
-    boxSizing: "border-box",
-    border:
-      `1px solid ${BORDER}`,
-    borderRadius: 5,
-    outline: "none",
-    background:
-      "#ffffff",
-    color:
-      "#26344e",
-    fontSize: 13,
-    fontFamily:
-      "'Inter', 'Nunito Sans', 'Segoe UI', Arial, sans-serif",
-  };
+const inputStyle: React.CSSProperties = {
+  width: "100%",
+  height: 38,
+  padding: "0 10px",
+  boxSizing: "border-box",
+  border: `1px solid ${BORDER}`,
+  borderRadius: 5,
+  outline: "none",
+  background: "#ffffff",
+  color: "#26344e",
+  fontSize: 13,
+  fontFamily:
+    "'Inter', 'Nunito Sans', 'Segoe UI', Arial, sans-serif",
+};
 
 export default Profilee;
-

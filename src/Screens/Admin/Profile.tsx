@@ -1,8 +1,4 @@
-import React, {
-  useEffect,
-  useRef,
-  useState,
-} from "react";
+import React, { useRef, useState } from "react";
 
 import {
   Camera,
@@ -11,11 +7,6 @@ import {
   EyeOff,
   Home,
 } from "lucide-react";
-
-import {
-  getEmployeeProfile,
-  updateEmployeeProfile,
-} from "../../services/adminservices";
 
 /* =========================================================
    TYPES
@@ -31,59 +22,9 @@ interface ProfileForm {
   state: string;
   city: string;
   postalCode: string;
-
   currentPassword: string;
   newPassword: string;
   confirmPassword: string;
-}
-
-interface ProfileApiData {
-  id?: string;
-  Id?: string;
-
-  userId?: string;
-  UserId?: string;
-
-  firstName?: string;
-  FirstName?: string;
-
-  lastName?: string;
-  LastName?: string;
-
-  email?: string;
-  Email?: string;
-
-  phone?: string;
-  Phone?: string;
-
-  address?: string;
-  Address?: string;
-
-  country?: string;
-  Country?: string;
-
-  state?: string;
-  State?: string;
-
-  city?: string;
-  City?: string;
-
-  postalCode?: string;
-  PostalCode?: string;
-
-  profilePicture?: string;
-  ProfilePicture?: string;
-
-  profilePhoto?: string;
-  ProfilePhoto?: string;
-
-  profileImage?: string;
-  ProfileImage?: string;
-
-  photo?: string;
-  Photo?: string;
-
-  [key: string]: any;
 }
 
 /* =========================================================
@@ -100,56 +41,9 @@ const emptyProfile: ProfileForm = {
   state: "",
   city: "",
   postalCode: "",
-
   currentPassword: "",
   newPassword: "",
   confirmPassword: "",
-};
-
-/* =========================================================
-   HELPERS
-========================================================= */
-
-const getValue = (
-  data: ProfileApiData,
-  lowerKey: string,
-  upperKey: string
-): string => {
-  return String(
-    data?.[lowerKey] ??
-      data?.[upperKey] ??
-      ""
-  );
-};
-
-const getProfileObject = (
-  response: any
-): ProfileApiData => {
-  if (
-    response?.data &&
-    typeof response.data === "object" &&
-    !Array.isArray(response.data)
-  ) {
-    return response.data;
-  }
-
-  if (
-    response?.result &&
-    typeof response.result === "object" &&
-    !Array.isArray(response.result)
-  ) {
-    return response.result;
-  }
-
-  if (
-    response?.Data &&
-    typeof response.Data === "object" &&
-    !Array.isArray(response.Data)
-  ) {
-    return response.Data;
-  }
-
-  return response || {};
 };
 
 /* =========================================================
@@ -157,32 +51,10 @@ const getProfileObject = (
 ========================================================= */
 
 const Profile: React.FC = () => {
-  /*
-   * Login ke time jo userId localStorage mein save hua hai,
-   * wahi logged-in user's identity hai.
-   *
-   * Profile API response se isko overwrite nahi karna hai.
-   */
-  const storedUserId =
-    localStorage.getItem("userId") || "";
-
-  const fileInputRef =
-    useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [profile, setProfile] =
-    useState<ProfileForm>(
-      emptyProfile
-    );
-
-  const [originalProfile, setOriginalProfile] =
-    useState<ProfileForm>(
-      emptyProfile
-    );
-
-  const [profileId, setProfileId] =
-    useState<string>(
-      storedUserId
-    );
+    useState<ProfileForm>(emptyProfile);
 
   const [showCurrent, setShowCurrent] =
     useState(false);
@@ -196,15 +68,6 @@ const Profile: React.FC = () => {
   const [photoPreview, setPhotoPreview] =
     useState<string>("");
 
-  const [selectedPhoto, setSelectedPhoto] =
-    useState<File | null>(null);
-
-  const [loading, setLoading] =
-    useState(false);
-
-  const [saving, setSaving] =
-    useState(false);
-
   /* =======================================================
      HANDLE INPUT
   ======================================================= */
@@ -214,10 +77,7 @@ const Profile: React.FC = () => {
       HTMLInputElement | HTMLSelectElement
     >
   ) => {
-    const {
-      name,
-      value,
-    } = e.target;
+    const { name, value } = e.target;
 
     setProfile((prev) => ({
       ...prev,
@@ -226,269 +86,29 @@ const Profile: React.FC = () => {
   };
 
   /* =======================================================
-     FETCH PROFILE
-     GET /api/Profile/Get-Profile
-  ======================================================= */
-
-  const fetchProfile = async () => {
-    try {
-      setLoading(true);
-
-      /*
-       * Always read the CURRENT token.
-       * This prevents an old Admin/HR token from being
-       * captured by the component.
-       */
-      const currentToken =
-        localStorage.getItem("token");
-
-      const currentUserId =
-        localStorage.getItem("userId");
-
-      const currentRole =
-        localStorage.getItem("role");
-
-      console.log(
-        "========== PROFILE SESSION =========="
-      );
-
-      /*
-       * Do NOT print the actual JWT.
-       */
-      console.log(
-        "PROFILE HAS TOKEN:",
-        Boolean(currentToken)
-      );
-
-      console.log(
-        "PROFILE CURRENT USER ID:",
-        currentUserId
-      );
-
-      console.log(
-        "PROFILE CURRENT ROLE:",
-        currentRole
-      );
-
-      if (!currentToken) {
-        throw new Error(
-          "Authentication token not found. Please login again."
-        );
-      }
-
-      const response =
-        await getEmployeeProfile(
-          currentToken
-        );
-
-      console.log(
-        "PROFILE SCREEN API RESPONSE:",
-        response
-      );
-
-      const data =
-        getProfileObject(response);
-
-      console.log(
-        "PROFILE OBJECT:",
-        data
-      );
-
-      const apiProfile: ProfileForm = {
-        firstName: getValue(
-          data,
-          "firstName",
-          "FirstName"
-        ),
-
-        lastName: getValue(
-          data,
-          "lastName",
-          "LastName"
-        ),
-
-        email: getValue(
-          data,
-          "email",
-          "Email"
-        ),
-
-        phone: getValue(
-          data,
-          "phone",
-          "Phone"
-        ),
-
-        address: getValue(
-          data,
-          "address",
-          "Address"
-        ),
-
-        country: getValue(
-          data,
-          "country",
-          "Country"
-        ),
-
-        state: getValue(
-          data,
-          "state",
-          "State"
-        ),
-
-        city: getValue(
-          data,
-          "city",
-          "City"
-        ),
-
-        postalCode: getValue(
-          data,
-          "postalCode",
-          "PostalCode"
-        ),
-
-        currentPassword: "",
-        newPassword: "",
-        confirmPassword: "",
-      };
-
-      /*
-       * IMPORTANT:
-       *
-       * Do NOT do:
-       *
-       * const id = data.id;
-       * setProfileId(id);
-       *
-       * The API response ID should NOT overwrite
-       * the logged-in session identity.
-       *
-       * userId saved during login remains the identity.
-       */
-
-      const loggedInUserId =
-        String(
-          localStorage.getItem(
-            "userId"
-          ) || ""
-        ).trim();
-
-      if (loggedInUserId) {
-        setProfileId(
-          loggedInUserId
-        );
-      }
-
-      setProfile(
-        apiProfile
-      );
-
-      setOriginalProfile(
-        apiProfile
-      );
-
-      const profileImage =
-        data?.profilePicture ||
-        data?.ProfilePicture ||
-        data?.profilePhoto ||
-        data?.ProfilePhoto ||
-        data?.profileImage ||
-        data?.ProfileImage ||
-        data?.photo ||
-        data?.Photo ||
-        "";
-
-      setPhotoPreview(
-        profileImage || ""
-      );
-    } catch (error: any) {
-      console.error(
-        "Profile fetch failed:",
-        error
-      );
-
-      alert(
-        error?.message ||
-          "Failed to load profile."
-      );
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  /* =======================================================
-     INITIAL LOAD
-  ======================================================= */
-
-  useEffect(() => {
-    const currentToken =
-      localStorage.getItem("token");
-
-    if (currentToken) {
-      fetchProfile();
-    }
-  }, []);
-
-  /* =======================================================
-     PHOTO CHANGE
+     PHOTO PREVIEW
   ======================================================= */
 
   const handlePhotoChange = (
     e: React.ChangeEvent<HTMLInputElement>
   ) => {
-    const file =
-      e.target.files?.[0];
+    const file = e.target.files?.[0];
 
     if (!file) {
       return;
     }
 
     if (
-      !file.type.startsWith(
-        "image/"
-      )
-    ) {
-      alert(
-        "Please select a valid image."
-      );
-
-      e.target.value = "";
-      return;
-    }
-
-    const maxSize =
-      4 * 1024 * 1024;
-
-    if (file.size > maxSize) {
-      alert(
-        "Profile image must be less than 4 MB."
-      );
-
-      e.target.value = "";
-      return;
-    }
-
-    if (
       photoPreview &&
-      photoPreview.startsWith(
-        "blob:"
-      )
+      photoPreview.startsWith("blob:")
     ) {
-      URL.revokeObjectURL(
-        photoPreview
-      );
+      URL.revokeObjectURL(photoPreview);
     }
-
-    setSelectedPhoto(file);
 
     const previewUrl =
       URL.createObjectURL(file);
 
-    setPhotoPreview(
-      previewUrl
-    );
+    setPhotoPreview(previewUrl);
   };
 
   /* =======================================================
@@ -498,25 +118,16 @@ const Profile: React.FC = () => {
   const handlePhotoCancel = () => {
     if (
       photoPreview &&
-      photoPreview.startsWith(
-        "blob:"
-      )
+      photoPreview.startsWith("blob:")
     ) {
-      URL.revokeObjectURL(
-        photoPreview
-      );
+      URL.revokeObjectURL(photoPreview);
     }
 
-    setSelectedPhoto(null);
+    setPhotoPreview("");
 
-    if (
-      fileInputRef.current
-    ) {
-      fileInputRef.current.value =
-        "";
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
     }
-
-    fetchProfile();
   };
 
   /* =======================================================
@@ -524,241 +135,13 @@ const Profile: React.FC = () => {
   ======================================================= */
 
   const handleCancel = () => {
-    setProfile({
-      ...originalProfile,
-
-      currentPassword: "",
-      newPassword: "",
-      confirmPassword: "",
-    });
+    setProfile(emptyProfile);
 
     setShowCurrent(false);
     setShowNew(false);
     setShowConfirm(false);
 
-    setSelectedPhoto(null);
-
-    if (
-      fileInputRef.current
-    ) {
-      fileInputRef.current.value =
-        "";
-    }
-
-    fetchProfile();
-  };
-
-  /* =======================================================
-     SAVE PROFILE
-     PUT /api/Profile/Update-Profile
-  ======================================================= */
-
-  const handleSave = async () => {
-    try {
-      /*
-       * IMPORTANT:
-       *
-       * Always get the latest userId from localStorage.
-       *
-       * localStorage userId is the ID obtained during
-       * Admin login.
-       */
-      const currentUserId =
-        String(
-          localStorage.getItem(
-            "userId"
-          ) ||
-            profileId ||
-            ""
-        ).trim();
-
-      if (!currentUserId) {
-        alert(
-          "Profile ID not found. Please login again."
-        );
-
-        return;
-      }
-
-      /* -----------------------------------------------
-         PASSWORD VALIDATION
-      ------------------------------------------------ */
-
-      if (
-        profile.newPassword &&
-        profile.newPassword !==
-          profile.confirmPassword
-      ) {
-        alert(
-          "New Password and Confirm Password do not match."
-        );
-
-        return;
-      }
-
-      if (
-        profile.newPassword &&
-        !profile.currentPassword
-      ) {
-        alert(
-          "Please enter Current Password."
-        );
-
-        return;
-      }
-
-      if (
-        profile.confirmPassword &&
-        !profile.newPassword
-      ) {
-        alert(
-          "Please enter New Password."
-        );
-
-        return;
-      }
-
-      /* -----------------------------------------------
-         CURRENT TOKEN
-      ------------------------------------------------ */
-
-      const currentToken =
-        localStorage.getItem(
-          "token"
-        );
-
-      if (!currentToken) {
-        alert(
-          "Authentication token not found. Please login again."
-        );
-
-        return;
-      }
-
-      /* -----------------------------------------------
-         SAVE
-      ------------------------------------------------ */
-
-      setSaving(true);
-
-      const payload = {
-        Id: currentUserId,
-
-        FirstName:
-          profile.firstName.trim(),
-
-        LastName:
-          profile.lastName.trim(),
-
-        Email:
-          profile.email.trim(),
-
-        Phone:
-          profile.phone.trim(),
-
-        Address:
-          profile.address.trim(),
-
-        Country:
-          profile.country.trim(),
-
-        State:
-          profile.state.trim(),
-
-        City:
-          profile.city.trim(),
-
-        PostalCode:
-          profile.postalCode.trim(),
-
-        CurrentPassword:
-          profile.currentPassword ||
-          "",
-
-        NewPassword:
-          profile.newPassword ||
-          "",
-
-        ConfirmPassword:
-          profile.confirmPassword ||
-          "",
-
-        ProfilePicture:
-          selectedPhoto,
-      };
-
-      console.log(
-        "PROFILE UPDATE PAYLOAD:",
-        {
-          ...payload,
-
-          CurrentPassword:
-            payload.CurrentPassword
-              ? "***"
-              : "",
-
-          NewPassword:
-            payload.NewPassword
-              ? "***"
-              : "",
-
-          ConfirmPassword:
-            payload.ConfirmPassword
-              ? "***"
-              : "",
-
-          ProfilePicture:
-            selectedPhoto?.name ||
-            null,
-        }
-      );
-
-      /*
-       * Send update with the CURRENT Admin token.
-       */
-      await updateEmployeeProfile(
-        payload,
-        currentToken
-      );
-
-      alert(
-        "Profile Updated Successfully."
-      );
-
-      setProfile((prev) => ({
-        ...prev,
-
-        currentPassword: "",
-        newPassword: "",
-        confirmPassword: "",
-      }));
-
-      setSelectedPhoto(null);
-
-      if (
-        fileInputRef.current
-      ) {
-        fileInputRef.current.value =
-          "";
-      }
-
-      /*
-       * Re-fetch using the latest token.
-       */
-      await fetchProfile();
-    } catch (error: any) {
-      console.error(
-        "Profile update failed:",
-        error
-      );
-
-      alert(
-        error?.message ||
-          "Profile Update Failed."
-      );
-    } finally {
-      setSaving(false);
-    }
+    handlePhotoCancel();
   };
 
   /* =======================================================
@@ -769,11 +152,9 @@ const Profile: React.FC = () => {
     <div
       style={{
         background: "#f7f8fa",
-        minHeight:
-          "calc(100vh - 49px)",
+        minHeight: "calc(100vh - 49px)",
         padding: "24px",
-        fontFamily:
-          "Inter, sans-serif",
+        fontFamily: "Inter, sans-serif",
         color: "#0f2447",
       }}
     >
@@ -839,8 +220,7 @@ const Profile: React.FC = () => {
           style={{
             width: "38px",
             height: "39px",
-            border:
-              "1px solid #e2e6ec",
+            border: "1px solid #e2e6ec",
             borderRadius: "5px",
             background: "#ffffff",
             display: "flex",
@@ -866,8 +246,7 @@ const Profile: React.FC = () => {
         style={{
           width: "100%",
           background: "#ffffff",
-          border:
-            "1px solid #dde2e8",
+          border: "1px solid #dde2e8",
           borderRadius: "5px",
           boxShadow:
             "0 1px 2px rgba(0,0,0,0.02)",
@@ -875,8 +254,7 @@ const Profile: React.FC = () => {
       >
         <div
           style={{
-            padding:
-              "19px 20px 20px",
+            padding: "19px 20px 20px",
           }}
         >
           {/* CARD TITLE */}
@@ -901,561 +279,415 @@ const Profile: React.FC = () => {
             </h4>
           </div>
 
-          {/* LOADING */}
+          {/* =================================================
+              BASIC INFORMATION
+          ================================================= */}
 
-          {loading ? (
+          <section
+            style={{
+              borderBottom:
+                "1px solid #dfe3e8",
+              padding: "16px 0 16px",
+            }}
+          >
+            <SectionTitle>
+              Basic Information
+            </SectionTitle>
+
+            {/* PROFILE PHOTO */}
+
             <div
+              className="d-flex align-items-center"
               style={{
-                minHeight: "400px",
-                display: "flex",
-                justifyContent:
-                  "center",
-                alignItems: "center",
-                fontSize: "13px",
-                color: "#667085",
+                minHeight: "114px",
+                background: "#f8f9fa",
+                borderRadius: "4px",
+                padding: "16px",
+                marginTop: "17px",
+                marginBottom: "23px",
               }}
             >
-              Loading...
-            </div>
-          ) : (
-            <>
-              {/* =================================================
-                  BASIC INFORMATION
-              ================================================= */}
-
-              <section
+              <div
                 style={{
-                  borderBottom:
-                    "1px solid #dfe3e8",
-                  padding:
-                    "16px 0 16px",
+                  width: "82px",
+                  height: "82px",
+                  minWidth: "82px",
+                  borderRadius: "50%",
+                  border:
+                    "1px dashed #d5dbe3",
+                  background: "#ffffff",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  overflow: "hidden",
+                  marginRight: "23px",
                 }}
               >
-                <SectionTitle>
-                  Basic Information
-                </SectionTitle>
+                {photoPreview ? (
+                  <img
+                    src={photoPreview}
+                    alt="Profile"
+                    style={{
+                      width: "100%",
+                      height: "100%",
+                      objectFit: "cover",
+                    }}
+                  />
+                ) : (
+                  <Camera
+                    size={17}
+                    strokeWidth={1.5}
+                    color="#ccd2da"
+                  />
+                )}
+              </div>
 
-                {/* PROFILE PHOTO */}
+              <div>
+                <div
+                  style={{
+                    marginBottom: "5px",
+                    fontSize: "14px",
+                    lineHeight: "18px",
+                    fontWeight: 600,
+                    color: "#10264c",
+                  }}
+                >
+                  Profile Photo
+                </div>
+
+                <div
+                  style={{
+                    marginBottom: "9px",
+                    fontSize: "12px",
+                    lineHeight: "16px",
+                    color: "#798599",
+                  }}
+                >
+                  Recommended image size is
+                  40px x 40px
+                </div>
 
                 <div
                   className="d-flex align-items-center"
                   style={{
-                    minHeight: "114px",
-                    background:
-                      "#f8f9fa",
-                    borderRadius: "4px",
-                    padding: "16px",
-                    marginTop: "17px",
-                    marginBottom: "23px",
+                    gap: "17px",
                   }}
                 >
-                  <div
+                  <button
+                    type="button"
+                    onClick={() =>
+                      fileInputRef.current?.click()
+                    }
                     style={{
-                      width: "82px",
-                      height: "82px",
-                      minWidth: "82px",
-                      borderRadius:
-                        "50%",
-                      border:
-                        "1px dashed #d5dbe3",
-                      background:
-                        "#ffffff",
-                      display: "flex",
-                      alignItems:
-                        "center",
-                      justifyContent:
-                        "center",
-                      overflow: "hidden",
-                      marginRight:
-                        "23px",
+                      minWidth: "57px",
+                      height: "28px",
+                      padding: "0 9px",
+                      border: "none",
+                      borderRadius: "5px",
+                      background: "#bd8d32",
+                      color: "#ffffff",
+                      fontSize: "12px",
+                      lineHeight: "28px",
+                      fontWeight: 600,
+                      cursor: "pointer",
                     }}
                   >
-                    {photoPreview ? (
-                      <img
-                        src={
-                          photoPreview
-                        }
-                        alt="Profile"
-                        style={{
-                          width: "100%",
-                          height: "100%",
-                          objectFit:
-                            "cover",
-                        }}
-                      />
-                    ) : (
-                      <Camera
-                        size={17}
-                        strokeWidth={
-                          1.5
-                        }
-                        color="#ccd2da"
-                      />
-                    )}
-                  </div>
+                    Upload
+                  </button>
 
-                  <div>
-                    <div
-                      style={{
-                        marginBottom:
-                          "5px",
-                        fontSize:
-                          "14px",
-                        lineHeight:
-                          "18px",
-                        fontWeight: 600,
-                        color:
-                          "#10264c",
-                      }}
-                    >
-                      Profile Photo
-                    </div>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    hidden
+                    onChange={handlePhotoChange}
+                  />
 
-                    <div
-                      style={{
-                        marginBottom:
-                          "9px",
-                        fontSize:
-                          "12px",
-                        lineHeight:
-                          "16px",
-                        color:
-                          "#798599",
-                      }}
-                    >
-                      Recommended image size is
-                      40px x 40px
-                    </div>
-
-                    <div
-                      className="d-flex align-items-center"
-                      style={{
-                        gap: "17px",
-                      }}
-                    >
-                      <button
-                        type="button"
-                        onClick={() =>
-                          fileInputRef.current?.click()
-                        }
-                        style={{
-                          minWidth:
-                            "57px",
-                          height: "28px",
-                          padding:
-                            "0 9px",
-                          border:
-                            "none",
-                          borderRadius:
-                            "5px",
-                          background:
-                            "#bd8d32",
-                          color:
-                            "#ffffff",
-                          fontSize:
-                            "12px",
-                          lineHeight:
-                            "28px",
-                          fontWeight: 600,
-                          cursor:
-                            "pointer",
-                        }}
-                      >
-                        Upload
-                      </button>
-
-                      <input
-                        ref={
-                          fileInputRef
-                        }
-                        type="file"
-                        accept="image/*"
-                        hidden
-                        onChange={
-                          handlePhotoChange
-                        }
-                      />
-
-                      <button
-                        type="button"
-                        onClick={
-                          handlePhotoCancel
-                        }
-                        style={{
-                          border:
-                            "none",
-                          background:
-                            "transparent",
-                          padding: 0,
-                          height:
-                            "28px",
-                          fontSize:
-                            "12px",
-                          color:
-                            "#15294b",
-                          cursor:
-                            "pointer",
-                        }}
-                      >
-                        Cancel
-                      </button>
-                    </div>
-                  </div>
-                </div>
-
-                {/* FIRST / LAST NAME */}
-
-                <div className="row gx-4">
-                  <div className="col-md-6">
-                    <HorizontalInput
-                      label="First Name"
-                      name="firstName"
-                      value={
-                        profile.firstName
-                      }
-                      onChange={
-                        handleChange
-                      }
-                    />
-                  </div>
-
-                  <div className="col-md-6">
-                    <HorizontalInput
-                      label="Last Name"
-                      name="lastName"
-                      value={
-                        profile.lastName
-                      }
-                      onChange={
-                        handleChange
-                      }
-                    />
-                  </div>
-
-                  <div className="col-md-6">
-                    <HorizontalInput
-                      label="Email"
-                      name="email"
-                      type="email"
-                      value={
-                        profile.email
-                      }
-                      onChange={
-                        handleChange
-                      }
-                    />
-                  </div>
-
-                  <div className="col-md-6">
-                    <HorizontalInput
-                      label="Phone"
-                      name="phone"
-                      value={
-                        profile.phone
-                      }
-                      onChange={
-                        handleChange
-                      }
-                    />
-                  </div>
-                </div>
-              </section>
-
-              {/* =================================================
-                  ADDRESS INFORMATION
-              ================================================= */}
-
-              <section
-                style={{
-                  borderBottom:
-                    "1px solid #dfe3e8",
-                  padding:
-                    "14px 0 15px",
-                }}
-              >
-                <SectionTitle>
-                  Address Information
-                </SectionTitle>
-
-                <div
-                  style={{
-                    marginTop: "16px",
-                  }}
-                >
-                  {/* ADDRESS */}
-
-                  <div
-                    className="row align-items-center"
+                  <button
+                    type="button"
+                    onClick={handlePhotoCancel}
                     style={{
-                      marginBottom:
-                        "16px",
+                      border: "none",
+                      background: "transparent",
+                      padding: 0,
+                      height: "28px",
+                      fontSize: "12px",
+                      color: "#15294b",
+                      cursor: "pointer",
                     }}
                   >
-                    <div className="col-md-2">
-                      <FormLabel>
-                        Address
-                      </FormLabel>
-                    </div>
-
-                    <div className="col-md-10">
-                      <input
-                        type="text"
-                        name="address"
-                        value={
-                          profile.address
-                        }
-                        onChange={
-                          handleChange
-                        }
-                        className="form-control"
-                        style={
-                          inputStyle
-                        }
-                      />
-                    </div>
-                  </div>
-
-                  {/* COUNTRY / STATE */}
-
-                  <div className="row gx-4">
-                    <div className="col-md-6">
-                      <HorizontalSelect
-                        label="Country"
-                        name="country"
-                        value={
-                          profile.country
-                        }
-                        onChange={
-                          handleChange
-                        }
-                        options={[
-                          "India",
-                          "USA",
-                          "Canada",
-                          "Germany",
-                          "France",
-                        ]}
-                      />
-                    </div>
-
-                    <div className="col-md-6">
-                      <HorizontalSelect
-                        label="State"
-                        name="state"
-                        value={
-                          profile.state
-                        }
-                        onChange={
-                          handleChange
-                        }
-                        options={[
-                          "Gujarat",
-                          "Maharashtra",
-                          "Rajasthan",
-                          "Delhi",
-                          "Madhya Pradesh",
-                          "California",
-                          "New York",
-                          "Texas",
-                          "Florida",
-                        ]}
-                      />
-                    </div>
-
-                    {/* CITY / POSTAL CODE */}
-
-                    <div className="col-md-6">
-                      <HorizontalSelect
-                        label="City"
-                        name="city"
-                        value={
-                          profile.city
-                        }
-                        onChange={
-                          handleChange
-                        }
-                        options={[
-                          "Ahmedabad",
-                          "Surat",
-                          "Vadodara",
-                          "Rajkot",
-                          "Mumbai",
-                          "Pune",
-                          "Los Angeles",
-                          "San Diego",
-                          "Fresno",
-                          "San Francisco",
-                        ]}
-                      />
-                    </div>
-
-                    <div className="col-md-6">
-                      <HorizontalInput
-                        label="Postal Code"
-                        name="postalCode"
-                        value={
-                          profile.postalCode
-                        }
-                        onChange={
-                          handleChange
-                        }
-                      />
-                    </div>
-                  </div>
+                    Cancel
+                  </button>
                 </div>
-              </section>
+              </div>
+            </div>
 
-              {/* =================================================
-                  CHANGE PASSWORD
-              ================================================= */}
+            {/* FIRST / LAST NAME */}
 
-              <section
-                style={{
-                  borderBottom:
-                    "1px solid #dfe3e8",
-                  padding:
-                    "15px 0 16px",
-                }}
-              >
-                <SectionTitle>
-                  Change Password
-                </SectionTitle>
+            <div className="row gx-4">
+              <div className="col-md-6">
+                <HorizontalInput
+                  label="First Name"
+                  name="firstName"
+                  value={profile.firstName}
+                  onChange={handleChange}
+                />
+              </div>
 
-                <div
-                  style={{
-                    marginTop: "17px",
-                  }}
-                >
-                  <PasswordField
-                    label="Current Password"
-                    name="currentPassword"
-                    value={
-                      profile.currentPassword
-                    }
-                    show={
-                      showCurrent
-                    }
-                    setShow={
-                      setShowCurrent
-                    }
-                    onChange={
-                      handleChange
-                    }
-                  />
+              <div className="col-md-6">
+                <HorizontalInput
+                  label="Last Name"
+                  name="lastName"
+                  value={profile.lastName}
+                  onChange={handleChange}
+                />
+              </div>
 
-                  <PasswordField
-                    label="New Password"
-                    name="newPassword"
-                    value={
-                      profile.newPassword
-                    }
-                    show={showNew}
-                    setShow={
-                      setShowNew
-                    }
-                    onChange={
-                      handleChange
-                    }
-                  />
+              <div className="col-md-6">
+                <HorizontalInput
+                  label="Email"
+                  name="email"
+                  type="email"
+                  value={profile.email}
+                  onChange={handleChange}
+                />
+              </div>
 
-                  <PasswordField
-                    label="Confirm Password"
-                    name="confirmPassword"
-                    value={
-                      profile.confirmPassword
-                    }
-                    show={
-                      showConfirm
-                    }
-                    setShow={
-                      setShowConfirm
-                    }
-                    onChange={
-                      handleChange
-                    }
-                    noMargin
-                  />
-                </div>
-              </section>
+              <div className="col-md-6">
+                <HorizontalInput
+                  label="Phone"
+                  name="phone"
+                  value={profile.phone}
+                  onChange={handleChange}
+                />
+              </div>
+            </div>
+          </section>
 
-              {/* =================================================
-                  BUTTONS
-              ================================================= */}
+          {/* =================================================
+              ADDRESS INFORMATION
+          ================================================= */}
+
+          <section
+            style={{
+              borderBottom:
+                "1px solid #dfe3e8",
+              padding: "14px 0 15px",
+            }}
+          >
+            <SectionTitle>
+              Address Information
+            </SectionTitle>
+
+            <div
+              style={{
+                marginTop: "16px",
+              }}
+            >
+              {/* ADDRESS */}
 
               <div
-                className="d-flex justify-content-end align-items-center"
+                className="row align-items-center"
                 style={{
-                  gap: "16px",
-                  paddingTop: "16px",
+                  marginBottom: "16px",
                 }}
               >
-                <button
-                  type="button"
-                  onClick={
-                    handleCancel
-                  }
-                  disabled={saving}
-                  style={{
-                    height: "39px",
-                    minWidth: "73px",
-                    padding:
-                      "0 14px",
-                    borderRadius:
-                      "5px",
-                    border:
-                      "1px solid #dce1e7",
-                    background:
-                      "#ffffff",
-                    color:
-                      "#10264c",
-                    fontSize:
-                      "13px",
-                    fontWeight: 500,
-                    cursor: saving
-                      ? "not-allowed"
-                      : "pointer",
-                  }}
-                >
-                  Cancel
-                </button>
+                <div className="col-md-2">
+                  <FormLabel>
+                    Address
+                  </FormLabel>
+                </div>
 
-                <button
-                  type="button"
-                  onClick={
-                    handleSave
-                  }
-                  disabled={saving}
-                  style={{
-                    height: "39px",
-                    minWidth: "60px",
-                    padding:
-                      "0 14px",
-                    borderRadius:
-                      "5px",
-                    border:
-                      "none",
-                    background:
-                      "#bd8d32",
-                    color:
-                      "#ffffff",
-                    fontSize:
-                      "13px",
-                    fontWeight: 600,
-                    cursor: saving
-                      ? "not-allowed"
-                      : "pointer",
-                    opacity: saving
-                      ? 0.7
-                      : 1,
-                  }}
-                >
-                  {saving
-                    ? "Saving..."
-                    : "Save"}
-                </button>
+                <div className="col-md-10">
+                  <input
+                    type="text"
+                    name="address"
+                    value={profile.address}
+                    onChange={handleChange}
+                    className="form-control"
+                    style={inputStyle}
+                  />
+                </div>
               </div>
-            </>
-          )}
+
+              {/* COUNTRY / STATE */}
+
+              <div className="row gx-4">
+                <div className="col-md-6">
+                  <HorizontalSelect
+                    label="Country"
+                    name="country"
+                    value={profile.country}
+                    onChange={handleChange}
+                    options={[
+                      "India",
+                      "USA",
+                      "Canada",
+                      "Germany",
+                      "France",
+                    ]}
+                  />
+                </div>
+
+                <div className="col-md-6">
+                  <HorizontalSelect
+                    label="State"
+                    name="state"
+                    value={profile.state}
+                    onChange={handleChange}
+                    options={[
+                      "Gujarat",
+                      "Maharashtra",
+                      "Rajasthan",
+                      "Delhi",
+                      "Madhya Pradesh",
+                      "California",
+                      "New York",
+                      "Texas",
+                      "Florida",
+                    ]}
+                  />
+                </div>
+
+                {/* CITY / POSTAL CODE */}
+
+                <div className="col-md-6">
+                  <HorizontalSelect
+                    label="City"
+                    name="city"
+                    value={profile.city}
+                    onChange={handleChange}
+                    options={[
+                      "Ahmedabad",
+                      "Surat",
+                      "Vadodara",
+                      "Rajkot",
+                      "Mumbai",
+                      "Pune",
+                      "Los Angeles",
+                      "San Diego",
+                      "Fresno",
+                      "San Francisco",
+                    ]}
+                  />
+                </div>
+
+                <div className="col-md-6">
+                  <HorizontalInput
+                    label="Postal Code"
+                    name="postalCode"
+                    value={profile.postalCode}
+                    onChange={handleChange}
+                  />
+                </div>
+              </div>
+            </div>
+          </section>
+
+          {/* =================================================
+              CHANGE PASSWORD
+          ================================================= */}
+
+          <section
+            style={{
+              borderBottom:
+                "1px solid #dfe3e8",
+              padding: "15px 0 16px",
+            }}
+          >
+            <SectionTitle>
+              Change Password
+            </SectionTitle>
+
+            <div
+              style={{
+                marginTop: "17px",
+              }}
+            >
+              <PasswordField
+                label="Current Password"
+                name="currentPassword"
+                value={
+                  profile.currentPassword
+                }
+                show={showCurrent}
+                setShow={setShowCurrent}
+                onChange={handleChange}
+              />
+
+              <PasswordField
+                label="New Password"
+                name="newPassword"
+                value={profile.newPassword}
+                show={showNew}
+                setShow={setShowNew}
+                onChange={handleChange}
+              />
+
+              <PasswordField
+                label="Confirm Password"
+                name="confirmPassword"
+                value={
+                  profile.confirmPassword
+                }
+                show={showConfirm}
+                setShow={setShowConfirm}
+                onChange={handleChange}
+                noMargin
+              />
+            </div>
+          </section>
+
+          {/* =================================================
+              BUTTONS
+          ================================================= */}
+
+          <div
+            className="d-flex justify-content-end align-items-center"
+            style={{
+              gap: "16px",
+              paddingTop: "16px",
+            }}
+          >
+            <button
+              type="button"
+              onClick={handleCancel}
+              style={{
+                height: "39px",
+                minWidth: "73px",
+                padding: "0 14px",
+                borderRadius: "5px",
+                border:
+                  "1px solid #dce1e7",
+                background: "#ffffff",
+                color: "#10264c",
+                fontSize: "13px",
+                fontWeight: 500,
+                cursor: "pointer",
+              }}
+            >
+              Cancel
+            </button>
+
+            {/* UI ONLY - NO API CALL */}
+            <button
+              type="button"
+              style={{
+                height: "39px",
+                minWidth: "60px",
+                padding: "0 14px",
+                borderRadius: "5px",
+                border: "none",
+                background: "#bd8d32",
+                color: "#ffffff",
+                fontSize: "13px",
+                fontWeight: 600,
+                cursor: "pointer",
+              }}
+            >
+              Save
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -1541,9 +773,7 @@ const HorizontalInput: React.FC<
       }}
     >
       <div className="col-md-4">
-        <FormLabel>
-          {label}
-        </FormLabel>
+        <FormLabel>{label}</FormLabel>
       </div>
 
       <div className="col-md-8">
@@ -1591,9 +821,7 @@ const HorizontalSelect: React.FC<
       }}
     >
       <div className="col-md-4">
-        <FormLabel>
-          {label}
-        </FormLabel>
+        <FormLabel>{label}</FormLabel>
       </div>
 
       <div className="col-md-8">
@@ -1608,16 +836,14 @@ const HorizontalSelect: React.FC<
             Select
           </option>
 
-          {options.map(
-            (option) => (
-              <option
-                key={option}
-                value={option}
-              >
-                {option}
-              </option>
-            )
-          )}
+          {options.map((option) => (
+            <option
+              key={option}
+              value={option}
+            >
+              {option}
+            </option>
+          ))}
         </select>
       </div>
     </div>
@@ -1663,16 +889,13 @@ const PasswordField: React.FC<
       }}
     >
       <div className="col-md-2">
-        <FormLabel>
-          {label}
-        </FormLabel>
+        <FormLabel>{label}</FormLabel>
       </div>
 
       <div className="col-md-4">
         <div
           style={{
-            position:
-              "relative",
+            position: "relative",
           }}
         >
           <input
@@ -1687,18 +910,14 @@ const PasswordField: React.FC<
             className="form-control"
             style={{
               ...inputStyle,
-              paddingRight:
-                "40px",
+              paddingRight: "40px",
             }}
           />
 
           <button
             type="button"
             onClick={() =>
-              setShow(
-                (prev) =>
-                  !prev
-              )
+              setShow((prev) => !prev)
             }
             aria-label={
               show
@@ -1706,8 +925,7 @@ const PasswordField: React.FC<
                 : "Show password"
             }
             style={{
-              position:
-                "absolute",
+              position: "absolute",
               top: "50%",
               right: "11px",
               transform:
@@ -1719,14 +937,11 @@ const PasswordField: React.FC<
               background:
                 "transparent",
               display: "flex",
-              alignItems:
-                "center",
+              alignItems: "center",
               justifyContent:
                 "center",
-              color:
-                "#10264c",
-              cursor:
-                "pointer",
+              color: "#10264c",
+              cursor: "pointer",
             }}
           >
             {show ? (
@@ -1751,29 +966,24 @@ const PasswordField: React.FC<
    STYLES
 ========================================================= */
 
-const inputStyle: React.CSSProperties =
-  {
-    width: "100%",
-    height: "39px",
-    minHeight: "39px",
-    border:
-      "1px solid #d9dfe7",
-    borderRadius: "5px",
-    backgroundColor:
-      "#ffffff",
-    color: "#1f2937",
-    fontSize: "13px",
-    padding:
-      "7px 11px",
-    boxShadow: "none",
-    outline: "none",
-  };
+const inputStyle: React.CSSProperties = {
+  width: "100%",
+  height: "39px",
+  minHeight: "39px",
+  border: "1px solid #d9dfe7",
+  borderRadius: "5px",
+  backgroundColor: "#ffffff",
+  color: "#1f2937",
+  fontSize: "13px",
+  padding: "7px 11px",
+  boxShadow: "none",
+  outline: "none",
+};
 
-const selectStyle: React.CSSProperties =
-  {
-    ...inputStyle,
-    cursor: "pointer",
-    color: "#10264c",
-  };
+const selectStyle: React.CSSProperties = {
+  ...inputStyle,
+  cursor: "pointer",
+  color: "#10264c",
+};
 
 export default Profile;

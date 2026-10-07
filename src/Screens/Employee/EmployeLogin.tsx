@@ -38,7 +38,7 @@ const EmployeLogin = () => {
     }));
   };
 
-  // Login API
+
   const handleLogin = async (
     e: React.FormEvent<HTMLFormElement>
   ) => {

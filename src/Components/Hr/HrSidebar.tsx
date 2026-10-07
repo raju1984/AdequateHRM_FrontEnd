@@ -1,7 +1,34 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import logo from "../../assets/img/logo.webp";
-import { attendanceLogout } from "../../services/hrservices";
+import {
+  attendanceLogout,
+  getMyPermissions,
+} from "../../services/hrservices";
+
+/* =====================================================
+   TYPES
+===================================================== */
+
+interface MyPermission {
+  pageId: string;
+  code: string;
+  name: string;
+  route?: string | null;
+  icon?: string | null;
+  sortOrder?: number;
+  source?: string;
+  canRead: boolean;
+  canWrite: boolean;
+  canDelete: boolean;
+  canCreate?: boolean;
+  canImport?: boolean;
+  canExport?: boolean;
+}
+
+/* =====================================================
+   COMPONENT
+===================================================== */
 
 const HrSidebar: React.FC = () => {
   const navigate = useNavigate();
@@ -11,6 +38,14 @@ const HrSidebar: React.FC = () => {
   const ICON = "#34788d";
   const SECTION = "#98a2b3";
   const HOVER = "#e9eaec";
+
+  const [permissions, setPermissions] = useState<MyPermission[]>([]);
+  const [permissionsLoading, setPermissionsLoading] =
+    useState<boolean>(true);
+
+  /* =====================================================
+     STYLES
+  ===================================================== */
 
   const navStyle = ({
     isActive,
@@ -55,6 +90,207 @@ const HrSidebar: React.FC = () => {
   };
 
   /* =====================================================
+     LOAD CURRENT HR PERMISSIONS
+  ===================================================== */
+
+  useEffect(() => {
+    let mounted = true;
+
+    const loadMyPermissions = async () => {
+      try {
+        setPermissionsLoading(true);
+
+        const response = await getMyPermissions();
+
+        console.log(
+          "HR MY PERMISSIONS API RESPONSE =>",
+          response
+        );
+
+        /*
+          Actual API response:
+
+          {
+            statusCode: 200,
+            data: {
+              userId: "...",
+              name: "test hr",
+              userType: 1,
+              permissions: [...]
+            },
+            isSuccess: true
+          }
+        */
+
+        const permissionList =
+          response?.data?.permissions ??
+          response?.permissions ??
+          [];
+
+        if (!mounted) {
+          return;
+        }
+
+        if (Array.isArray(permissionList)) {
+          const normalizedPermissions: MyPermission[] =
+            permissionList.map((item: any) => ({
+              pageId: String(
+                item?.pageId ??
+                  item?.PageId ??
+                  ""
+              ),
+
+              code: String(
+                item?.code ??
+                  item?.Code ??
+                  ""
+              )
+                .trim()
+                .toUpperCase(),
+
+              name: String(
+                item?.name ??
+                  item?.Name ??
+                  ""
+              ),
+
+              route:
+                item?.route ??
+                item?.Route ??
+                null,
+
+              icon:
+                item?.icon ??
+                item?.Icon ??
+                null,
+
+              sortOrder:
+                item?.sortOrder ??
+                item?.SortOrder ??
+                0,
+
+              source:
+                item?.source ??
+                item?.Source ??
+                "",
+
+              canRead:
+                item?.canRead === true ||
+                item?.CanRead === true ||
+                item?.canRead === 1 ||
+                item?.CanRead === 1,
+
+              canWrite:
+                item?.canWrite === true ||
+                item?.CanWrite === true ||
+                item?.canWrite === 1 ||
+                item?.CanWrite === 1,
+
+              canDelete:
+                item?.canDelete === true ||
+                item?.CanDelete === true ||
+                item?.canDelete === 1 ||
+                item?.CanDelete === 1,
+
+              canCreate:
+                item?.canCreate === true ||
+                item?.CanCreate === true ||
+                item?.canCreate === 1 ||
+                item?.CanCreate === 1,
+
+              canImport:
+                item?.canImport === true ||
+                item?.CanImport === true ||
+                item?.canImport === 1 ||
+                item?.CanImport === 1,
+
+              canExport:
+                item?.canExport === true ||
+                item?.CanExport === true ||
+                item?.canExport === 1 ||
+                item?.CanExport === 1,
+            }));
+
+          setPermissions(normalizedPermissions);
+
+          console.log(
+            "HR NORMALIZED PERMISSIONS =>",
+            normalizedPermissions
+          );
+        } else {
+          setPermissions([]);
+        }
+      } catch (error) {
+        console.error(
+          "Failed to load HR permissions:",
+          error
+        );
+
+        if (mounted) {
+          setPermissions([]);
+        }
+      } finally {
+        if (mounted) {
+          setPermissionsLoading(false);
+        }
+      }
+    };
+
+    loadMyPermissions();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  /* =====================================================
+     PERMISSION HELPERS
+  ===================================================== */
+
+  const getPermission = (
+    code: string
+  ): MyPermission | undefined => {
+    const normalizedCode = code
+      .trim()
+      .toUpperCase();
+
+    return permissions.find(
+      (permission) =>
+        permission.code === normalizedCode
+    );
+  };
+
+  const canRead = (code: string): boolean => {
+    if (permissionsLoading) {
+      return false;
+    }
+
+    const permission = getPermission(code);
+
+    return permission?.canRead === true;
+  };
+
+  /* =====================================================
+     SECTION VISIBILITY
+  ===================================================== */
+
+  const showEmployeeSection =
+    canRead("EMPLOYEES") ||
+    canRead("DEPARTMENT") ||
+    canRead("DESIGNATIONS") ||
+    canRead("HOLIDAYS");
+
+  const showLeavesSection =
+    canRead("LEAVES") ||
+    canRead("LEAVE_TYPE") ||
+    canRead("ATTENDANCE") ||
+    canRead("EMPLOYEE_SALARY");
+
+  const showUserManagementSection =
+    canRead("USERS") ||
+    canRead("DESIGNATIONS_PERMISSIONS");
+
+  /* =====================================================
      LOGOUT
   ===================================================== */
 
@@ -64,23 +300,25 @@ const HrSidebar: React.FC = () => {
     e.preventDefault();
 
     try {
-      // Call attendance logout API
       await attendanceLogout();
     } catch (error) {
-      // Even if API fails, continue with local logout
       console.error(
         "Attendance logout API failed:",
         error
       );
     } finally {
-      // Clear authentication/session data
       localStorage.removeItem("token");
       localStorage.removeItem("userId");
 
-      // Redirect to login page
-      navigate("/HR/HrLogin", { replace: true });
+      navigate("/HR/HrLogin", {
+        replace: true,
+      });
     }
   };
+
+  /* =====================================================
+     JSX
+  ===================================================== */
 
   return (
     <>
@@ -155,9 +393,9 @@ const HrSidebar: React.FC = () => {
           boxSizing: "border-box",
         }}
       >
-        {/* =====================================================
+        {/* =================================================
             LOGO
-        ===================================================== */}
+        ================================================= */}
 
         <div
           style={{
@@ -192,9 +430,9 @@ const HrSidebar: React.FC = () => {
           </NavLink>
         </div>
 
-        {/* =====================================================
+        {/* =================================================
             SCROLL AREA
-        ===================================================== */}
+        ================================================= */}
 
         <div
           className="sidebar-scroll"
@@ -213,176 +451,259 @@ const HrSidebar: React.FC = () => {
               margin: 0,
             }}
           >
-            {/* =================================================
+            {/* =============================================
                 DASHBOARD
-            ================================================= */}
+            ============================================= */}
 
-            <li style={menuItemStyle}>
-              <NavLink
-                to="/Hr/HrDashboard"
-                className={({ isActive }) =>
-                  `hr-menu-link ${
-                    isActive ? "active" : ""
-                  }`
-                }
-                style={navStyle}
-              >
-                <i className="ti ti-home"></i>
-                <span>Dashboard</span>
-              </NavLink>
-            </li>
+            {canRead("DASHBOARD") && (
+              <li style={menuItemStyle}>
+                <NavLink
+                  to="/Hr/HrDashboard"
+                  className={({ isActive }) =>
+                    `hr-menu-link ${
+                      isActive ? "active" : ""
+                    }`
+                  }
+                  style={navStyle}
+                >
+                  <i className="ti ti-home"></i>
+                  <span>Dashboard</span>
+                </NavLink>
+              </li>
+            )}
 
-            {/* =================================================
+            {/* =============================================
                 EMPLOYEES SECTION
-            ================================================= */}
+            ============================================= */}
 
-            <li style={sectionStyle}>EMPLOYEES</li>
+            {showEmployeeSection && (
+              <li style={sectionStyle}>
+                EMPLOYEES
+              </li>
+            )}
 
             {/* Employees */}
 
-            <li style={menuItemStyle}>
-              <NavLink
-                to="/Hr/Employee"
-                className={({ isActive }) =>
-                  `hr-menu-link ${
-                    isActive ? "active" : ""
-                  }`
-                }
-                style={navStyle}
-              >
-                <i className="ti ti-users"></i>
-                <span>Employees</span>
-              </NavLink>
-            </li>
+            {canRead("EMPLOYEES") && (
+              <li style={menuItemStyle}>
+                <NavLink
+                  to="/Hr/Employee"
+                  className={({ isActive }) =>
+                    `hr-menu-link ${
+                      isActive ? "active" : ""
+                    }`
+                  }
+                  style={navStyle}
+                >
+                  <i className="ti ti-users"></i>
+                  <span>Employees</span>
+                </NavLink>
+              </li>
+            )}
 
             {/* Departments */}
 
-            <li style={menuItemStyle}>
-              <NavLink
-                to="/HR/Departments"
-                className={({ isActive }) =>
-                  `hr-menu-link ${
-                    isActive ? "active" : ""
-                  }`
-                }
-                style={navStyle}
-              >
-                <i className="ti ti-category-2"></i>
-                <span>Departments</span>
-              </NavLink>
-            </li>
+            {canRead("DEPARTMENT") && (
+              <li style={menuItemStyle}>
+                <NavLink
+                  to="/HR/Departments"
+                  className={({ isActive }) =>
+                    `hr-menu-link ${
+                      isActive ? "active" : ""
+                    }`
+                  }
+                  style={navStyle}
+                >
+                  <i className="ti ti-category-2"></i>
+                  <span>Departments</span>
+                </NavLink>
+              </li>
+            )}
 
             {/* Designations */}
 
-            <li style={menuItemStyle}>
-              <NavLink
-                to="/HR/Designation"
-                className={({ isActive }) =>
-                  `hr-menu-link ${
-                    isActive ? "active" : ""
-                  }`
-                }
-                style={navStyle}
-              >
-                <i className="ti ti-user-cog"></i>
-                <span>Designations</span>
-              </NavLink>
-            </li>
+            {canRead("DESIGNATIONS") && (
+              <li style={menuItemStyle}>
+                <NavLink
+                  to="/HR/Designation"
+                  className={({ isActive }) =>
+                    `hr-menu-link ${
+                      isActive ? "active" : ""
+                    }`
+                  }
+                  style={navStyle}
+                >
+                  <i className="ti ti-user-cog"></i>
+                  <span>Designations</span>
+                </NavLink>
+              </li>
+            )}
 
             {/* Holidays */}
 
-            <li style={menuItemStyle}>
-              <NavLink
-                to="/HR/Holiday"
-                className={({ isActive }) =>
-                  `hr-menu-link ${
-                    isActive ? "active" : ""
-                  }`
-                }
-                style={navStyle}
-              >
-                <i className="ti ti-truck"></i>
-                <span>Holidays</span>
-              </NavLink>
-            </li>
+            {canRead("HOLIDAYS") && (
+              <li style={menuItemStyle}>
+                <NavLink
+                  to="/HR/Holiday"
+                  className={({ isActive }) =>
+                    `hr-menu-link ${
+                      isActive ? "active" : ""
+                    }`
+                  }
+                  style={navStyle}
+                >
+                  <i className="ti ti-truck"></i>
+                  <span>Holidays</span>
+                </NavLink>
+              </li>
+            )}
 
-            {/* =================================================
+            {/* =============================================
                 LEAVES SECTION
-            ================================================= */}
+            ============================================= */}
 
-            <li style={sectionStyle}>LEAVES</li>
+            {showLeavesSection && (
+              <li style={sectionStyle}>
+                LEAVES
+              </li>
+            )}
 
             {/* Leaves */}
 
-            <li style={menuItemStyle}>
-              <NavLink
-                to="/HR/Leave"
-                className={({ isActive }) =>
-                  `hr-menu-link ${
-                    isActive ? "active" : ""
-                  }`
-                }
-                style={navStyle}
-              >
-                <i className="ti ti-calendar-month"></i>
-                <span>Leaves</span>
-              </NavLink>
-            </li>
+            {canRead("LEAVES") && (
+              <li style={menuItemStyle}>
+                <NavLink
+                  to="/HR/Leave"
+                  className={({ isActive }) =>
+                    `hr-menu-link ${
+                      isActive ? "active" : ""
+                    }`
+                  }
+                  style={navStyle}
+                >
+                  <i className="ti ti-calendar-month"></i>
+                  <span>Leaves</span>
+                </NavLink>
+              </li>
+            )}
 
             {/* Leave Type */}
 
-            <li style={menuItemStyle}>
-              <NavLink
-                to="/HR/LeaveTyp"
-                className={({ isActive }) =>
-                  `hr-menu-link ${
-                    isActive ? "active" : ""
-                  }`
-                }
-                style={navStyle}
-              >
-                <i className="ti ti-settings"></i>
-                <span>Leave Type</span>
-              </NavLink>
-            </li>
+            {canRead("LEAVE_TYPE") && (
+              <li style={menuItemStyle}>
+                <NavLink
+                  to="/HR/LeaveTyp"
+                  className={({ isActive }) =>
+                    `hr-menu-link ${
+                      isActive ? "active" : ""
+                    }`
+                  }
+                  style={navStyle}
+                >
+                  <i className="ti ti-settings"></i>
+                  <span>Leave Type</span>
+                </NavLink>
+              </li>
+            )}
 
             {/* Attendance */}
 
-            <li style={menuItemStyle}>
-              <NavLink
-                to="/HR/Atendance"
-                className={({ isActive }) =>
-                  `hr-menu-link ${
-                    isActive ? "active" : ""
-                  }`
-                }
-                style={navStyle}
-              >
-                <i className="ti ti-calendar-event"></i>
-                <span>Attendance</span>
-              </NavLink>
-            </li>
+            {canRead("ATTENDANCE") && (
+              <li style={menuItemStyle}>
+                <NavLink
+                  to="/HR/Atendance"
+                  className={({ isActive }) =>
+                    `hr-menu-link ${
+                      isActive ? "active" : ""
+                    }`
+                  }
+                  style={navStyle}
+                >
+                  <i className="ti ti-calendar-event"></i>
+                  <span>Attendance</span>
+                </NavLink>
+              </li>
+            )}
 
             {/* Employee Salary */}
 
-            <li style={menuItemStyle}>
-              <NavLink
-                to="/HR/EmployeeSalary"
-                className={({ isActive }) =>
-                  `hr-menu-link ${
-                    isActive ? "active" : ""
-                  }`
-                }
-                style={navStyle}
-              >
-                <i className="ti ti-receipt"></i>
-                <span>Employee Salary</span>
-              </NavLink>
-            </li>
+            {canRead("EMPLOYEE_SALARY") && (
+              <li style={menuItemStyle}>
+                <NavLink
+                  to="/HR/EmployeeSalary"
+                  className={({ isActive }) =>
+                    `hr-menu-link ${
+                      isActive ? "active" : ""
+                    }`
+                  }
+                  style={navStyle}
+                >
+                  <i className="ti ti-receipt"></i>
+                  <span>Employee Salary</span>
+                </NavLink>
+              </li>
+            )}
 
-            {/* =================================================
-                USER MANAGEMENT SECTION
-            ================================================= */}
+            {/* =============================================
+                USER MANAGEMENT
+            ============================================= */}
+
+            {showUserManagementSection && (
+              <li
+                style={{
+                  ...sectionStyle,
+                  marginTop: "26px",
+                }}
+              >
+                USER MANAGEMENT
+              </li>
+            )}
+
+            {/* Users */}
+
+            {canRead("USERS") && (
+              <li style={menuItemStyle}>
+                <NavLink
+                  to="/HR/User"
+                  className={({ isActive }) =>
+                    `hr-menu-link ${
+                      isActive ? "active" : ""
+                    }`
+                  }
+                  style={navStyle}
+                >
+                  <i className="ti ti-users"></i>
+                  <span>Users</span>
+                </NavLink>
+              </li>
+            )}
+
+            {/* Roles & Permissions */}
+
+            {canRead(
+              "DESIGNATIONS_PERMISSIONS"
+            ) && (
+              <li style={menuItemStyle}>
+                <NavLink
+                  to="/HR/Roles"
+                  className={({ isActive }) =>
+                    `hr-menu-link ${
+                      isActive ? "active" : ""
+                    }`
+                  }
+                  style={navStyle}
+                >
+                  <i className="ti ti-sparkles"></i>
+                  <span>
+                    Roles & Permissions
+                  </span>
+                </NavLink>
+              </li>
+            )}
+
+            {/* =============================================
+                ACCOUNT
+            ============================================= */}
 
             <li
               style={{
@@ -390,41 +711,7 @@ const HrSidebar: React.FC = () => {
                 marginTop: "26px",
               }}
             >
-              USER MANAGEMENT
-            </li>
-
-            {/* Users */}
-
-            <li style={menuItemStyle}>
-              <NavLink
-                to="/HR/User"
-                className={({ isActive }) =>
-                  `hr-menu-link ${
-                    isActive ? "active" : ""
-                  }`
-                }
-                style={navStyle}
-              >
-                <i className="ti ti-users"></i>
-                <span>Users</span>
-              </NavLink>
-            </li>
-
-            {/* Roles & Permissions */}
-
-            <li style={menuItemStyle}>
-              <NavLink
-                to="/HR/Roles"
-                className={({ isActive }) =>
-                  `hr-menu-link ${
-                    isActive ? "active" : ""
-                  }`
-                }
-                style={navStyle}
-              >
-                <i className="ti ti-sparkles"></i>
-                <span>Roles & Permissions</span>
-              </NavLink>
+              ACCOUNT
             </li>
 
             {/* Profile */}
@@ -444,9 +731,7 @@ const HrSidebar: React.FC = () => {
               </NavLink>
             </li>
 
-            {/* =================================================
-                LOGOUT
-            ================================================= */}
+            {/* Logout */}
 
             <li
               style={{
@@ -479,4 +764,3 @@ const HrSidebar: React.FC = () => {
 };
 
 export default HrSidebar;
-

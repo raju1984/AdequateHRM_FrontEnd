@@ -132,12 +132,10 @@ const Profiles: React.FC = () => {
 
       setProfile(res);
 
-      // -----------------------------------------------
-      // SUPPORT BOTH camelCase AND PascalCase RESPONSE
-      // -----------------------------------------------
+      
 
       setForm({
-        id: res?.id || res?.Id || "",
+       id: localStorage.getItem("userId") || "",  
 
         firstName:
           res?.firstName ||

@@ -11,7 +11,7 @@ import {
   FiChevronDown,
   FiChevronLeft,
   FiChevronRight,
-  FiEdit2,
+  // FiEdit2,
   FiHome,
   FiImage,
   FiTrash2,
@@ -2664,7 +2664,7 @@ const Employee = () => {
                       </td>
 
                       <td className="action-column">
-                        <button
+                        {/* <button
                           type="button"
                           className="row-action-btn"
                           title="Edit"
@@ -2675,7 +2675,7 @@ const Employee = () => {
                           }
                         >
                           <FiEdit2 />
-                        </button>
+                        </button> */}
 
                         <button
                           type="button"

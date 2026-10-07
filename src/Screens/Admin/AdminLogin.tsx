@@ -79,7 +79,7 @@ console.log("LOGIN TOKENS:", response?.data?.tokens);
       
       localStorage.removeItem("token");
       localStorage.removeItem("userId");
-      localStorage.removeItem("role");
+    localStorage.removeItem("userType");
       localStorage.removeItem("user");
 
      
@@ -118,10 +118,10 @@ console.log("LOGIN TOKENS:", response?.data?.tokens);
         response?.data?.user?.UserType;
 
       if (userType !== undefined && userType !== null) {
-        localStorage.setItem(
-          "role",
-          String(userType)
-        );
+       localStorage.setItem(
+  "userType",
+  String(userType)
+);
       }
 
       console.log(
@@ -135,10 +135,9 @@ console.log("LOGIN TOKENS:", response?.data?.tokens);
       );
 
       console.log(
-        "SAVED ROLE:",
-        localStorage.getItem("role")
-      );
-
+  "SAVED USER TYPE:",
+  localStorage.getItem("userType")
+);
       console.log(
         "SAVED TOKEN TYPE:",
         typeof localStorage.getItem("token")
@@ -157,7 +156,7 @@ console.log("LOGIN TOKENS:", response?.data?.tokens);
            */
           localStorage.removeItem("token");
           localStorage.removeItem("userId");
-          localStorage.removeItem("role");
+         localStorage.removeItem("userType");
           localStorage.removeItem("user");
 
           alert("You are not an Admin");
@@ -168,7 +167,7 @@ console.log("LOGIN TOKENS:", response?.data?.tokens);
          */
         localStorage.removeItem("token");
         localStorage.removeItem("userId");
-        localStorage.removeItem("role");
+      localStorage.removeItem("userType");
         localStorage.removeItem("user");
 
         alert(
@@ -186,7 +185,7 @@ console.log("LOGIN TOKENS:", response?.data?.tokens);
        */
       localStorage.removeItem("token");
       localStorage.removeItem("userId");
-      localStorage.removeItem("role");
+     localStorage.removeItem("userType");
       localStorage.removeItem("user");
 
       alert(

@@ -1,989 +1,1870 @@
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
+import { getEmployeeProfile, updateEmployeeProfile, type UpdateProfilePayload } from "../../services/adminservices";
 
 import {
+
   Camera,
+
   ChevronUp,
+
   Eye,
+
   EyeOff,
+
   Home,
+
 } from "lucide-react";
 
 /* =========================================================
+
    TYPES
+
 ========================================================= */
 
 interface ProfileForm {
+
   firstName: string;
+
   lastName: string;
+
   email: string;
+
   phone: string;
+
   address: string;
+
   country: string;
+
   state: string;
+
   city: string;
+
   postalCode: string;
+
   currentPassword: string;
+
   newPassword: string;
+
   confirmPassword: string;
+
 }
 
 /* =========================================================
+
    EMPTY FORM
+
 ========================================================= */
 
 const emptyProfile: ProfileForm = {
+
   firstName: "",
+
   lastName: "",
+
   email: "",
+
   phone: "",
+
   address: "",
+
   country: "",
+
   state: "",
+
   city: "",
+
   postalCode: "",
+
   currentPassword: "",
+
   newPassword: "",
+
   confirmPassword: "",
+
 };
 
 /* =========================================================
+
    PROFILE COMPONENT
+
 ========================================================= */
 
 const Profile: React.FC = () => {
+
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [profileId, setProfileId] = useState("");
+  const [savedProfile, setSavedProfile] = useState<ProfileForm>(emptyProfile);
+  const [savedPhoto, setSavedPhoto] = useState("");
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
 
   const [profile, setProfile] =
+
     useState<ProfileForm>(emptyProfile);
 
   const [showCurrent, setShowCurrent] =
+
     useState(false);
 
   const [showNew, setShowNew] =
+
     useState(false);
 
   const [showConfirm, setShowConfirm] =
+
     useState(false);
 
   const [photoPreview, setPhotoPreview] =
+
     useState<string>("");
 
   /* =======================================================
+
      HANDLE INPUT
+
   ======================================================= */
 
+  const loadProfile = async () => {
+    setLoading(true);
+    setError("");
+    try {
+      const data = await getEmployeeProfile();
+      if (!data) throw new Error("Profile data not found.");
+      const read = (...keys: string[]) => {
+        for (const key of keys) {
+          if (data[key] !== undefined && data[key] !== null) return String(data[key]);
+        }
+        return "";
+      };
+      const next: ProfileForm = {
+        firstName: read("firstName", "FirstName"), lastName: read("lastName", "LastName"),
+        email: read("email", "Email"), phone: read("phone", "Phone", "phoneNumber", "PhoneNumber"),
+        address: read("address", "Address"), country: read("country", "Country"),
+        state: read("state", "State"), city: read("city", "City"),
+        postalCode: read("postalCode", "PostalCode"),
+        currentPassword: "", newPassword: "", confirmPassword: "",
+      };
+      const id = read("id", "Id", "userId", "UserId");
+      setProfileId(id);
+      setProfile(next);
+      setSavedProfile(next);
+      const photo = read("profilePictureUrl", "ProfilePictureUrl", "profileImageUrl", "ProfileImageUrl", "profilePicture", "ProfilePicture");
+      setSavedPhoto(photo);
+      setPhotoPreview(photo);
+      setPhotoFile(null);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Unable to load profile.");
+    } finally { setLoading(false); }
+  };
+
+  useEffect(() => { void loadProfile(); }, []);
+
+  const handleSave = async () => {
+    setError(""); setSuccess("");
+    if (!profileId) { setError("Profile ID is missing from Get-Profile response."); return; }
+    if (profile.newPassword || profile.confirmPassword || profile.currentPassword) {
+      if (!profile.currentPassword || !profile.newPassword || !profile.confirmPassword) {
+        setError("Enter current, new and confirm password."); return;
+      }
+      if (profile.newPassword !== profile.confirmPassword) {
+        setError("New password and confirm password do not match."); return;
+      }
+    }
+    const payload: UpdateProfilePayload = {
+      Id: profileId, FirstName: profile.firstName, LastName: profile.lastName,
+      Email: profile.email, Phone: profile.phone, Address: profile.address,
+      Country: profile.country, State: profile.state, City: profile.city,
+      PostalCode: profile.postalCode, CurrentPassword: profile.currentPassword,
+      NewPassword: profile.newPassword, ConfirmPassword: profile.confirmPassword,
+      ProfilePicture: photoFile,
+    };
+    setSaving(true);
+    try {
+      await updateEmployeeProfile(payload);
+      await loadProfile();
+      setSuccess("Profile updated successfully.");
+    } catch (e) { setError(e instanceof Error ? e.message : "Unable to update profile."); }
+    finally { setSaving(false); }
+  };
+
   const handleChange = (
+
     e: React.ChangeEvent<
+
       HTMLInputElement | HTMLSelectElement
+
     >
+
   ) => {
+
     const { name, value } = e.target;
 
     setProfile((prev) => ({
+
       ...prev,
+
       [name]: value,
+
     }));
+
   };
 
   /* =======================================================
+
      PHOTO PREVIEW
+
   ======================================================= */
 
   const handlePhotoChange = (
+
     e: React.ChangeEvent<HTMLInputElement>
+
   ) => {
+
     const file = e.target.files?.[0];
 
     if (!file) {
+
       return;
+
     }
 
     if (
+
       photoPreview &&
+
       photoPreview.startsWith("blob:")
+
     ) {
+
       URL.revokeObjectURL(photoPreview);
+
     }
 
     const previewUrl =
+
       URL.createObjectURL(file);
 
     setPhotoPreview(previewUrl);
+    setPhotoFile(file);
+
   };
 
   /* =======================================================
+
      PHOTO CANCEL
+
   ======================================================= */
 
   const handlePhotoCancel = () => {
+
     if (
+
       photoPreview &&
+
       photoPreview.startsWith("blob:")
+
     ) {
+
       URL.revokeObjectURL(photoPreview);
+
     }
 
-    setPhotoPreview("");
+    setPhotoPreview(savedPhoto);
+    setPhotoFile(null);
 
     if (fileInputRef.current) {
+
       fileInputRef.current.value = "";
+
     }
+
   };
 
   /* =======================================================
+
      CANCEL FORM
+
   ======================================================= */
 
   const handleCancel = () => {
-    setProfile(emptyProfile);
+
+    setProfile(savedProfile);
+    setError(""); setSuccess("");
 
     setShowCurrent(false);
+
     setShowNew(false);
+
     setShowConfirm(false);
 
     handlePhotoCancel();
+
   };
 
   /* =======================================================
+
      UI
+
   ======================================================= */
 
   return (
+
     <div
+
       style={{
+
         background: "#f7f8fa",
+
         minHeight: "calc(100vh - 49px)",
+
         padding: "24px",
+
         fontFamily: "Inter, sans-serif",
+
         color: "#0f2447",
+
       }}
+
     >
+
       {/* ===================================================
+
           PAGE HEADER
+
       =================================================== */}
 
       <div
+
         className="d-flex align-items-start justify-content-between"
+
         style={{
+
           marginBottom: "26px",
+
         }}
+
       >
+
         <div>
+
           <h2
+
             style={{
+
               margin: 0,
+
               marginBottom: "9px",
+
               fontSize: "24px",
+
               lineHeight: "30px",
+
               fontWeight: 700,
+
               color: "#0f2447",
+
             }}
+
           >
+
             Profile
+
           </h2>
 
           <div
+
             className="d-flex align-items-center"
+
             style={{
+
               gap: "10px",
+
               fontSize: "12px",
+
               color: "#637083",
+
             }}
+
           >
+
             <Home
+
               size={12}
+
               strokeWidth={1.7}
+
               color="#64748b"
+
             />
 
             <span
+
               style={{
+
                 color: "#b8bec7",
+
               }}
+
             >
+
               /
+
             </span>
 
             <span
+
               style={{
+
                 color: "#0f2447",
+
               }}
+
             >
+
               Profile
+
             </span>
+
           </div>
+
         </div>
 
         <button
+
           type="button"
+
           aria-label="Collapse"
+
           style={{
+
             width: "38px",
+
             height: "39px",
+
             border: "1px solid #e2e6ec",
+
             borderRadius: "5px",
+
             background: "#ffffff",
+
             display: "flex",
+
             alignItems: "center",
+
             justifyContent: "center",
+
             padding: 0,
+
             color: "#10264c",
+
             cursor: "pointer",
+
           }}
+
         >
+
           <ChevronUp
+
             size={15}
+
             strokeWidth={2.2}
+
           />
+
         </button>
+
       </div>
 
+      {loading && <div role="status">Loading profile...</div>}
+      {error && <div role="alert" style={{ color: "#b42318", marginBottom: 12 }}>{error}</div>}
+      {success && <div role="status" style={{ color: "#067647", marginBottom: 12 }}>{success}</div>}
       {/* ===================================================
+
           MAIN CARD
+
       =================================================== */}
 
       <div
+
         style={{
+
           width: "100%",
+
           background: "#ffffff",
+
           border: "1px solid #dde2e8",
+
           borderRadius: "5px",
+
           boxShadow:
+
             "0 1px 2px rgba(0,0,0,0.02)",
+
         }}
+
       >
+
         <div
+
           style={{
+
             padding: "19px 20px 20px",
+
           }}
+
         >
+
           {/* CARD TITLE */}
 
           <div
+
             style={{
+
               borderBottom:
+
                 "1px solid #dfe3e8",
+
               paddingBottom: "16px",
+
             }}
+
           >
+
             <h4
+
               style={{
+
                 margin: 0,
+
                 fontSize: "18px",
+
                 lineHeight: "22px",
+
                 fontWeight: 600,
+
                 color: "#10264c",
+
               }}
+
             >
+
               Profile
+
             </h4>
+
           </div>
 
           {/* =================================================
+
               BASIC INFORMATION
+
           ================================================= */}
 
           <section
+
             style={{
+
               borderBottom:
+
                 "1px solid #dfe3e8",
+
               padding: "16px 0 16px",
+
             }}
+
           >
+
             <SectionTitle>
+
               Basic Information
+
             </SectionTitle>
 
             {/* PROFILE PHOTO */}
 
             <div
+
               className="d-flex align-items-center"
+
               style={{
+
                 minHeight: "114px",
+
                 background: "#f8f9fa",
+
                 borderRadius: "4px",
+
                 padding: "16px",
+
                 marginTop: "17px",
+
                 marginBottom: "23px",
+
               }}
+
             >
+
               <div
+
                 style={{
+
                   width: "82px",
+
                   height: "82px",
+
                   minWidth: "82px",
+
                   borderRadius: "50%",
+
                   border:
+
                     "1px dashed #d5dbe3",
+
                   background: "#ffffff",
+
                   display: "flex",
+
                   alignItems: "center",
+
                   justifyContent: "center",
+
                   overflow: "hidden",
+
                   marginRight: "23px",
+
                 }}
+
               >
+
                 {photoPreview ? (
+
                   <img
+
                     src={photoPreview}
+
                     alt="Profile"
+
                     style={{
+
                       width: "100%",
+
                       height: "100%",
+
                       objectFit: "cover",
+
                     }}
+
                   />
+
                 ) : (
+
                   <Camera
+
                     size={17}
+
                     strokeWidth={1.5}
+
                     color="#ccd2da"
+
                   />
+
                 )}
+
               </div>
 
               <div>
+
                 <div
+
                   style={{
+
                     marginBottom: "5px",
+
                     fontSize: "14px",
+
                     lineHeight: "18px",
+
                     fontWeight: 600,
+
                     color: "#10264c",
+
                   }}
+
                 >
+
                   Profile Photo
+
                 </div>
 
                 <div
+
                   style={{
+
                     marginBottom: "9px",
+
                     fontSize: "12px",
+
                     lineHeight: "16px",
+
                     color: "#798599",
+
                   }}
+
                 >
+
                   Recommended image size is
+
                   40px x 40px
+
                 </div>
 
                 <div
+
                   className="d-flex align-items-center"
+
                   style={{
+
                     gap: "17px",
+
                   }}
+
                 >
+
                   <button
+
                     type="button"
+
                     onClick={() =>
+
                       fileInputRef.current?.click()
+
                     }
+
                     style={{
+
                       minWidth: "57px",
+
                       height: "28px",
+
                       padding: "0 9px",
+
                       border: "none",
+
                       borderRadius: "5px",
+
                       background: "#bd8d32",
+
                       color: "#ffffff",
+
                       fontSize: "12px",
+
                       lineHeight: "28px",
+
                       fontWeight: 600,
+
                       cursor: "pointer",
+
                     }}
+
                   >
+
                     Upload
+
                   </button>
 
                   <input
+
                     ref={fileInputRef}
+
                     type="file"
+
                     accept="image/*"
+
                     hidden
+
                     onChange={handlePhotoChange}
+
                   />
 
                   <button
+
                     type="button"
+
                     onClick={handlePhotoCancel}
+
                     style={{
+
                       border: "none",
+
                       background: "transparent",
+
                       padding: 0,
+
                       height: "28px",
+
                       fontSize: "12px",
+
                       color: "#15294b",
+
                       cursor: "pointer",
+
                     }}
+
                   >
+
                     Cancel
+
                   </button>
+
                 </div>
+
               </div>
+
             </div>
 
             {/* FIRST / LAST NAME */}
 
             <div className="row gx-4">
+
               <div className="col-md-6">
+
                 <HorizontalInput
+
                   label="First Name"
+
                   name="firstName"
+
                   value={profile.firstName}
+
                   onChange={handleChange}
+
                 />
+
               </div>
 
               <div className="col-md-6">
+
                 <HorizontalInput
+
                   label="Last Name"
+
                   name="lastName"
+
                   value={profile.lastName}
+
                   onChange={handleChange}
+
                 />
+
               </div>
 
               <div className="col-md-6">
+
                 <HorizontalInput
+
                   label="Email"
+
                   name="email"
+
                   type="email"
+
                   value={profile.email}
+
                   onChange={handleChange}
+
                 />
+
               </div>
 
               <div className="col-md-6">
+
                 <HorizontalInput
+
                   label="Phone"
+
                   name="phone"
+
                   value={profile.phone}
+
                   onChange={handleChange}
+
                 />
+
               </div>
+
             </div>
+
           </section>
 
           {/* =================================================
+
               ADDRESS INFORMATION
+
           ================================================= */}
 
           <section
+
             style={{
+
               borderBottom:
+
                 "1px solid #dfe3e8",
+
               padding: "14px 0 15px",
+
             }}
+
           >
+
             <SectionTitle>
+
               Address Information
+
             </SectionTitle>
 
             <div
+
               style={{
+
                 marginTop: "16px",
+
               }}
+
             >
+
               {/* ADDRESS */}
 
               <div
+
                 className="row align-items-center"
+
                 style={{
+
                   marginBottom: "16px",
+
                 }}
+
               >
+
                 <div className="col-md-2">
+
                   <FormLabel>
+
                     Address
+
                   </FormLabel>
+
                 </div>
 
                 <div className="col-md-10">
+
                   <input
+
                     type="text"
+
                     name="address"
+
                     value={profile.address}
+
                     onChange={handleChange}
+
                     className="form-control"
+
                     style={inputStyle}
+
                   />
+
                 </div>
+
               </div>
 
               {/* COUNTRY / STATE */}
 
               <div className="row gx-4">
+
                 <div className="col-md-6">
+
                   <HorizontalSelect
+
                     label="Country"
+
                     name="country"
+
                     value={profile.country}
+
                     onChange={handleChange}
+
                     options={[
+
                       "India",
+
                       "USA",
+
                       "Canada",
+
                       "Germany",
+
                       "France",
+
                     ]}
+
                   />
+
                 </div>
 
                 <div className="col-md-6">
+
                   <HorizontalSelect
+
                     label="State"
+
                     name="state"
+
                     value={profile.state}
+
                     onChange={handleChange}
+
                     options={[
+
                       "Gujarat",
+
                       "Maharashtra",
+
                       "Rajasthan",
+
                       "Delhi",
+
                       "Madhya Pradesh",
+
                       "California",
+
                       "New York",
+
                       "Texas",
+
                       "Florida",
+
                     ]}
+
                   />
+
                 </div>
 
                 {/* CITY / POSTAL CODE */}
 
                 <div className="col-md-6">
+
                   <HorizontalSelect
+
                     label="City"
+
                     name="city"
+
                     value={profile.city}
+
                     onChange={handleChange}
+
                     options={[
+
                       "Ahmedabad",
+
                       "Surat",
+
                       "Vadodara",
+
                       "Rajkot",
+
                       "Mumbai",
+
                       "Pune",
+
                       "Los Angeles",
+
                       "San Diego",
+
                       "Fresno",
+
                       "San Francisco",
+
                     ]}
+
                   />
+
                 </div>
 
                 <div className="col-md-6">
+
                   <HorizontalInput
+
                     label="Postal Code"
+
                     name="postalCode"
+
                     value={profile.postalCode}
+
                     onChange={handleChange}
+
                   />
+
                 </div>
+
               </div>
+
             </div>
+
           </section>
 
           {/* =================================================
+
               CHANGE PASSWORD
+
           ================================================= */}
 
           <section
+
             style={{
+
               borderBottom:
+
                 "1px solid #dfe3e8",
+
               padding: "15px 0 16px",
+
             }}
+
           >
+
             <SectionTitle>
+
               Change Password
+
             </SectionTitle>
 
             <div
+
               style={{
+
                 marginTop: "17px",
+
               }}
+
             >
+
               <PasswordField
+
                 label="Current Password"
+
                 name="currentPassword"
+
                 value={
+
                   profile.currentPassword
+
                 }
+
                 show={showCurrent}
+
                 setShow={setShowCurrent}
+
                 onChange={handleChange}
+
               />
 
               <PasswordField
+
                 label="New Password"
+
                 name="newPassword"
+
                 value={profile.newPassword}
+
                 show={showNew}
+
                 setShow={setShowNew}
+
                 onChange={handleChange}
+
               />
 
               <PasswordField
+
                 label="Confirm Password"
+
                 name="confirmPassword"
+
                 value={
+
                   profile.confirmPassword
+
                 }
+
                 show={showConfirm}
+
                 setShow={setShowConfirm}
+
                 onChange={handleChange}
+
                 noMargin
+
               />
+
             </div>
+
           </section>
 
           {/* =================================================
+
               BUTTONS
+
           ================================================= */}
 
           <div
+
             className="d-flex justify-content-end align-items-center"
+
             style={{
+
               gap: "16px",
+
               paddingTop: "16px",
+
             }}
+
           >
+
             <button
+
               type="button"
+
               onClick={handleCancel}
+
               style={{
+
                 height: "39px",
+
                 minWidth: "73px",
+
                 padding: "0 14px",
+
                 borderRadius: "5px",
+
                 border:
+
                   "1px solid #dce1e7",
+
                 background: "#ffffff",
+
                 color: "#10264c",
+
                 fontSize: "13px",
+
                 fontWeight: 500,
+
                 cursor: "pointer",
+
               }}
+
             >
+
               Cancel
+
             </button>
 
-            {/* UI ONLY - NO API CALL */}
+            {/* SAVE PROFILE API */}
+
             <button
+
               type="button"
+              onClick={handleSave}
+              disabled={saving || loading}
+
               style={{
+
                 height: "39px",
+
                 minWidth: "60px",
+
                 padding: "0 14px",
+
                 borderRadius: "5px",
+
                 border: "none",
+
                 background: "#bd8d32",
+
                 color: "#ffffff",
+
                 fontSize: "13px",
+
                 fontWeight: 600,
+
                 cursor: "pointer",
+
               }}
+
             >
-              Save
+
+              {saving ? "Saving..." : "Save"}
+
             </button>
+
           </div>
+
         </div>
+
       </div>
+
     </div>
+
   );
+
 };
 
 /* =========================================================
+
    SECTION TITLE
+
 ========================================================= */
 
 const SectionTitle = ({
+
   children,
+
 }: {
+
   children: React.ReactNode;
+
 }) => {
+
   return (
+
     <h6
+
       style={{
+
         margin: 0,
+
         fontSize: "13px",
+
         lineHeight: "18px",
+
         fontWeight: 600,
+
         color: "#10264c",
+
       }}
+
     >
+
       {children}
+
     </h6>
+
   );
+
 };
 
 /* =========================================================
+
    FORM LABEL
+
 ========================================================= */
 
 const FormLabel = ({
+
   children,
+
 }: {
+
   children: React.ReactNode;
+
 }) => {
+
   return (
+
     <label
+
       style={{
+
         margin: 0,
+
         fontSize: "13px",
+
         lineHeight: "18px",
+
         fontWeight: 400,
+
         color: "#10264c",
+
       }}
+
     >
+
       {children}
+
     </label>
+
   );
+
 };
 
 /* =========================================================
+
    HORIZONTAL INPUT
+
 ========================================================= */
 
 interface HorizontalInputProps {
+
   label: string;
+
   name: string;
+
   value: string;
+
   type?: React.HTMLInputTypeAttribute;
+
   onChange: (
+
     e: React.ChangeEvent<HTMLInputElement>
+
   ) => void;
+
 }
 
 const HorizontalInput: React.FC<
+
   HorizontalInputProps
+
 > = ({
+
   label,
+
   name,
+
   value,
+
   type = "text",
+
   onChange,
+
 }) => {
+
   return (
+
     <div
+
       className="row align-items-center"
+
       style={{
+
         marginBottom: "16px",
+
       }}
+
     >
+
       <div className="col-md-4">
+
         <FormLabel>{label}</FormLabel>
+
       </div>
 
       <div className="col-md-8">
+
         <input
+
           type={type}
+
           name={name}
+
           value={value}
+
           onChange={onChange}
+
           className="form-control"
+
           style={inputStyle}
+
         />
+
       </div>
+
     </div>
+
   );
+
 };
 
 /* =========================================================
+
    HORIZONTAL SELECT
+
 ========================================================= */
 
 interface HorizontalSelectProps {
+
   label: string;
+
   name: string;
+
   value: string;
+
   options: string[];
+
   onChange: (
+
     e: React.ChangeEvent<HTMLSelectElement>
+
   ) => void;
+
 }
 
 const HorizontalSelect: React.FC<
+
   HorizontalSelectProps
+
 > = ({
+
   label,
+
   name,
+
   value,
+
   options,
+
   onChange,
+
 }) => {
+
   return (
+
     <div
+
       className="row align-items-center"
+
       style={{
+
         marginBottom: "16px",
+
       }}
+
     >
+
       <div className="col-md-4">
+
         <FormLabel>{label}</FormLabel>
+
       </div>
 
       <div className="col-md-8">
+
         <select
+
           name={name}
+
           value={value}
+
           onChange={onChange}
+
           className="form-select"
+
           style={selectStyle}
+
         >
+
           <option value="">
+
             Select
+
           </option>
 
+          {value && !options.includes(value) && <option value={value}>{value}</option>}
           {options.map((option) => (
+
             <option
+
               key={option}
+
               value={option}
+
             >
+
               {option}
+
             </option>
+
           ))}
+
         </select>
+
       </div>
+
     </div>
+
   );
+
 };
 
 /* =========================================================
+
    PASSWORD FIELD
+
 ========================================================= */
 
 interface PasswordFieldProps {
+
   label: string;
+
   name: string;
+
   value: string;
+
   show: boolean;
+
   setShow: React.Dispatch<
+
     React.SetStateAction<boolean>
+
   >;
+
   onChange: (
+
     e: React.ChangeEvent<HTMLInputElement>
+
   ) => void;
+
   noMargin?: boolean;
+
 }
 
 const PasswordField: React.FC<
+
   PasswordFieldProps
+
 > = ({
+
   label,
+
   name,
+
   value,
+
   show,
+
   setShow,
+
   onChange,
+
   noMargin = false,
+
 }) => {
+
   return (
+
     <div
+
       className="row align-items-center"
+
       style={{
+
         marginBottom: noMargin
+
           ? 0
+
           : "16px",
+
       }}
+
     >
+
       <div className="col-md-2">
+
         <FormLabel>{label}</FormLabel>
+
       </div>
 
       <div className="col-md-4">
+
         <div
+
           style={{
+
             position: "relative",
+
           }}
+
         >
+
           <input
+
             type={
+
               show
+
                 ? "text"
+
                 : "password"
+
             }
+
             name={name}
+
             value={value}
+
             onChange={onChange}
+
             className="form-control"
+
             style={{
+
               ...inputStyle,
+
               paddingRight: "40px",
+
             }}
+
           />
 
           <button
+
             type="button"
+
             onClick={() =>
+
               setShow((prev) => !prev)
+
             }
+
             aria-label={
+
               show
+
                 ? "Hide password"
+
                 : "Show password"
+
             }
+
             style={{
+
               position: "absolute",
+
               top: "50%",
+
               right: "11px",
+
               transform:
+
                 "translateY(-50%)",
+
               width: "24px",
+
               height: "24px",
+
               padding: 0,
+
               border: "none",
+
               background:
+
                 "transparent",
+
               display: "flex",
+
               alignItems: "center",
+
               justifyContent:
+
                 "center",
+
               color: "#10264c",
+
               cursor: "pointer",
+
             }}
+
           >
+
             {show ? (
+
               <Eye
+
                 size={17}
+
                 strokeWidth={1.7}
+
               />
+
             ) : (
+
               <EyeOff
+
                 size={17}
+
                 strokeWidth={1.7}
+
               />
+
             )}
+
           </button>
+
         </div>
+
       </div>
+
     </div>
+
   );
+
 };
 
 /* =========================================================
+
    STYLES
+
 ========================================================= */
 
 const inputStyle: React.CSSProperties = {
+
   width: "100%",
+
   height: "39px",
+
   minHeight: "39px",
+
   border: "1px solid #d9dfe7",
+
   borderRadius: "5px",
+
   backgroundColor: "#ffffff",
+
   color: "#1f2937",
+
   fontSize: "13px",
+
   padding: "7px 11px",
+
   boxShadow: "none",
+
   outline: "none",
+
 };
 
 const selectStyle: React.CSSProperties = {
+
   ...inputStyle,
+
   cursor: "pointer",
+
   color: "#10264c",
+
 };
 
 export default Profile;

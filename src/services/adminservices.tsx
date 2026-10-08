@@ -652,75 +652,26 @@ export const deleteUser = async (id: string) => {
    EMPLOYEE PROFILE
 ===================================================== */
 
-{/* const extractProfileData = (
-  responseData: any
-): any => {
-  if (
-    !responseData ||
-    typeof responseData !== "object"
-  ) {
-    return null;
-  }
-
-  const candidates = [
-    responseData?.data,
-    responseData?.Data,
-    responseData?.result,
-    responseData?.Result,
-    responseData?.profile,
-    responseData?.Profile,
-    responseData,
-  ];
-
-  const profile = candidates.find(
-    (item) =>
-      item &&
-      typeof item === "object" &&
-      !Array.isArray(item) &&
-      (
-        [
-          "id",
-          "Id",
-          "firstName",
-          "FirstName",
-          "lastName",
-          "LastName",
-          "email",
-          "Email",
-          "phone",
-          "Phone",
-        ] as string[]
-      ).some((key) => key in item)
-  );
-
-  return (
-    profile ||
-    candidates.find(
-      (item) =>
-        item &&
-        typeof item === "object" &&
-        !Array.isArray(item)
-    ) ||
-    null
-  );
+const extractProfileData = (responseData: any): any => {
+  const root = unwrapApiValue(responseData);
+  const profile = root?.profile ?? root?.Profile ?? root;
+  return profile && typeof profile === "object" && !Array.isArray(profile) ? profile : null;
 };
 
-export const getEmployeeProfile = async (
-  token?: string
-) => {
+export const getEmployeeProfile = async (token?: string) => {
   try {
-    const response = await axios.get(
-      `${BASE_URL}/Profile/Get-Profile`,
-      {
-        headers: getAuthHeaders(token),
-      }
-    );
-
+    const response = await axios.get(`${BASE_URL}/Profile/Get-Profile`, {
+      headers: getAuthHeaders(token),
+    });
+    if (response.data?.isSuccess === false || response.data?.IsSuccess === false) {
+      throw new Error(response.data?.message || "Failed to fetch profile.");
+    }
     return extractProfileData(response.data);
   } catch (error) {
     throw new Error(getApiErrorMessage(error));
   }
 };
+
 export interface UpdateProfilePayload {
   Id: string;
   FirstName: string;
@@ -736,7 +687,31 @@ export interface UpdateProfilePayload {
   NewPassword: string;
   ConfirmPassword: string;
   ProfilePicture?: File | null;
-} */}
+}
+
+export const updateEmployeeProfile = async (payload: UpdateProfilePayload, token?: string) => {
+  if (!payload.Id) throw new Error("Profile ID is required.");
+  const form = new FormData();
+  const fields = ["Id", "FirstName", "LastName", "Email", "Phone", "Address", "Country", "State", "City", "PostalCode"] as const;
+  fields.forEach((key) => form.append(key, payload[key] ?? ""));
+  if (payload.CurrentPassword || payload.NewPassword || payload.ConfirmPassword) {
+    form.append("CurrentPassword", payload.CurrentPassword);
+    form.append("NewPassword", payload.NewPassword);
+    form.append("ConfirmPassword", payload.ConfirmPassword);
+  }
+  if (payload.ProfilePicture) form.append("ProfilePicture", payload.ProfilePicture);
+  try {
+    const response = await axios.put(`${BASE_URL}/Profile/Update-Profile`, form, {
+      headers: { ...getAuthHeaders(token), Accept: "application/json" },
+    });
+    if (response.data?.isSuccess === false || response.data?.IsSuccess === false) {
+      throw new Error(response.data?.message || "Failed to update profile.");
+    }
+    return response.data;
+  } catch (error) {
+    throw new Error(getApiErrorMessage(error));
+  }
+};
 
 
 /* =====================================================

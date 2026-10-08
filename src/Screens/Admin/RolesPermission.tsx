@@ -1200,60 +1200,41 @@ const Roles: React.FC = () => {
 
 
 
-  const loadPages = async () => {
+ const loadPages = async () => {
+  const response = await getPermissionPages();
 
+  console.log("PERMISSION PAGES API RESPONSE:", response);
 
+  const list = extractArray(response)
+    .map(normalizePage)
+    .filter((p) => p.id);
 
-    const response = await getPermissionPages();
+  const requiredModules = ["Profile", "Payslip"];
 
+  const missingModules = requiredModules.filter(
+    (moduleName) =>
+      !list.some(
+        (page) =>
+          page.name.trim().toLowerCase() ===
+          moduleName.toLowerCase()
+      )
+  );
 
-
-
-
-
-
-    const list = extractArray(response)
-
-
-
-      .map(normalizePage)
-
-
-
-      .filter((p) => p.id);
-
-
-
-
-
-
-
-    setPages(list);
-
-
-
-    setAddPermissions(
-
-
-
-      createDefaultPermissions(list)
-
-
-
+  if (missingModules.length > 0) {
+    console.warn(
+      "These modules are missing from backend permission pages:",
+      missingModules
     );
+  }
 
+  setPages(list);
 
+  setAddPermissions(
+    createDefaultPermissions(list)
+  );
 
-
-
-
-
-    return list;
-
-
-
-  };
-
+  return list;
+};
 
 
 
@@ -6525,13 +6506,7 @@ const Roles: React.FC = () => {
 
 
             <h1 className="roles-page-title">
-
-
-
               Designations & Permissions
-
-
-
             </h1>
 
 

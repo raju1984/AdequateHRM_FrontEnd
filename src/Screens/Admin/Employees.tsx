@@ -114,10 +114,8 @@ const Employee = () => {
   const [sortBy, setSortBy] =
     useState("new");
 
-  const [
-    dateRange,
-    setDateRange,
-  ] = useState("all");
+  const [fromDate, setFromDate] = useState("");
+  const [toDate, setToDate] = useState("");
 
   const [
     openModal,
@@ -420,75 +418,26 @@ const Employee = () => {
     return `${year}-${month}-${day}`;
   };
 
-  const getApiDateRange = () => {
-    if (dateRange === "all") {
-      return {
-        fromDate: undefined,
-        toDate: undefined,
-      };
+ const getApiDateRange = () => ({
+  fromDate: fromDate
+    ? `${fromDate}T00:00:00.000Z`
+    : undefined,
+
+  toDate: toDate
+    ? `${toDate}T23:59:59.999Z`
+    : undefined,
+});
+
+  const openNativeCalendar = (input: HTMLInputElement) => {
+    if (typeof input.showPicker === "function") {
+      try {
+        input.showPicker();
+      } catch {
+        input.focus();
+      }
+    } else {
+      input.focus();
     }
-
-    const end = new Date();
-    end.setHours(
-      23,
-      59,
-      59,
-      999
-    );
-
-    const start = new Date();
-    start.setHours(0, 0, 0, 0);
-
-    if (dateRange === "30") {
-      start.setDate(
-        start.getDate() - 29
-      );
-    } else if (
-      dateRange === "7"
-    ) {
-      start.setDate(
-        start.getDate() - 6
-      );
-    }
-
-    return {
-      fromDate:
-        start.toISOString(),
-      toDate: end.toISOString(),
-    };
-  };
-
-  const getDateRangeLabel = () => {
-    if (dateRange === "all") {
-      return "All Dates";
-    }
-
-    const {
-      fromDate,
-      toDate,
-    } = getApiDateRange();
-
-    if (!fromDate || !toDate) {
-      return "All Dates";
-    }
-
-    const format = (
-      value: string
-    ) =>
-      new Date(
-        value
-      ).toLocaleDateString(
-        "en-US",
-        {
-          month: "2-digit",
-          day: "2-digit",
-          year: "numeric",
-        }
-      );
-
-    return `${format(
-      fromDate
-    )} - ${format(toDate)}`;
   };
 
   const getProfileImageUrl = (
@@ -1078,7 +1027,8 @@ const Employee = () => {
     search,
     designationFilter,
     statusFilter,
-    dateRange,
+    fromDate,
+    toDate,
     sortBy,
     currentPage,
     rowsPerPage,
@@ -1089,7 +1039,8 @@ const Employee = () => {
   }, [
     designationFilter,
     statusFilter,
-    dateRange,
+    fromDate,
+    toDate,
     sortBy,
     rowsPerPage,
   ]);
@@ -1894,6 +1845,7 @@ const Employee = () => {
         <input
           name="joiningDate"
           type="date"
+          onClick={(e) => openNativeCalendar(e.currentTarget)}
           value={
             formData.joiningDate
           }
@@ -2314,37 +2266,36 @@ const Employee = () => {
           </h3>
 
           <div className="employee-filter-row">
-            <div className="custom-select-box date-select-box">
-              <select
-                value={
-                  dateRange
-                }
-                onChange={(e) =>
-                  setDateRange(
-                    e.target.value
-                  )
-                }
-              >
-                <option value="7">
-                  {dateRange === "7"
-                    ? getDateRangeLabel()
-                    : "Last 7 Days"}
-                </option>
-
-                <option value="30">
-                  Last 30 Days
-                </option>
-
-                <option value="today">
-                  Today
-                </option>
-
-                <option value="all">
-                  All Dates
-                </option>
-              </select>
-
-              <FiChevronDown />
+            <div className="employee-date-filter" style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+              <label style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <span>From</span>
+                <input
+                  type="date"
+                  aria-label="From date"
+                  value={fromDate}
+                  max={toDate || undefined}
+                  onChange={(e) => { setFromDate(e.target.value); setCurrentPage(1); }}
+                  onClick={(e) => openNativeCalendar(e.currentTarget)}
+                  style={{ padding: "8px 10px", border: "1px solid #ddd", borderRadius: 6, cursor: "pointer" }}
+                />
+              </label>
+              <label style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <span>To</span>
+                <input
+                  type="date"
+                  aria-label="To date"
+                  value={toDate}
+                  min={fromDate || undefined}
+                  onChange={(e) => { setToDate(e.target.value); setCurrentPage(1); }}
+                  onClick={(e) => openNativeCalendar(e.currentTarget)}
+                  style={{ padding: "8px 10px", border: "1px solid #ddd", borderRadius: 6, cursor: "pointer" }}
+                />
+              </label>
+              {(fromDate || toDate) && (
+                <button type="button" onClick={() => { setFromDate(""); setToDate(""); setCurrentPage(1); }}>
+                  Clear
+                </button>
+              )}
             </div>
 
             <div className="custom-select-box">

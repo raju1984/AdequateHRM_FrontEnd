@@ -1383,6 +1383,7 @@ const Leaves = () => {
   const [sortBy, setSortBy] =
     useState("Last 7 Days");
 
+    const [timeFilter, setTimeFilter] = useState("today");
   const [
     currentPage,
     setCurrentPage,
@@ -1611,71 +1612,60 @@ const [declineError, setDeclineError] =
      LOAD LEAVES
   ===================================================== */
 
-  const loadLeaves = async (
-    currentEmployees = employees,
-    currentLeaveTypes = leaveTypes
-  ) => {
-    setLoading(true);
-    setError("");
+ /* =====================================================
+   LOAD LEAVES
+===================================================== */
 
-    try {
-      const response =
-        await getAllLeave({
-          PageNumber: 1,
-          PageSize: 1000,
-        });
+const loadLeaves = async (
+  currentEmployees = employees,
+  currentLeaveTypes = leaveTypes
+) => {
+  setLoading(true);
+  setError("");
 
-      const list = findArray(
-        response,
-        [
-          "leaveTypeMasterId",
-          "LeaveTypeMasterId",
-        ]
-      );
+  try {
+    const response = await getAllLeave({
+      PageNumber: 1,
+      PageSize: 1000,
+      TimeFilter: timeFilter === "all" ? undefined : timeFilter,
+    });
 
-      const unwrapped =
-        unwrapObject(response);
+    const list = findArray(response, [
+      "leaveTypeMasterId",
+      "LeaveTypeMasterId",
+    ]);
 
-      const source = list.length
-        ? list
-        : Array.isArray(
-              unwrapped
-            )
-          ? unwrapped
-          : [];
+    const unwrapped = unwrapObject(response);
 
-      const mapped = source
-        .map((item: any) =>
-          normalizeLeave(
-            item,
-            currentEmployees,
-            currentLeaveTypes
-          )
+    const source = list.length
+      ? list
+      : Array.isArray(unwrapped)
+      ? unwrapped
+      : [];
+
+    const mapped = source
+      .map((item: any) =>
+        normalizeLeave(
+          item,
+          currentEmployees,
+          currentLeaveTypes
         )
-        .filter(
-          (
-            item: LeaveItem
-          ) => Boolean(item.id)
-        );
+      )
+      .filter((item: LeaveItem) => Boolean(item.id));
 
-      setLeaveData(mapped);
-    } catch (err: any) {
-      console.error(
-        "LOAD LEAVES ERROR:",
-        err
-      );
+    setLeaveData(mapped);
+  } catch (err: any) {
+    console.error("LOAD LEAVES ERROR:", err);
 
-      setError(
-        err?.response?.data
-          ?.message ||
-          err?.message ||
-          "Unable to load leave records."
-      );
-    } finally {
-      setLoading(false);
-    }
-  };
-
+    setError(
+      err?.response?.data?.message ||
+      err?.message ||
+      "Unable to load leave records."
+    );
+  } finally {
+    setLoading(false);
+  }
+};
   /* =====================================================
      REFRESH
   ===================================================== */
@@ -1698,10 +1688,9 @@ const [declineError, setDeclineError] =
       );
     };
 
-  useEffect(() => {
-    refreshAll();
-  }, []);
-
+ useEffect(() => {
+  loadLeaves(employees, leaveTypes);
+}, [timeFilter]);
   useEffect(() => {
     const fetchAttendanceSummary = async () => {
       try {
@@ -4145,23 +4134,19 @@ const handleDeclineConfirm = async () => {
 
             <div className="leave-filters">
 
-              <select
-                className="leave-filter-box leave-date-filter"
-                defaultValue=""
-              >
-                <option value="">
-                Today
-                </option>
-
-                <option value="last7">
-                  Week
-                </option>
-
-                <option value="thisMonth">
-                   Month
-                </option>
-              </select>
-
+            <select
+  className="leave-filter-box leave-date-filter"
+  value={timeFilter}
+  onChange={(e) => {
+    setTimeFilter(e.target.value);
+    setCurrentPage(1);
+  }}
+>
+  <option value="today">Today</option>
+  <option value="last7">Week</option>
+  <option value="thisMonth">Month</option>
+  <option value="all">All Dates</option>
+</select>
               <select
                 className="leave-filter-box leave-type-filter"
                 value={

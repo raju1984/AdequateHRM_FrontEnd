@@ -560,30 +560,38 @@ const Atendance: React.FC = () => {
      DASHBOARD API
   =================================================== */
 
-  const loadDashboard =
-    useCallback(async () => {
-      try {
-        setDashboardLoading(
-          true
-        );
+const loadDashboard = useCallback(async () => {
+  try {
+    setDashboardLoading(true);
 
-        const response =
-          await getAttendanceDashboard();
+    const response = await getAttendanceDashboard();
 
-        setDashboardData(
-          response
-        );
-      } catch (err) {
-        console.error(
-          "Attendance dashboard error:",
-          err
-        );
-      } finally {
-        setDashboardLoading(
-          false
-        );
-      }
-    }, []);
+    console.log("Dashboard Response:", response);
+
+    setDashboardData(response.data);
+
+  } catch (err) {
+    console.error("Attendance dashboard error:", err);
+  } finally {
+    setDashboardLoading(false);
+  }
+}, []);
+
+const handleShowAbsentToday = () => {
+  setStatusFilter("Absent");
+  setDateFilter(getLocalDateOnly(new Date()));
+  setDepartmentFilter("Department");
+  setSearch("");
+  setCurrentPage(1);
+  setSelectedRows([]);
+
+  document
+    .querySelector(".attendance-table-card")
+    ?.scrollIntoView({
+      behavior: "smooth",
+      block: "start",
+    });
+};
 
   /* ===================================================
      ATTENDANCE API
@@ -1065,134 +1073,27 @@ const Atendance: React.FC = () => {
     return "production-badge green";
   };
 
-  /* ===================================================
-     DASHBOARD VALUE
-  =================================================== */
 
-  const getDashboardValue = (
-    keys: string[],
-    fallback: string
-  ) => {
-    const value =
-      getValue(
-        dashboardData,
-        keys,
-        undefined
-      );
+/* ===================================================
+   DASHBOARD COUNTS
+=================================================== */
 
-    if (
-      value !== undefined &&
-      value !== null
-    ) {
-      return String(value);
-    }
+const presentCount = dashboardData?.presentCount ?? 0;
 
-    const nested =
-      dashboardData?.data ||
-      dashboardData?.Data ||
-      dashboardData?.result ||
-      dashboardData?.Result;
+const lateCount = dashboardData?.lateLoginCount ?? 0;
 
-    const nestedValue =
-      getValue(
-        nested,
-        keys,
-        undefined
-      );
+const uninformedCount = dashboardData?.uninformedCount ?? 0;
 
-    if (
-      nestedValue !== undefined &&
-      nestedValue !== null
-    ) {
-      return String(
-        nestedValue
-      );
-    }
+const permissionCount = dashboardData?.permissionCount ?? 0;
 
-    return fallback;
-  };
+const absentCount = dashboardData?.absentCount ?? 0;
 
-  /* ===================================================
-     DASHBOARD COUNTS
-  =================================================== */
+const totalEmployees = dashboardData?.totalEmployees ?? 0;
 
-  const presentCount =
-    getDashboardValue(
-      [
-        "present",
-        "Present",
-        "presentCount",
-        "PresentCount",
-        "totalPresent",
-        "TotalPresent",
-      ],
-      "0"
-    );
-
-  const lateCount =
-    getDashboardValue(
-      [
-        "late",
-        "Late",
-        "lateCount",
-        "LateCount",
-        "lateLogin",
-        "LateLogin",
-      ],
-      "0"
-    );
-
-  const uninformedCount =
-    getDashboardValue(
-      [
-        "uninformed",
-        "Uninformed",
-        "uninformedCount",
-        "UninformedCount",
-      ],
-      "0"
-    );
-
-  const permissionCount =
-    getDashboardValue(
-      [
-        "permission",
-        "Permission",
-        "permissionCount",
-        "PermissionCount",
-      ],
-      "0"
-    );
-
-  const absentCount =
-    getDashboardValue(
-      [
-        "absent",
-        "Absent",
-        "absentCount",
-        "AbsentCount",
-        "totalAbsent",
-        "TotalAbsent",
-      ],
-      "0"
-    );
-
-  const totalEmployees =
-    getDashboardValue(
-      [
-        "totalEmployees",
-        "TotalEmployees",
-        "employeeCount",
-        "EmployeeCount",
-        "totalEmployee",
-        "TotalEmployee",
-      ],
-      "0"
-    );
-
-  /* ===================================================
-     PAGINATION
-  =================================================== */
+/* ===================================================
+   PAGINATION
+=================================================== */
+  
 
   const totalPages =
     Math.max(
@@ -1332,7 +1233,22 @@ const Atendance: React.FC = () => {
           color: #182438;
           font-size: 14px;
           font-weight: 600;
+          background: transparent;
+border: none;
+padding: 0;
+cursor: pointer;
+font-family: inherit;
         }
+
+        .absent-summary:hover {
+  color: #bd9138;
+}
+
+.absent-summary:focus-visible {
+  outline: 2px solid #bd9138;
+  outline-offset: 4px;
+  border-radius: 4px;
+}
 
         .avatar-stack {
           display: flex;
@@ -2189,23 +2105,26 @@ const Atendance: React.FC = () => {
               </p>
             </div>
 
-            <div className="absent-summary">
-              <span>
-                Total Absenties today
-              </span>
+          <button
+  type="button"
+  className="absent-summary"
+  onClick={handleShowAbsentToday}
+  title="Show today's absent employees"
+>
+  <span>Total Absentees Today</span>
 
-              <div className="avatar-stack">
-                <span className="stack-avatar" />
-                <span className="stack-avatar" />
-                <span className="stack-avatar" />
-                <span className="stack-avatar" />
-                <span className="stack-avatar" />
+  <div className="avatar-stack">
+    <span className="stack-avatar" />
+    <span className="stack-avatar" />
+    <span className="stack-avatar" />
+    <span className="stack-avatar" />
+    <span className="stack-avatar" />
 
-                <span className="stack-more">
-                  +{absentCount}
-                </span>
-              </div>
-            </div>
+    <span className="stack-more">
+      +{absentCount}
+    </span>
+  </div>
+</button>
           </div>
 
           <div className="stats-grid">

@@ -1,5 +1,7 @@
+
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
+import axios from "axios";
 
 import logo from "../../assets/img/logo.webp";
 import bg1 from "../../assets/img/bg/bg-01.png";
@@ -7,26 +9,23 @@ import bg2 from "../../assets/img/bg/bg-02.png";
 import bg3 from "../../assets/img/bg/bg-03.png";
 import authBg from "../../assets/img/bg/authentication-bg-01.png";
 
-import { loginUser } from "../../services/authservices";
+import { accountantLogin } from "../../services/AccountantServices";
 
-const EmployeLogin = () => {
+const ACCOUNTANT_ROLE = 3;
+
+const AccountantLogin = () => {
   const navigate = useNavigate();
 
-  const [showPassword, setShowPassword] =
-    useState(false);
-
-  const [loading, setLoading] =
-    useState(false);
-
-  const [rememberMe, setRememberMe] =
-    useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
 
   const [formData, setFormData] = useState({
-    email: "",
+    email: localStorage.getItem("rememberEmail") || "",
     password: "",
   });
 
-  // Input Change
+  // INPUT CHANGE
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement>
   ) => {
@@ -38,13 +37,12 @@ const EmployeLogin = () => {
     }));
   };
 
-  // Login API
+  // ACCOUNTANT LOGIN API
   const handleLogin = async (
     e: React.FormEvent<HTMLFormElement>
   ) => {
     e.preventDefault();
 
-    // Validation
     if (!formData.email.trim()) {
       alert("Please enter email address");
       return;
@@ -64,26 +62,15 @@ const EmployeLogin = () => {
 
         loginDevice: {
           deviceId: "WEB001",
-          deviceName:
-            navigator.userAgent ||
-            "Web Browser",
+          deviceName: navigator.userAgent || "Web Browser",
           publicIP: "",
           location: "India",
         },
 
-        role: 2, // Employee Role
+        role: ACCOUNTANT_ROLE,
       };
 
-      console.log("Login Payload:", payload);
-
-      const response = await loginUser(
-        payload
-      );
-
-      console.log(
-        "Login Response:",
-        response
-      );
+      const response = await accountantLogin(payload);
 
       if (
         response?.statusCode === 200 &&
@@ -91,84 +78,44 @@ const EmployeLogin = () => {
       ) {
         const userData = response.data;
 
-        console.log(
-          "Logged In User:",
-          userData
-        );
+        // VALIDATE ACCOUNTANT ROLE
+        const userType = Number(userData.userType);
 
-        console.log(
-          "User Type:",
-          userData?.userType
-        );
+        if (userType !== ACCOUNTANT_ROLE) {
+          alert("This account is not an Accountant account");
+          return;
+        }
 
-        // =============================
         // SAVE ACCESS TOKEN
-        // =============================
+        const rawAccessToken =
+          userData?.tokens?.accessToken;
 
-   const rawAccessToken = userData?.tokens?.accessToken;
+        const accessToken =
+          typeof rawAccessToken === "string"
+            ? rawAccessToken
+            : rawAccessToken?.token ||
+              rawAccessToken?.accessToken ||
+              "";
 
-console.log(
-  "ACCESS TOKEN TYPE:",
-  typeof rawAccessToken
-);
+        if (!accessToken) {
+          alert(
+            "Login successful but access token was not received."
+          );
+          return;
+        }
 
-console.log(
-  "ACCESS TOKEN KEYS:",
-  rawAccessToken &&
-    typeof rawAccessToken === "object"
-    ? Object.keys(rawAccessToken)
-    : []
-);
+        localStorage.setItem("token", accessToken);
 
-let accessToken = "";
-
-if (typeof rawAccessToken === "string") {
-  accessToken = rawAccessToken;
-} else if (
-  rawAccessToken &&
-  typeof rawAccessToken === "object"
-) {
-  accessToken =
-    rawAccessToken.token ||
-    rawAccessToken.accessToken ||
-    "";
-}
-
-if (!accessToken) {
-  console.error(
-    "Valid access token was not found in login response."
-  );
-
-  alert(
-    "Login successful but valid access token was not received."
-  );
-
-  return;
-}
-
-localStorage.setItem(
-  "token",
-  accessToken
-);
-
-console.log(
-  "ACCESS TOKEN SAVED:",
-  !!localStorage.getItem("token")
-);
-
-console.log(
-  "SAVED TOKEN TYPE:",
-  typeof localStorage.getItem("token")
-);
-
-console.log(
-  "SAVED TOKEN LENGTH:",
-  localStorage.getItem("token")?.length
-);
-
-        // Optional Refresh Token
-        const refreshToken =
+        // SAVE REFRESH TOKEN
+        const rawRefreshToken =
           userData?.tokens?.refreshToken;
+
+        const refreshToken =
+          typeof rawRefreshToken === "string"
+            ? rawRefreshToken
+            : rawRefreshToken?.token ||
+              rawRefreshToken?.refreshToken ||
+              "";
 
         if (refreshToken) {
           localStorage.setItem(
@@ -177,14 +124,8 @@ console.log(
           );
         }
 
-        // =============================
         // SAVE USER DATA
-        // =============================
-
-        if (
-          userData?.userId !== undefined &&
-          userData?.userId !== null
-        ) {
+        if (userData?.userId != null) {
           localStorage.setItem(
             "userId",
             String(userData.userId)
@@ -198,83 +139,48 @@ console.log(
           );
         }
 
-        if (
-          userData?.userType !== undefined &&
-          userData?.userType !== null
-        ) {
-          localStorage.setItem(
-            "userType",
-            String(userData.userType)
-          );
-        }
+        localStorage.setItem(
+          "userType",
+          String(userType)
+        );
 
-        // Save Email
         localStorage.setItem(
           "email",
           formData.email.trim()
         );
 
-        // =============================
         // REMEMBER ME
-        // =============================
-
         if (rememberMe) {
           localStorage.setItem(
             "rememberEmail",
             formData.email.trim()
           );
         } else {
-          localStorage.removeItem(
-            "rememberEmail"
-          );
+          localStorage.removeItem("rememberEmail");
         }
 
-        alert(
-          response?.message ||
-            "Login Successful"
-        );
+        alert(response?.message || "Login Successful");
 
-        // =============================
-        // ROLE BASED NAVIGATION
-        // =============================
-
-        const userType = Number(
-          userData.userType
-        );
-
-        if (userType === 0) {
-          navigate("/Admin/Dashboard");
-        } else if (userType === 1) {
-          navigate("/Hr/HrDashboard");
-        } else if (userType === 2) {
-          navigate(
-            "/Employee/EmployeDashboard"
-          );
-        } else {
-          alert("Invalid User Role");
-        }
+        // ACCOUNTANT DASHBOARD
+        navigate("/Accountant/AccountantDashboard");
       } else {
         alert(
           response?.message ||
             "Invalid Email or Password"
         );
       }
-    } catch (error: any) {
-      console.error(
-        "Login Error:",
-        error
-      );
+    } catch (error: unknown) {
+      console.error("Accountant Login Error:", error);
 
-      console.error(
-        "Login Backend Error:",
-        error?.response?.data
-      );
-
-      alert(
-        error?.response?.data?.message ||
-          error?.message ||
-          "Login Failed"
-      );
+      if (axios.isAxiosError(error)) {
+        alert(
+          error.response?.data?.message ||
+            error.message ||
+            "Login Failed"
+        );
+      } else {
+        alert("Something went wrong");
+      }
     } finally {
       setLoading(false);
     }
@@ -282,20 +188,14 @@ console.log(
 
   return (
     <div className="main-wrapper">
-
       <div className="container-fluid">
-
         <div className="w-100 overflow-hidden position-relative vh-100">
-
           <div className="row">
 
             {/* LEFT SIDE */}
             <div className="col-lg-5 d-none d-lg-block">
-
               <div className="login-background d-flex align-items-center justify-content-center vh-100 position-relative">
-
                 <div className="bg-overlay-img">
-
                   <img
                     src={bg1}
                     className="bg-1 img-fluid"
@@ -313,13 +213,10 @@ console.log(
                     className="bg-3 img-fluid"
                     alt="Background 3"
                   />
-
                 </div>
 
                 <div className="authentication-card w-100">
-
                   <div className="authen-overlay-item border w-100 p-4 text-center">
-
                     <h1 className="text-white display-6">
                       Empowering people <br />
                       through seamless HR <br />
@@ -327,13 +224,11 @@ console.log(
                     </h1>
 
                     <div className="my-4">
-
                       <img
                         src={authBg}
                         alt="Authentication"
                         className="img-fluid"
                       />
-
                     </div>
 
                     <p className="text-white fs-5 fw-semibold">
@@ -341,61 +236,46 @@ console.log(
                       workforce, streamline
                       operations effortlessly.
                     </p>
-
                   </div>
                 </div>
-
               </div>
             </div>
 
             {/* RIGHT SIDE */}
             <div className="col-lg-7 col-12">
-
               <div className="d-flex align-items-center justify-content-center vh-100">
-
                 <div className="col-md-7">
 
                   <form
                     className="p-4"
                     onSubmit={handleLogin}
                   >
-
                     {/* LOGO */}
                     <div className="text-center mb-4">
-
                       <img
                         src={logo}
                         alt="logo"
-                        style={{
-                          height: "50px",
-                        }}
+                        style={{ height: "50px" }}
                       />
-
                     </div>
 
                     {/* TITLE */}
                     <div className="text-center mb-3">
-
-                      <h1>
-                        Sign In
-                      </h1>
+                      <h1>Sign In</h1>
 
                       <p>
                         Please enter your details
                         to sign in
                       </p>
-
                     </div>
 
                     {/* EMAIL */}
                     <div className="mb-3">
-
                       <label className="form-label">
                         Email Address
                       </label>
 
                       <div className="input-group">
-
                         <input
                           type="email"
                           name="email"
@@ -409,19 +289,16 @@ console.log(
                         <span className="input-group-text border-start-0">
                           <i className="ti ti-mail"></i>
                         </span>
-
                       </div>
                     </div>
 
                     {/* PASSWORD */}
                     <div className="mb-3">
-
                       <label className="form-label">
                         Password
                       </label>
 
                       <div className="input-group">
-
                         <input
                           type={
                             showPassword
@@ -429,9 +306,7 @@ console.log(
                               : "password"
                           }
                           name="password"
-                          value={
-                            formData.password
-                          }
+                          value={formData.password}
                           onChange={handleChange}
                           className="form-control border-end-0"
                           placeholder="Enter password"
@@ -440,16 +315,11 @@ console.log(
 
                         <span
                           className="input-group-text border-start-0"
-                          style={{
-                            cursor: "pointer",
-                          }}
+                          style={{ cursor: "pointer" }}
                           onClick={() =>
-                            setShowPassword(
-                              (prev) => !prev
-                            )
+                            setShowPassword((prev) => !prev)
                           }
                         >
-
                           <i
                             className={
                               showPassword
@@ -457,25 +327,19 @@ console.log(
                                 : "ti ti-eye-off"
                             }
                           ></i>
-
                         </span>
-
                       </div>
                     </div>
 
                     {/* REMEMBER + FORGOT PASSWORD */}
                     <div className="d-flex justify-content-between align-items-center mb-3">
-
                       <div>
-
                         <input
                           type="checkbox"
                           id="remember"
                           checked={rememberMe}
                           onChange={(e) =>
-                            setRememberMe(
-                              e.target.checked
-                            )
+                            setRememberMe(e.target.checked)
                           }
                         />
 
@@ -485,7 +349,6 @@ console.log(
                         >
                           Remember Me
                         </label>
-
                       </div>
 
                       <a
@@ -493,7 +356,6 @@ console.log(
                         className="text-danger"
                         onClick={(e) => {
                           e.preventDefault();
-
                           navigate(
                             "/Accountant/ForgotPass"
                           );
@@ -501,7 +363,6 @@ console.log(
                       >
                         Forgot Password?
                       </a>
-
                     </div>
 
                     {/* LOGIN BUTTON */}
@@ -510,13 +371,10 @@ console.log(
                       disabled={loading}
                       className="btn w-100"
                       style={{
-                        backgroundColor:
-                          "#b88d3c",
-                        border:
-                          "1px solid #b88d3c",
+                        backgroundColor: "#b88d3c",
+                        border: "1px solid #b88d3c",
                         color: "#fff",
-                        padding:
-                          "10px 28px",
+                        padding: "10px 28px",
                       }}
                     >
                       {loading
@@ -526,7 +384,6 @@ console.log(
 
                     {/* REGISTER */}
                     <div className="auth-register-text mt-3 text-center">
-
                       <span>
                         Don&apos;t have an account?{" "}
                       </span>
@@ -535,7 +392,6 @@ console.log(
                         href="#"
                         onClick={(e) => {
                           e.preventDefault();
-
                           navigate(
                             "/Accountant/AccountantSignup"
                           );
@@ -543,22 +399,18 @@ console.log(
                       >
                         Create Account
                       </a>
-
                     </div>
 
                   </form>
-
                 </div>
               </div>
-
             </div>
-          </div>
 
+          </div>
         </div>
       </div>
-
     </div>
   );
 };
 
-export default EmployeLogin;
+export default AccountantLogin;

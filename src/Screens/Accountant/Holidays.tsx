@@ -1,134 +1,79 @@
 import React, { useMemo, useState } from "react";
+import { FiHome, FiPlusCircle, FiEdit2, FiTrash2, FiX, FiChevronLeft, FiChevronRight } from "react-icons/fi";
+import { Link } from "react-router-dom";
 
 type HolidayType = "HR Holiday" | "Compliance Holiday";
 type HolidayStatus = "Active" | "Inactive";
 type Holiday = { id: number; title: string; date: string; description: string; type: HolidayType; status: HolidayStatus };
 type HolidayForm = Omit<Holiday, "id">;
 
-const original: Holiday[] = [
-  ["New Year", "2024-01-01", "First day of the new year", "Active"],
-  ["Martin Luther King Jr. Day", "2024-01-15", "Celebrating the civil rights leader", "Active"],
-  ["President's Day", "2024-02-19", "Honoring past US Presidents", "Active"],
-  ["Good Friday", "2024-03-29", "Holiday before Easter", "Active"],
-  ["Easter Monday", "2024-04-01", "Holiday after Easter", "Active"],
-  ["Memorial Day", "2024-04-27", "Honors military personnel", "Active"],
-  ["Independence Day", "2024-07-04", "Celebrates Independence", "Active"],
-  ["Labour Day", "2024-09-02", "Honors working people", "Inactive"],
-  ["Veterans Day", "2024-11-11", "Honors military veterans", "Active"],
-  ["Christmas Day", "2024-12-25", "Celebration of Christmas", "Active"],
-].map(([title, date, description, status], index) => ({ id: index + 1, title, date, description, status: status as HolidayStatus, type: "HR Holiday" as HolidayType }));
+const sample: Holiday[] = [
+  ["Good Friday", "2026-04-03", "Religious holiday commemorating the crucifixion of Jesus Christ"],
+  ["Id-ul-Zuha", "2026-05-27", "Religious holiday observed by Muslims to commemorate the spirit of sacrifice."],
+  ["Muharram", "2026-06-26", "Religious observance marking the beginning of the Islamic New Year"],
+  ["Independence Day", "2026-08-15", "National holiday commemorating India's independence."],
+  ["Raksha Bandhan", "2026-08-28", "Traditional Indian festival celebrating the bond of love and protection between brothers and sisters."],
+  ["Gandhi Jayanti", "2026-10-02", "National holiday commemorating the birth anniversary of Mahatma Gandhi."],
+  ["Dussehra", "2026-10-20", "Festival celebrating the victory of good over evil."],
+  ["Diwali", "2026-11-08", "Festival of lights celebrated across India."],
+  ["Christmas", "2026-12-25", "Christmas Day celebration."],
+].map(([title, date, description], index) => ({ id: index + 1, title, date, description, type: "HR Holiday" as HolidayType, status: "Active" as HolidayStatus }));
 
 const emptyForm = (type: HolidayType): HolidayForm => ({ title: "", date: "", description: "", type, status: "Active" });
-const displayDate = (date: string) => {
-  const [y, m, d] = date.split("-").map(Number);
-  if (!y || !m || !d) return date;
-  return new Date(y, m - 1, d).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
-};
+const displayDate = (date: string) => { const [y,m,d] = date.split("-").map(Number); return y && m && d ? new Date(y,m-1,d).toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric"}) : date; };
+const financialYear = (date: string) => { const y = Number(date.slice(0,4)), m = Number(date.slice(5,7)); const start = m >= 4 ? y : y - 1; return `${start}-${start + 1}`; };
 
-const Holidays: React.FC = () => {
-  const [holidays, setHolidays] = useState<Holiday[]>([...original, ...original.map(h => ({ ...h, id: h.id + 100, type: "Compliance Holiday" as HolidayType }))]);
+export default function Holidays() {
+  const [holidays, setHolidays] = useState<Holiday[]>(sample);
   const [tab, setTab] = useState<HolidayType>("HR Holiday");
-  const [modal, setModal] = useState<"add" | "edit" | "delete" | null>(null);
-  const [editingId, setEditingId] = useState<number | null>(null);
-  const [form, setForm] = useState<HolidayForm>(emptyForm("HR Holiday"));
-  const [selected, setSelected] = useState<number[]>([]);
+  const [year, setYear] = useState("2026-2027");
+  const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
-  const [search, setSearch] = useState("");
-  const visible = useMemo(() => holidays.filter(h => h.type === tab && `${h.title} ${h.date} ${h.description} ${h.status}`.toLowerCase().includes(search.toLowerCase())), [holidays, tab, search]);
-  const pageCount = Math.max(1, Math.ceil(visible.length / pageSize));
-  const rows = visible.slice((page - 1) * pageSize, page * pageSize);
+  const [selected, setSelected] = useState<number[]>([]);
+  const [modal, setModal] = useState<"add"|"edit"|"delete"|null>(null);
+  const [editingId, setEditingId] = useState<number|null>(null);
+  const [form, setForm] = useState<HolidayForm>(emptyForm(tab));
+  const years = useMemo(() => [...new Set(["2026-2027",...holidays.map(h => financialYear(h.date))])].sort().reverse(),[holidays]);
+  const filtered = useMemo(() => holidays.filter(h => h.type === tab && financialYear(h.date) === year && `${h.title} ${h.date} ${h.description} ${h.status}`.toLowerCase().includes(search.toLowerCase())),[holidays,tab,year,search]);
+  const pages = Math.max(1,Math.ceil(filtered.length/pageSize));
+  const currentPage = Math.min(page,pages);
+  const rows = filtered.slice((currentPage-1)*pageSize,currentPage*pageSize);
   const allChecked = rows.length > 0 && rows.every(h => selected.includes(h.id));
   const close = () => { setModal(null); setEditingId(null); };
-  const startAdd = () => { setForm(emptyForm(tab)); setEditingId(null); setModal("add"); };
-  const startEdit = (h: Holiday) => { setForm({ title: h.title, date: h.date, description: h.description, type: h.type, status: h.status }); setEditingId(h.id); setModal("edit"); };
-  const startDelete = (id: number) => { setEditingId(id); setModal("delete"); };
-  const save = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!form.title.trim() || !form.date) return;
-    if (modal === "edit" && editingId !== null) setHolidays(prev => prev.map(h => h.id === editingId ? { ...form, id: editingId } : h));
-    else setHolidays(prev => [...prev, { ...form, id: Math.max(0, ...prev.map(h => h.id)) + 1 }]);
-    close();
-  };
-  const deleteItems = () => {
-    const ids = editingId !== null ? [editingId] : selected;
-    setHolidays(prev => prev.filter(h => !ids.includes(h.id)));
-    setSelected(prev => prev.filter(id => !ids.includes(id)));
-    close();
-  };
-  const changeTab = (t: HolidayType) => { setTab(t); setPage(1); setSelected([]); setSearch(""); };
-  return (
-    <div className="accountant-holidays">
-      <style>{`
-        .accountant-holidays { min-height:100vh; padding:24px; background:#f8fafc; color:#212b36; font-family:Inter,Arial,sans-serif; font-size:14px; }
-        .accountant-holidays * { box-sizing:border-box; }
-        .accountant-holidays .top { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:16px; margin-bottom:24px; }
-        .accountant-holidays h2 { margin:0 0 8px; font-size:24px; font-weight:700; color:#202c39; }
-        .accountant-holidays .breadcrumb { color:#6b7280; font-size:13px; display:flex; gap:9px; align-items:center; }
-        .accountant-holidays .breadcrumb i { color:#ff6b35; }
-        .accountant-holidays .btn { border:1px solid transparent; padding:9px 15px; border-radius:5px; cursor:pointer; font-size:13px; font-weight:600; display:inline-flex; align-items:center; gap:7px; justify-content:center; }
-        .accountant-holidays .primary { background:#f26522; color:white; }
-        .accountant-holidays .primary:hover { background:#df5312; }
-        .accountant-holidays .light { background:#f5f6f8; border-color:#e5e7eb; color:#334155; }
-        .accountant-holidays .danger { background:#e3342f; color:white; }
-        .accountant-holidays .tabs { display:flex; gap:8px; margin-bottom:20px; flex-wrap:wrap; }
-        .accountant-holidays .tab { background:transparent; color:#374151; padding:10px 18px; border:0; border-radius:5px; cursor:pointer; font-weight:600; }
-        .accountant-holidays .tab.active { background:#f26522; color:white; }
-        .accountant-holidays .card { background:white; border:1px solid #e8edf2; border-radius:7px; overflow:hidden; box-shadow:0 2px 4px rgba(17,24,39,.025); }
-        .accountant-holidays .card-header { padding:19px 22px; border-bottom:1px solid #e8edf2; display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; }
-        .accountant-holidays h5 { font-size:17px; margin:0; font-weight:700; }
-        .accountant-holidays .table-wrap { overflow-x:auto; }
-        .accountant-holidays table { width:100%; border-collapse:collapse; text-align:left; min-width:740px; }
-        .accountant-holidays thead { background:#f8fafc; }
-        .accountant-holidays th { color:#374151; font-size:13px; font-weight:600; padding:14px 18px; white-space:nowrap; }
-        .accountant-holidays td { padding:15px 18px; border-top:1px solid #edf0f4; color:#626e7c; vertical-align:middle; }
-        .accountant-holidays .holiday-title { font-weight:600; color:#253247; background:none; border:0; padding:0; cursor:pointer; text-align:left; }
-        .accountant-holidays input[type=checkbox] { width:16px; height:16px; accent-color:#f26522; cursor:pointer; }
-        .accountant-holidays .badge { display:inline-flex; align-items:center; gap:5px; border-radius:4px; padding:5px 9px; font-weight:600; font-size:12px; }
-        .accountant-holidays .badge.active { background:#e7f8ed; color:#1d9b57; }
-        .accountant-holidays .badge.inactive { background:#feeceb; color:#db4242; }
-        .accountant-holidays .actions { display:flex; gap:15px; }
-        .accountant-holidays .icon-btn { padding:2px; background:none; border:0; color:#64748b; cursor:pointer; font-size:18px; }
-        .accountant-holidays .icon-btn:hover { color:#f26522; }
-        .accountant-holidays .footer { padding:16px 20px; border-top:1px solid #e8edf2; display:flex; align-items:center; justify-content:space-between; gap:14px; flex-wrap:wrap; color:#64748b; font-size:13px; }
-        .accountant-holidays .pagination { display:flex; align-items:center; gap:6px; }
-        .accountant-holidays .pagination button { border:1px solid #e5e7eb; background:white; border-radius:4px; padding:6px 11px; cursor:pointer; }
-        .accountant-holidays .pagination button.current { background:#f26522; color:white; border-color:#f26522; }
-        .accountant-holidays .pagination button:disabled { opacity:.4; cursor:not-allowed; }
-        .accountant-holidays .search { padding:8px 12px; border:1px solid #dfe5ec; border-radius:5px; outline:none; min-width:200px; }
-        .accountant-holidays .overlay { position:fixed; inset:0; z-index:3000; background:rgba(18,28,42,.55); display:flex; align-items:center; justify-content:center; padding:20px; }
-        .accountant-holidays .modal-box { background:#fff; border-radius:9px; width:100%; max-width:500px; box-shadow:0 15px 50px rgba(0,0,0,.18); max-height:90vh; overflow:auto; }
-        .accountant-holidays .modal-head { padding:18px 22px; border-bottom:1px solid #edf0f4; display:flex; justify-content:space-between; align-items:center; }
-        .accountant-holidays .modal-head h4 { margin:0; font-size:19px; }
-        .accountant-holidays .modal-body { padding:20px 22px 4px; }
-        .accountant-holidays .field { margin-bottom:17px; }
-        .accountant-holidays .field label { display:block; font-weight:600; margin-bottom:8px; font-size:13px; }
-        .accountant-holidays .field input,.accountant-holidays .field textarea,.accountant-holidays .field select { width:100%; padding:10px 12px; border:1px solid #dce3ea; border-radius:5px; background:white; color:#334155; font:inherit; }
-        .accountant-holidays .modal-footer { border-top:1px solid #edf0f4; padding:16px 22px; display:flex; justify-content:flex-end; gap:10px; }
-        .accountant-holidays .delete-content { padding:30px 24px; text-align:center; }
-        .accountant-holidays .delete-content h4 { font-size:20px; margin:10px 0; }
-        .accountant-holidays .delete-content p { color:#64748b; line-height:1.5; }
-        @media(max-width:650px) { .accountant-holidays { padding:14px; } .accountant-holidays .card-header { padding:15px; } }
-      `}</style>
-      <div className="top">
-        <div><h2>Holidays</h2><div className="breadcrumb"><i className="ti ti-smart-home" /> <span>/</span> Holidays</div></div>
-        <button type="button" className="btn primary" onClick={startAdd}><i className="ti ti-circle-plus" /> Add Holiday</button>
-      </div>
-      <div className="tabs">
-        {(["HR Holiday", "Compliance Holiday"] as HolidayType[]).map(t => <button type="button" key={t} className={`tab ${tab === t ? "active" : ""}`} onClick={() => changeTab(t)}>{t}</button>)}
-      </div>
-      <div className="card">
-        <div className="card-header"><h5>Holidays List</h5><div style={{display:"flex", gap:8, alignItems:"center"}}><input className="search" aria-label="Search holidays" placeholder="Search holidays..." value={search} onChange={e => {setSearch(e.target.value); setPage(1);}} />{selected.length > 0 && <button type="button" className="btn danger" onClick={() => {setEditingId(null);setModal("delete");}}><i className="ti ti-trash" /> Delete Selected ({selected.length})</button>}</div></div>
-        <div className="table-wrap"><table><thead><tr><th><input type="checkbox" aria-label="Select all" checked={allChecked} onChange={e => setSelected(prev => e.target.checked ? [...new Set([...prev, ...rows.map(h => h.id)])] : prev.filter(id => !rows.some(h => h.id === id)))} /></th><th>Title</th><th>Date</th><th>Description</th><th>Status</th><th></th></tr></thead><tbody>
-          {rows.map(h => <tr key={h.id}><td><input type="checkbox" aria-label={`Select ${h.title}`} checked={selected.includes(h.id)} onChange={e => setSelected(prev => e.target.checked ? [...prev, h.id] : prev.filter(id => id !== h.id))} /></td><td><button type="button" className="holiday-title" onClick={() => startEdit(h)}>{h.title}</button></td><td>{displayDate(h.date)}</td><td>{h.description}</td><td><span className={`badge ${h.status.toLowerCase()}`}><i className="ti ti-point-filled" />{h.status}</span></td><td><div className="actions"><button type="button" title="Edit holiday" className="icon-btn" onClick={() => startEdit(h)}><i className="ti ti-edit" /></button><button type="button" title="Delete holiday" className="icon-btn" onClick={() => startDelete(h.id)}><i className="ti ti-trash" /></button></div></td></tr>)}
-          {rows.length === 0 && <tr><td colSpan={6} style={{textAlign:"center", padding:32}}>No holidays found</td></tr>}
-        </tbody></table></div>
-        <div className="footer"><div>Showing {visible.length ? (page - 1) * pageSize + 1 : 0} to {Math.min(page * pageSize, visible.length)} of {visible.length} entries &nbsp; <select aria-label="Rows per page" value={pageSize} onChange={e => {setPageSize(Number(e.target.value));setPage(1);}}>{[5,10,25,50].map(n => <option key={n} value={n}>{n} / page</option>)}</select></div><div className="pagination"><button type="button" disabled={page === 1} onClick={() => setPage(p => p - 1)}>Previous</button>{Array.from({length:pageCount},(_,i) => <button type="button" key={i} className={page === i+1 ? "current" : ""} onClick={() => setPage(i+1)}>{i+1}</button>)}<button type="button" disabled={page === pageCount} onClick={() => setPage(p => p + 1)}>Next</button></div></div>
-      </div>
-      {(modal === "add" || modal === "edit") && <div className="overlay" onMouseDown={e => {if(e.target === e.currentTarget) close();}}><div className="modal-box" role="dialog" aria-modal="true" aria-label={modal === "add" ? "Add Holiday" : "Edit Holiday"}><div className="modal-head"><h4>{modal === "add" ? "Add Holiday" : "Edit Holiday"}</h4><button type="button" className="icon-btn" onClick={close}><i className="ti ti-x" /></button></div><form onSubmit={save}><div className="modal-body"><div className="field"><label>Title</label><input required value={form.title} onChange={e => setForm({...form,title:e.target.value})} /></div><div className="field"><label>Date</label><input required type="date" value={form.date} onChange={e => setForm({...form,date:e.target.value})} /></div><div className="field"><label>Holiday Type</label><select value={form.type} onChange={e => setForm({...form,type:e.target.value as HolidayType})}><option>HR Holiday</option><option>Compliance Holiday</option></select></div><div className="field"><label>Description</label><textarea rows={3} value={form.description} onChange={e => setForm({...form,description:e.target.value})} /></div><div className="field"><label>Status</label><select value={form.status} onChange={e => setForm({...form,status:e.target.value as HolidayStatus})}><option>Active</option><option>Inactive</option></select></div></div><div className="modal-footer"><button type="button" className="btn light" onClick={close}>Cancel</button><button type="submit" className="btn primary">{modal === "add" ? "Add Holiday" : "Save Changes"}</button></div></form></div></div>}
-      {modal === "delete" && <div className="overlay" onMouseDown={e => {if(e.target === e.currentTarget) close();}}><div className="modal-box" role="dialog" aria-modal="true" aria-label="Confirm Delete"><div className="delete-content"><i className="ti ti-trash-x" style={{fontSize:44,color:"#dc3545"}} /><h4>Confirm Delete</h4><p>You want to delete all the marked items, this cant be undone once you delete.</p><div style={{display:"flex",justifyContent:"center",gap:12,marginTop:22}}><button type="button" className="btn light" onClick={close}>Cancel</button><button type="button" className="btn danger" onClick={deleteItems}>Yes, Delete</button></div></div></div></div>}
-    </div>
-  );
-};
-
-export default Holidays;
+  const add = () => { setForm(emptyForm(tab)); setEditingId(null); setModal("add"); };
+  const edit = (h: Holiday) => { setForm({title:h.title,date:h.date,description:h.description,type:h.type,status:h.status}); setEditingId(h.id); setModal("edit"); };
+  const remove = (id: number|null) => { setEditingId(id); setModal("delete"); };
+  const save = (e: React.FormEvent<HTMLFormElement>) => { e.preventDefault(); if (!form.title.trim() || !form.date) return; if(modal === "edit" && editingId !== null) setHolidays(prev => prev.map(h => h.id === editingId ? {...form,id:editingId} : h)); else setHolidays(prev => [...prev,{...form,id:Math.max(0,...prev.map(h=>h.id))+1}]); setTab(form.type); setYear(financialYear(form.date)); setSearch(""); setPage(1); close(); };
+  const confirmDelete = () => { const ids = editingId === null ? selected : [editingId]; setHolidays(prev => prev.filter(h => !ids.includes(h.id))); setSelected(prev => prev.filter(id => !ids.includes(id))); close(); };
+  return <div className="holiday-page">
+    <style>{`
+      .holiday-page{background:#f6f7f9;min-height:100vh;padding:25px 48px;font-family:Arial,Helvetica,sans-serif;color:#071c3f;font-size:12px}
+      .holiday-page *{box-sizing:border-box}.holiday-page button,.holiday-page input,.holiday-page select,.holiday-page textarea{font:inherit}
+      .holiday-page button{cursor:pointer}.holiday-page .hp-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:23px}
+      .holiday-page h1{font-size:22px;font-weight:500;margin:0 0 6px}.holiday-page .hp-crumb{display:flex;align-items:center;gap:10px;color:#62738c;font-size:11px}
+      .holiday-page .hp-crumb a{color:#005b9a}.holiday-page .hp-primary{border:0;background:#c99734;color:white;border-radius:4px;padding:11px 14px;font-weight:600;display:inline-flex;align-items:center;gap:7px}
+      .holiday-page .hp-tabs{display:flex;gap:8px;margin-bottom:15px}.holiday-page .hp-tab{border:0;background:transparent;padding:10px 15px;border-radius:4px;color:#526480}.holiday-page .hp-tab.active{background:#c99734;color:white}
+      .holiday-page .hp-card{background:white;border:1px solid #dce2eb;border-radius:5px;overflow:hidden}.holiday-page .hp-cardhead{min-height:46px;padding:8px 18px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #dce2eb;gap:12px}
+      .holiday-page .hp-cardhead h2{font-size:14px;font-weight:500;margin:0}.holiday-page .hp-year{display:flex;align-items:center;gap:12px}.holiday-page select,.holiday-page .hp-search{background:white;border:1px solid #dce2eb;border-radius:5px;padding:7px 10px;color:#152d50;outline:none}
+      .holiday-page .hp-toolbar{height:53px;display:flex;align-items:center;justify-content:space-between;padding:0 15px;gap:10px}.holiday-page .hp-perpage{display:flex;align-items:center;gap:9px}.holiday-page .hp-perpage select{padding:6px}.holiday-page .hp-search{width:144px;height:30px;font-size:11px}
+      .holiday-page .hp-scroll{overflow-x:auto}.holiday-page table{width:100%;min-width:800px;border-collapse:collapse;text-align:left}.holiday-page thead{background:#e0e3e8}.holiday-page th{height:39px;font-weight:600;color:#061c3a;padding:0 15px;white-space:nowrap}.holiday-page td{height:42px;padding:7px 15px;border-bottom:1px solid #dce2eb;color:#647391;font-size:11px}
+      .holiday-page th:first-child,.holiday-page td:first-child{width:53px}.holiday-page th:nth-child(2){width:13%}.holiday-page th:nth-child(3){width:10%}.holiday-page th:nth-child(5){width:9%}.holiday-page th:last-child{width:70px}
+      .holiday-page .hp-title{color:#071c3f;font-weight:600;background:none;border:0;padding:0;text-align:left}.holiday-page input[type=checkbox]{width:15px;height:15px;accent-color:#c99734;cursor:pointer}
+      .holiday-page .hp-status{background:#00be5d;color:white;border-radius:3px;padding:4px 10px;display:inline-block;font-weight:600;font-size:10px}.holiday-page .hp-status.inactive{background:#e34b4b}
+      .holiday-page .hp-actions{display:flex;gap:16px}.holiday-page .hp-icon{border:0;background:none;color:#597293;padding:2px;display:inline-flex}.holiday-page .hp-footer{padding:14px 16px;display:flex;align-items:center;justify-content:space-between;gap:10px;color:#66768f}
+      .holiday-page .hp-pages{display:flex;align-items:center;gap:8px}.holiday-page .hp-pages button{border:1px solid #dce2eb;background:white;padding:5px 9px;border-radius:4px;color:#233a58}.holiday-page .hp-pages button.active{background:#c99734;color:white;border-color:#c99734}.holiday-page .hp-pages button:disabled{opacity:.4;cursor:default}
+      .holiday-page .hp-danger{background:#e14949;color:white;border:0;border-radius:4px;padding:8px 12px}.holiday-page .hp-overlay{position:fixed;inset:0;background:#0006;z-index:3000;display:flex;align-items:center;justify-content:center;padding:15px}
+      .holiday-page .hp-modal{width:min(100%,500px);background:white;border-radius:7px;box-shadow:0 12px 35px #0002;max-height:90vh;overflow:auto}.holiday-page .hp-modalhead{padding:17px 20px;border-bottom:1px solid #e3e8ee;display:flex;justify-content:space-between;align-items:center}.holiday-page .hp-modalhead h3{font-size:17px;margin:0}.holiday-page .hp-fields{padding:18px 20px;display:grid;gap:13px}.holiday-page .hp-fields label{display:grid;gap:6px;color:#43546d}.holiday-page .hp-fields input,.holiday-page .hp-fields textarea,.holiday-page .hp-fields select{width:100%;border:1px solid #dce2eb;border-radius:4px;padding:9px;background:white}.holiday-page .hp-modalfoot{padding:14px 20px;border-top:1px solid #e3e8ee;display:flex;justify-content:flex-end;gap:10px}.holiday-page .hp-cancel{border:1px solid #dce2eb;background:white;border-radius:4px;padding:9px 13px}
+      @media(max-width:700px){.holiday-page{padding:16px}.holiday-page .hp-top{gap:10px}.holiday-page .hp-cardhead,.holiday-page .hp-toolbar{flex-wrap:wrap;height:auto;padding:12px}.holiday-page .hp-footer{flex-wrap:wrap}}
+    `}</style>
+    <div className="hp-top"><div><h1>Holidays</h1><div className="hp-crumb"><Link to="/Accountant/AccountantDashboard"><FiHome size={16}/></Link><span>/</span><span>Holidays</span></div></div><button className="hp-primary" onClick={add}><FiPlusCircle/> Add Holiday</button></div>
+    <div className="hp-tabs">{(["HR Holiday","Compliance Holiday"] as HolidayType[]).map(t=><button key={t} className={`hp-tab ${tab===t?"active":""}`} onClick={()=>{setTab(t);setPage(1);setSelected([]);}}>{t}</button>)}</div>
+    <section className="hp-card"><div className="hp-cardhead"><h2>Holidays List</h2><div className="hp-year"><span>Financial Year</span><select aria-label="Financial Year" value={year} onChange={e=>{setYear(e.target.value);setPage(1);setSelected([]);}}>{years.map(y=><option key={y}>{y}</option>)}</select></div></div>
+    <div className="hp-toolbar"><div className="hp-perpage">Row Per Page <select aria-label="Rows per page" value={pageSize} onChange={e=>{setPageSize(Number(e.target.value));setPage(1);}}>{[5,10,20,50].map(n=><option key={n}>{n}</option>)}</select> Entries {selected.length>0&&<button className="hp-danger" onClick={()=>remove(null)}>Delete Selected ({selected.length})</button>}</div><input className="hp-search" placeholder="Search" aria-label="Search holidays" value={search} onChange={e=>{setSearch(e.target.value);setPage(1);}}/></div>
+    <div className="hp-scroll"><table><thead><tr><th><input type="checkbox" aria-label="Select all" checked={allChecked} onChange={e=>setSelected(prev=>e.target.checked?[...new Set([...prev,...rows.map(h=>h.id)])]:prev.filter(id=>!rows.some(h=>h.id===id)))}/></th><th>Title　<span style={{color:"#c4ccd7"}}>↕</span></th><th>Date　<span style={{color:"#c4ccd7"}}>↕</span></th><th>Description</th><th>Status　<span style={{color:"#c4ccd7"}}>↕</span></th><th></th></tr></thead><tbody>{rows.map(h=><tr key={h.id}><td><input type="checkbox" aria-label={`Select ${h.title}`} checked={selected.includes(h.id)} onChange={e=>setSelected(prev=>e.target.checked?[...new Set([...prev,h.id])]:prev.filter(id=>id!==h.id))}/></td><td><button className="hp-title" onClick={()=>edit(h)}>{h.title}</button></td><td>{displayDate(h.date)}</td><td>{h.description}</td><td><span className={`hp-status ${h.status.toLowerCase()}`}>• {h.status}</span></td><td><div className="hp-actions"><button className="hp-icon" title="Edit" onClick={()=>edit(h)}><FiEdit2/></button><button className="hp-icon" title="Delete" onClick={()=>remove(h.id)}><FiTrash2/></button></div></td></tr>)}{rows.length===0&&<tr><td colSpan={6} style={{textAlign:"center",padding:25}}>No holidays found</td></tr>}</tbody></table></div>
+    <div className="hp-footer"><span>Showing {filtered.length?(currentPage-1)*pageSize+1:0} to {Math.min(currentPage*pageSize,filtered.length)} of {filtered.length} entries</span><div className="hp-pages"><button disabled={currentPage===1} onClick={()=>setPage(currentPage-1)}><FiChevronLeft/></button>{Array.from({length:pages},(_,i)=><button key={i} className={currentPage===i+1?"active":""} onClick={()=>setPage(i+1)}>{i+1}</button>)}<button disabled={currentPage===pages} onClick={()=>setPage(currentPage+1)}><FiChevronRight/></button></div></div></section>
+    {(modal==="add"||modal==="edit")&&<div className="hp-overlay" onMouseDown={e=>{if(e.target===e.currentTarget)close();}}><div className="hp-modal"><div className="hp-modalhead"><h3>{modal==="add"?"Add Holiday":"Edit Holiday"}</h3><button className="hp-icon" onClick={close}><FiX size={20}/></button></div><form onSubmit={save}><div className="hp-fields"><label>Title<input required value={form.title} onChange={e=>setForm({...form,title:e.target.value})}/></label><label>Date<input type="date" required value={form.date} onChange={e=>setForm({...form,date:e.target.value})}/></label><label>Holiday Type<select value={form.type} onChange={e=>setForm({...form,type:e.target.value as HolidayType})}><option>HR Holiday</option><option>Compliance Holiday</option></select></label><label>Description<textarea rows={3} value={form.description} onChange={e=>setForm({...form,description:e.target.value})}/></label><label>Status<select value={form.status} onChange={e=>setForm({...form,status:e.target.value as HolidayStatus})}><option>Active</option><option>Inactive</option></select></label></div><div className="hp-modalfoot"><button type="button" className="hp-cancel" onClick={close}>Cancel</button><button type="submit" className="hp-primary">{modal==="add"?"Add Holiday":"Save Changes"}</button></div></form></div></div>}
+    {modal==="delete"&&<div className="hp-overlay" onMouseDown={e=>{if(e.target===e.currentTarget)close();}}><div className="hp-modal"><div className="hp-modalhead"><h3>Confirm Delete</h3><button className="hp-icon" onClick={close}><FiX size={20}/></button></div><div style={{padding:24,textAlign:"center"}}>Are you sure you want to delete the selected holiday record(s)?</div><div className="hp-modalfoot"><button className="hp-cancel" onClick={close}>Cancel</button><button className="hp-danger" onClick={confirmDelete}>Yes, Delete</button></div></div></div>}
+  </div>;
+}

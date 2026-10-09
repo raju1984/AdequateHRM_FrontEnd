@@ -514,14 +514,14 @@ const EmployeeSalary = () => {
           </nav>
         </div>
 
-        <button
+        {/* <button
           type="button"
           className="btn btn-primary mb-2"
           onClick={openAdd}
         >
           <i className="ti ti-circle-plus me-2" />
           Add Salary
-        </button>
+        </button> */}
       </div>
 
       {/* STEP 1: MONTH */}

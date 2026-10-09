@@ -162,8 +162,8 @@ const AccountantLogin = () => {
         alert(response?.message || "Login Successful");
 
         // ACCOUNTANT DASHBOARD
-        navigate("/Accountant/AccountantDashboard");
-      } else {
+
+navigate("/Accountant/EmployeeSalary", { replace: true });      } else {
         alert(
           response?.message ||
             "Invalid Email or Password"

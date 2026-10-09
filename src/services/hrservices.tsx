@@ -2551,7 +2551,7 @@ export const getMyPermissions = async () => {
 
         ...getAuthHeaders(),
 
-        Accept: "application/json",
+        Accept: "application/json",  
 
       },
 

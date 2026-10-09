@@ -98,17 +98,43 @@ const emptyForm: LeaveForm = {
   leaveTypeId: "",
   from: "",
   to: "",
-  availType: "FullDay",
+  availType: "1",
   days: "",
   reasonText: "",
   attachment: null,
 };
 
 const AVAIL_TYPE_OPTIONS = [
-  { label: "First Half", value: "FirstHalf" },
-  { label: "Second Half", value: "SecondHalf" },
-  { label: "Full Day", value: "FullDay" },
+  { label: "Full Day", value: "1" },
+  { label: "First Half", value: "2" },
+  { label: "Second Half", value: "3" },
+  { label: "Short Leaves", value: "4" },
+  { label: "Early Dispersal", value: "5" },
 ];
+
+const availTypeLabel = (value: string | number) => {
+  const key = String(value).trim().toLowerCase();
+  const labels: Record<string, string> = {
+    "1": "Full Day", "fullday": "Full Day", "full day": "Full Day",
+    "2": "First Half", "firsthalf": "First Half", "first half": "First Half",
+    "3": "Second Half", "secondhalf": "Second Half", "second half": "Second Half",
+    "4": "Short Leaves", "shortleaves": "Short Leaves", "short leaves": "Short Leaves",
+    "5": "Early Dispersal", "earlydispersal": "Early Dispersal", "early dispersal": "Early Dispersal",
+  };
+  return labels[key] || (key ? String(value) : "-");
+};
+
+const normalizeAvailType = (value: string | number): string => {
+  const label = availTypeLabel(value);
+  return AVAIL_TYPE_OPTIONS.find((option) => option.label === label)?.value || "1";
+};
+
+// Status numeric mapping is based on the HR leave implementation;
+// confirm enum numbers with the backend if they differ for EmployeeLeave.
+const statusLabel = (value: unknown): string => {
+  const key = String(value ?? "").trim().toLowerCase();
+  return ({ "1": "Pending", "2": "Approved", "3": "Rejected", "new": "Pending", "declined": "Rejected" } as Record<string, string>)[key] || String(value ?? "Pending");
+};
 
 // =====================================================
 // HELPERS
@@ -361,12 +387,16 @@ const normalizeLeave = (
   const remarks = pickField(
   raw,
   [
+    "reviewRemarks",
+    "ReviewRemarks",
     "remarks",
     "Remarks",
     "declineRemark",
     "DeclineRemark",
     "declinedRemark",
     "DeclinedRemark",
+    "reviewRemarks",
+    "ReviewRemarks",
   ],
   ""
 );
@@ -401,40 +431,21 @@ const normalizeLeave = (
     ""
   );
 
-  const approvedBy = pickField(
-    raw,
-    [
-      "approvedByName",
-      "approvedBy",
-      "ApprovedByName",
-    ],
-    "-"
+  // Backend returns approvedBy as an object: { id, name, userType }.
+  const reviewer = pickField(raw, ["approvedBy", "ApprovedBy"], null);
+  const approvedBy = reviewer && typeof reviewer === "object"
+    ? safeText(reviewer.name ?? reviewer.fullName, "-")
+    : safeText(pickField(raw, ["approvedByName", "ApprovedByName", "approvedBy", "ApprovedBy"], "-"), "-");
+  const approvedByRole = reviewer && typeof reviewer === "object"
+    ? safeText(reviewer.userType ?? reviewer.role, "")
+    : safeText(pickField(raw, ["approvedByRole", "ApprovedByRole"], ""), "");
+
+  const availType = normalizeAvailType(
+    pickField(raw, ["availType", "AvailType"], 1)
   );
 
-  const approvedByRole = pickField(
-    raw,
-    [
-      "approvedByRole",
-      "role",
-      "ApprovedByRole",
-    ],
-    ""
-  );
-
-  const availType = String(
-    pickField(
-      raw,
-      ["availType", "AvailType"],
-      "FullDay"
-    )
-  );
-
-  const status = String(
-    pickField(
-      raw,
-      ["status", "Status"],
-      "Pending"
-    )
+  const status = statusLabel(
+    pickField(raw, ["statusName", "StatusName", "status", "Status"], "Pending")
   );
 
   const employeeRaw = pickField(
@@ -565,7 +576,7 @@ const normalizeLeave = (
       approvedByRole
     ),
 
-    days: `${noOfDays ?? 1} Days`,
+    days: noOfDays == null ? "-" : `${noOfDays} Days`,
 
     availType,
 
@@ -674,6 +685,9 @@ const Leave: React.FC = () => {
 
   const [search, setSearch] =
     useState("");
+
+  const [fromDateFilter, setFromDateFilter] = useState("");
+  const [toDateFilter, setToDateFilter] = useState("");
 
   const [leaveTypeFilter, setLeaveTypeFilter] =
     useState("");
@@ -826,6 +840,8 @@ const Leave: React.FC = () => {
           PageNumber: currentPage,
           PageSize: rowsPerPage,
         };
+        if (fromDateFilter) params.FromDate = `${fromDateFilter}T00:00:00.000Z`;
+        if (toDateFilter) params.ToDate = `${toDateFilter}T23:59:59.999Z`;
 
         if (leaveTypeFilter) {
           params.LeaveTypeId =
@@ -843,8 +859,8 @@ const Leave: React.FC = () => {
          * Do not convert these to 0/1/2.
          */
         if (statusFilter) {
-          params.Status =
-            statusFilter;
+          // Swagger requires integer Status, not its display label.
+          params.Status = Number(statusFilter);
         }
 
         if (sortBy) {
@@ -920,29 +936,16 @@ const Leave: React.FC = () => {
         /*
          * Actual API leave balance.
          */
-        if (data?.leaveBalance) {
-          setEarnedLeave(
-            data.leaveBalance
-              .earnedLeave ?? {
-              totalCredit: 0,
-              used: 0,
-              remaining: 0,
-              monthlyAccrual: 0,
-              carryForward: false,
-            }
-          );
-
-          setGeneralLeave(
-            data.leaveBalance
-              .generalLeave ?? {
-              totalCredit: 0,
-              used: 0,
-              remaining: 0,
-              monthlyAccrual: 0,
-              carryForward: false,
-            }
-          );
-        }
+        const balances = data?.leaveBalance;
+        const normalizeBalance = (balance: any): LeaveBalance => ({
+          totalCredit: Number(balance?.totalCredit ?? 0),
+          used: Number(balance?.used ?? 0),
+          remaining: Number(balance?.remaining ?? 0),
+          monthlyAccrual: Number(balance?.monthlyAccrual ?? 0),
+          carryForward: Boolean(balance?.carryForward ?? false),
+        });
+        setEarnedLeave(normalizeBalance(balances?.earnedLeave));
+        setGeneralLeave(normalizeBalance(balances?.generalLeave));
       } catch (err: any) {
         console.error(
           "GET LEAVES ERROR:",
@@ -965,7 +968,9 @@ const Leave: React.FC = () => {
     }, [
       currentPage,
       rowsPerPage,
-leaveTypeFilter,
+      fromDateFilter,
+      toDateFilter,
+      leaveTypeFilter,
       statusFilter,
       sortBy,
       leaveTypeNameById,
@@ -1135,14 +1140,11 @@ leaveTypeFilter,
           token
         );
 
-      const raw =
-        response?.data?.data ??
-        response?.data ??
-        response;
-
-      setSelectedLeave(
-        normalizeLeave(raw)
-      );
+      const data = response?.data?.data ?? response?.data ?? response;
+      const raw = data?.leave ?? data?.Leave ?? data?.item ?? data?.Item ?? data;
+      if (raw && typeof raw === "object" && !Array.isArray(raw)) {
+        setSelectedLeave(normalizeLeave({ ...item.raw, ...raw }));
+      }
     } catch (err) {
       console.error(
         "Failed to load leave detail",
@@ -1184,8 +1186,7 @@ leaveTypeFilter,
         ),
 
       availType:
-        item.availType ||
-        "FullDay",
+        normalizeAvailType(item.availType),
 
       days:
         item.days.replace(
@@ -1263,7 +1264,7 @@ leaveTypeFilter,
             ),
 
           AvailType:
-            form.availType as any,
+            Number(form.availType),
 
           Reason:
             form.reasonText,
@@ -1418,7 +1419,7 @@ leaveTypeFilter,
             ),
 
           AvailType:
-            form.availType as any,
+            Number(form.availType),
 
           Reason:
             form.reasonText,
@@ -1530,7 +1531,7 @@ leaveTypeFilter,
 
         .leave-summary-card {
           width: 247px;
-          height: 111px;
+          min-height: 137px;
           position: relative;
           overflow: hidden;
           padding: 22px 20px;
@@ -1574,6 +1575,8 @@ leaveTypeFilter,
           background: #dcecff;
           color: #1680ff;
         }
+
+        .summary-extra { position: relative; z-index: 3; margin-top: 8px; font-size: 10px; color: #677386; }
 
         .summary-background {
           width: 90px;
@@ -2576,6 +2579,7 @@ leaveTypeFilter,
               Remaining Leaves :{" "}
               {earnedLeave.remaining}
             </span>
+            <div className="summary-extra">Used: {earnedLeave.used} · Monthly accrual: {earnedLeave.monthlyAccrual}</div>
           </div>
 
           <div className="leave-summary-card">
@@ -2597,6 +2601,7 @@ leaveTypeFilter,
               Remaining Leaves :{" "}
               {generalLeave.remaining}
             </span>
+            <div className="summary-extra">Used: {generalLeave.used} · Monthly accrual: {generalLeave.monthlyAccrual}</div>
           </div>
         </div>
 
@@ -2633,14 +2638,21 @@ leaveTypeFilter,
 
             <div className="leave-filters">
 
-              <select
+              <input
+                type="date"
+                aria-label="From date filter"
                 className="leave-filter leave-date-filter"
-                defaultValue="range"
-              >
-                <option value="range">
-                  08/28/2026 - 09/03/20
-                </option>
-              </select>
+                value={fromDateFilter}
+                onChange={(e) => { setFromDateFilter(e.target.value); setCurrentPage(1); }}
+              />
+              <input
+                type="date"
+                aria-label="To date filter"
+                className="leave-filter leave-date-filter"
+                min={fromDateFilter || undefined}
+                value={toDateFilter}
+                onChange={(e) => { setToDateFilter(e.target.value); setCurrentPage(1); }}
+              />
 
               <select
                 className="leave-filter leave-type-filter"
@@ -2714,21 +2726,19 @@ leaveTypeFilter,
                   Select Status
                 </option>
 
-                <option value="Pending">
+                <option value="1">
                   Pending
                 </option>
 
-                <option value="Approved">
+                <option value="2">
                   Approved
                 </option>
 
-                <option value="Rejected">
+                <option value="3">
                   Rejected
                 </option>
 
-                <option value="Declined">
-                  Declined
-                </option>
+
               </select>
 
               <select
@@ -3338,28 +3348,14 @@ leaveTypeFilter,
                   <ViewItem
                     label="Leave Type"
                     value={
-                      selectedLeave.availType ===
-                      "FirstHalf"
-                        ? "First Half"
-                        : selectedLeave.availType ===
-                          "SecondHalf"
-                        ? "Second Half"
-                        : "Full Day"
+                      availTypeLabel(selectedLeave.availType)
                     }
                   />
 
                   <ViewItem
                     label="No of Days"
                     value={
-                      selectedLeave.days
-                        .replace(
-                          /[^0-9]/g,
-                          ""
-                        )
-                        .padStart(
-                          2,
-                          "0"
-                        )
+selectedLeave.days
                     }
                   />
 

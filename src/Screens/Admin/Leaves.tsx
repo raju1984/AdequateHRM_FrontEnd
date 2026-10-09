@@ -48,7 +48,9 @@ type LeaveStatus =
 type LeaveTypeOption =
   | "Full Day"
   | "First Half"
-  | "Second Half";
+  | "Second Half"
+  | "Short Leaves"
+  | "Early Dispersal";
 
 interface EmployeeOption {
   id: string;
@@ -74,7 +76,7 @@ interface LeaveItem {
   days: string;
   status: LeaveStatus;
   statusValue: number;
-  leaveType: LeaveTypeOption;
+  leaveType: LeaveTypeOption | "";
   availType: number;
   reason: string;
   attachment: string;
@@ -111,15 +113,13 @@ interface LeaveChatMessage {
 // const financialYearDropdownRef =
 //   useRef<HTMLDivElement>(null);
 
-const AVAIL_TYPE_MAP: Record<
-  LeaveTypeOption,
-  number
-> = {
+const AVAIL_TYPE_MAP: Record<LeaveTypeOption, number> = {
   "Full Day": 1,
   "First Half": 2,
   "Second Half": 3,
+  "Short Leaves": 4,
+  "Early Dispersal": 5,
 };
-
 const STATUS_MAP: Record<LeaveStatus, number> = {
   New: 1,
   Approved: 2,
@@ -725,59 +725,35 @@ const parseStatus = (value: any): number => {
    AVAIL TYPE HELPERS
 ========================================================= */
 
-const parseAvailType = (
-  value: any
-): number => {
-  if (typeof value === "number") {
-    return value;
-  }
-
+const parseAvailType = (value: any): number => {
   const numeric = Number(value);
 
-  if (
-    Number.isFinite(numeric) &&
-    numeric >= 1 &&
-    numeric <= 3
-  ) {
+  if (value != null && value !== "" &&
+      Number.isInteger(numeric) && numeric >= 1 && numeric <= 5) {
     return numeric;
   }
 
-  const normalized = String(
-    value ?? ""
-  )
-    .trim()
-    .toLowerCase();
+  const normalized = String(value ?? "").trim().toLowerCase();
 
-  if (
-    normalized.includes("first")
-  ) {
-    return 2;
-  }
+  if (normalized.includes("early dispersal")) return 5;
+  if (normalized.includes("short leave")) return 4;
+  if (normalized.includes("first")) return 2;
+  if (normalized.includes("second")) return 3;
+  if (normalized.includes("full")) return 1;
 
-  if (
-    normalized.includes("second")
-  ) {
-    return 3;
-  }
-
-  return 1;
+  return 0;
 };
 
-const availTypeToLabel = (
-  value: any
-): LeaveTypeOption => {
-  const numeric =
-    parseAvailType(value);
+const availTypeToLabel = (value: any): LeaveTypeOption | "" => {
+  const labels: Record<number, LeaveTypeOption> = {
+    1: "Full Day",
+    2: "First Half",
+    3: "Second Half",
+    4: "Short Leaves",
+    5: "Early Dispersal",
+  };
 
-  if (numeric === 2) {
-    return "First Half";
-  }
-
-  if (numeric === 3) {
-    return "Second Half";
-  }
-
-  return "Full Day";
+  return labels[parseAvailType(value)] ?? "";
 };
 
 const statusToLabel = (
@@ -1147,10 +1123,8 @@ const normalizeLeave = (
         [
           "availType",
           "AvailType",
-          "leaveType",
-          "LeaveType",
         ],
-        1
+        0
       )
     );
 
@@ -4889,20 +4863,12 @@ const handleDeclineConfirm = async () => {
                         Second Half
                       </option>
 
-                       <option value="Second Half">
-                       Short Leaves
+                      <option value="Short Leaves">
+                        Short Leaves
                       </option>
 
-
-{/* 
-                      <option value="Second Half">
-                        Late Comings
-                      </option>
-                      </option> */}
-
-
-                     <option value="Second Half">
-                       Early Dispersal
+                      <option value="Early Dispersal">
+                        Early Dispersal
                       </option>
 
 
@@ -5563,6 +5529,14 @@ const handleDeclineConfirm = async () => {
 
                         <option value="Second Half">
                           Second Half
+                        </option>
+
+                        <option value="Short Leaves">
+                          Short Leaves
+                        </option>
+
+                        <option value="Early Dispersal">
+                          Early Dispersal
                         </option>
 
                       </select>

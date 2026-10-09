@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import {
   getAllLeaves,
+  getLeaveById,
   addLeave,
   updateLeave,
   updateLeaveStatus,
@@ -43,6 +44,7 @@ type LeaveItem = {
   status: LeaveStatus;
   statusCode: number;
   reason?: string;
+  remarks?: string;
 };
 type EmployeeOption = {
   id: string;
@@ -81,17 +83,21 @@ const STATUS_NAME_TO_LABEL: Record<string, LeaveStatus> = {
   Declined: "Declined",
   Rejected: "Declined",
 };
-// ⚠️ UNVERIFIED — 1 = Full Day is confirmed. 2 and 3 are guesses.
-// Check the /add-leave Swagger schema and update both maps if needed.
+
 const AVAIL_TYPE_TO_LABEL: Record<number, string> = {
   1: "Full Day",
   2: "First Half",
   3: "Second Half",
+  4: "Short Leaves",
+  5: "Early Dispersal",
 };
+
 const AVAIL_LABEL_TO_TYPE: Record<string, number> = {
   "Full Day": 1,
   "First Half": 2,
   "Second Half": 3,
+  "Short Leaves": 4,
+  "Early Dispersal": 5,
 };
 /* =====================================================
    HELPERS
@@ -180,10 +186,12 @@ const mapApiLeave = (raw: any): LeaveItem => {
   const fromRaw = pick(raw, "fromDate", "FromDate");
   const toRaw = pick(raw, "toDate", "ToDate");
   const noOfDays = pick(raw, "noOfDays", "NoOfDays", "totalDays", "TotalDays");
-  const availType = Number(pick(raw, "availType", "AvailType") ?? 1);
-  const statusCode = Number(pick(raw, "status", "Status") ?? 1);
+const rawAvailType = pick(raw, "availType", "AvailType");
+const availType =
+  rawAvailType == null ? 0 : Number(rawAvailType);  const statusCode = Number(pick(raw, "status", "Status") ?? 1);
   const statusName = pick(raw, "statusName", "StatusName");
   const reason = pick(raw, "reason", "Reason") ?? "";
+  const remarks = pick(raw, "remarks", "Remarks", "reviewRemarks", "ReviewRemarks") ?? "";
   return {
     id,
     userId,
@@ -200,6 +208,7 @@ const mapApiLeave = (raw: any): LeaveItem => {
     status: (statusName && STATUS_NAME_TO_LABEL[statusName]) || STATUS_CODE_TO_LABEL[statusCode] || "New",
     statusCode,
     reason,
+    remarks,
   };
 };
 const getCurrentUserId = () => localStorage.getItem("userId") || "";
@@ -243,6 +252,8 @@ const Leaves: React.FC = () => {
   const [activeTab, setActiveTab] = useState<"myLeaves" | "employeeLeaves">("myLeaves");
   const [activeLeave, setActiveLeave] = useState<LeaveItem | null>(null);
   const [viewOpen, setViewOpen] = useState(false);
+  const [viewLoading, setViewLoading] = useState(false);
+  const [viewError, setViewError] = useState<string | null>(null);
   const [chatOpen, setChatOpen] = useState(false);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [chatLoading, setChatLoading] = useState(false);
@@ -486,7 +497,7 @@ const Leaves: React.FC = () => {
   ------------------------------------------------- */
   const openAdd = () => {
     setAddForm({
-      employeeId: "",
+      employeeId: activeTab === "myLeaves" ? getCurrentUserId() : "",
       leaveTypeMasterId: "",
       from: "",
       to: "",
@@ -521,8 +532,9 @@ const Leaves: React.FC = () => {
     });
   };
   const handleAddLeave = async () => {
+    const targetUserId = activeTab === "myLeaves" ? getCurrentUserId() : addForm.employeeId;
     if (
-      !addForm.employeeId ||
+      !targetUserId ||
       !addForm.leaveTypeMasterId ||
       !addForm.from ||
       !addForm.to ||
@@ -535,7 +547,7 @@ const Leaves: React.FC = () => {
     setSaving(true);
     try {
       const payload = {
-        UserId: addForm.employeeId,
+        UserId: targetUserId,
         LeaveTypeMasterId: addForm.leaveTypeMasterId,
         // PostgreSQL timestamp with time zone expects UTC.
         // Send an explicit UTC ISO value so the API receives DateTimeKind.Utc.
@@ -557,9 +569,24 @@ const Leaves: React.FC = () => {
   /* -------------------------------------------------
      VIEW
   ------------------------------------------------- */
-  const openView = (item: LeaveItem) => {
+  const openView = async (item: LeaveItem) => {
     setActiveLeave(item);
     setViewOpen(true);
+    setViewError(null);
+    setViewLoading(true);
+    try {
+      const response = await getLeaveById(item.id);
+      const data = response?.data ?? response?.Data ?? response;
+      const detail = data?.leave ?? data?.Leave ?? data?.item ?? data?.Item ?? data;
+      if (detail && typeof detail === "object" && !Array.isArray(detail)) {
+        const updated = mapApiLeave({ ...item, ...detail });
+        setActiveLeave((current) => current?.id === item.id ? updated : current);
+      }
+    } catch (err: any) {
+      setViewError(err?.response?.data?.message || "Could not refresh leave details. Showing available data.");
+    } finally {
+      setViewLoading(false);
+    }
   };
   /* -------------------------------------------------
      CHAT
@@ -867,7 +894,9 @@ const Leaves: React.FC = () => {
               <span>/</span><span>Leaves</span>
             </div>
           </div>
-          <button type="button" className="leave-add" onClick={openAdd}><span>+</span>Add Leave</button>
+          {activeTab === "myLeaves" && (
+            <button type="button" className="leave-add" onClick={openAdd}><span>+</span>Add Leave</button>
+          )}
         </div>
         {errorMsg && <div className="leave-status-banner error">{errorMsg}</div>}
         {loading && <div className="leave-status-banner loading">Loading leaves…</div>}
@@ -1003,12 +1032,26 @@ const Leaves: React.FC = () => {
             <div className="add-leave-form">
               <div className="add-leave-field">
                 <label>Employee</label>
-                <select name="employeeId" value={addForm.employeeId} onChange={handleAddFormChange}>
-                  <option value="">Select</option>
-                  {employees.map((e) => (
-                    <option key={e.id} value={e.id}>{e.name}</option>
-                  ))}
-                </select>
+                {activeTab === "myLeaves" ? (
+                  <input
+                    type="text"
+                    readOnly
+                    value={
+                      employees.find((e) => e.id === getCurrentUserId())?.name ||
+                      localStorage.getItem("fullName") ||
+                      localStorage.getItem("userName") ||
+                      localStorage.getItem("name") ||
+                      "Logged-in employee"
+                    }
+                  />
+                ) : (
+                  <select name="employeeId" value={addForm.employeeId} onChange={handleAddFormChange}>
+                    <option value="">Select</option>
+                    {employees.map((e) => (
+                      <option key={e.id} value={e.id}>{e.name}</option>
+                    ))}
+                  </select>
+                )}
               </div>
               <div className="add-leave-field">
                 <label>Leave Reason</label>
@@ -1044,14 +1087,20 @@ const Leaves: React.FC = () => {
                 <input name="to" type="date" min={addForm.from || undefined} value={addForm.to} onChange={handleAddFormChange} />
               </div>
               <div className="add-leave-field">
-                <label>Leave Type</label>
-                <select name="availTypeLabel" value={addForm.availTypeLabel} onChange={handleAddFormChange}>
-                  <option value="">Select</option>
-                  <option value="Full Day">Full Day</option>
-                  <option value="First Half">First Half</option>
-                  <option value="Second Half">Second Half</option>
-                </select>
-              </div>
+  <label>Leave Type</label>
+  <select
+    name="availTypeLabel"
+    value={addForm.availTypeLabel}
+    onChange={handleAddFormChange}
+  >
+    <option value="">Select</option>
+    <option value="Full Day">Full Day</option>
+    <option value="First Half">First Half</option>
+    <option value="Second Half">Second Half</option>
+    <option value="Short Leaves">Short Leaves</option>
+    <option value="Early Dispersal">Early Dispersal</option>
+  </select>
+</div>
               <div className="add-leave-field">
                 <label>No of Days</label>
                 <input name="days" value={addForm.days} readOnly />
@@ -1074,6 +1123,8 @@ const Leaves: React.FC = () => {
         <div className="custom-modal-overlay">
           <div className="custom-modal">
             <div className="custom-modal-head"><h3>View Leave</h3><button className="custom-close" onClick={() => setViewOpen(false)}><X size={14} /></button></div>
+            {viewLoading && <div className="leave-status-banner loading">Loading leave details…</div>}
+            {viewError && <div className="leave-status-banner error">{viewError}</div>}
             <div className="view-grid">
               <div><div className="view-label">Leave Reason</div><div className="view-value">{activeLeave.type}</div></div>
               <div><div className="view-label">From</div><div className="view-value">{activeLeave.from}</div></div>
@@ -1081,6 +1132,12 @@ const Leaves: React.FC = () => {
               <div><div className="view-label">Leave Type</div><div className="view-value">{AVAIL_TYPE_TO_LABEL[activeLeave.availType] ?? "-"}</div></div>
               <div><div className="view-label">No of Days</div><div className="view-value">{activeLeave.days}</div></div>
               <div><div className="view-label">Reason</div><div className="view-value">{activeLeave.reason || "-"}</div></div>
+              <div style={{ gridColumn: "1 / -1" }}>
+                <div className="view-label">Admin Remark</div>
+                <div className="view-value" style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>
+                  {activeLeave.remarks?.trim() || "No remark provided."}
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -1166,14 +1223,20 @@ const Leaves: React.FC = () => {
                   ))}
                 </select>
               </div>
-              <div className="edit-field">
-                <label>Leave Reason</label>
-                <select name="leaveTypeMasterId" value={editForm.leaveTypeMasterId} onChange={handleEditFormChange}>
-                  {leaveTypes.map((t) => (
-                    <option key={t.id} value={t.id}>{t.name}</option>
-                  ))}
-                </select>
-              </div>
+           <div className="edit-field">
+  <label>Leave Type</label>
+  <select
+    name="availTypeLabel"
+    value={editForm.availTypeLabel}
+    onChange={handleEditFormChange}
+  >
+    <option value="Full Day">Full Day</option>
+    <option value="First Half">First Half</option>
+    <option value="Second Half">Second Half</option>
+    <option value="Short Leaves">Short Leaves</option>
+    <option value="Early Dispersal">Early Dispersal</option>
+  </select>
+</div>
               <div className="edit-field"><label>From</label><input name="from" type="date" value={editForm.from} onChange={handleEditFormChange} /></div>
               <div className="edit-field"><label>To</label><input name="to" type="date" min={editForm.from || undefined} value={editForm.to} onChange={handleEditFormChange} /></div>
               <div className="edit-field">

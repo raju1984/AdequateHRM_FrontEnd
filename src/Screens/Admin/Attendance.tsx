@@ -893,6 +893,10 @@ const Attendance = () => {
               rowsPerPage,
           });
 
+          console.log("ATTENDANCE FULL RESPONSE:", response);
+console.log("ATTENDANCE DATA:", response?.data);
+console.log("ATTENDANCE ROWS:", getArrayFromResponse(response));
+
         console.log(
           "NORMALIZED ATTENDANCE RESPONSE:",
           response

@@ -380,12 +380,11 @@ const Atendance: React.FC = () => {
     "Department"
   );
 
-  const [
-    dateFilter,
-    setDateFilter,
-  ] = useState(() =>
-    getLocalDateOnly(new Date())
-  );
+  const [fromDate, setFromDate] = useState("");
+  const [toDate, setToDate] = useState("");
+
+  // Apply date range only when both dates are selected.
+  const validDateRange = Boolean(fromDate && toDate && fromDate <= toDate);
 
   const [
     sortFilter,
@@ -453,26 +452,15 @@ const Atendance: React.FC = () => {
      DATE PARAMS
   =================================================== */
 
-  const getDateParams =
-    useCallback(() => {
-      if (!dateFilter) {
-        return {
-          FromDate: undefined,
-          ToDate: undefined,
-        };
-      }
-
-      return {
-        FromDate: toUTCDateTime(
-          dateFilter,
-          false
-        ),
-        ToDate: toUTCDateTime(
-          dateFilter,
-          true
-        ),
-      };
-    }, [dateFilter]);
+  const getDateParams = useCallback(() => {
+    if (!validDateRange) {
+      return { FromDate: undefined, ToDate: undefined };
+    }
+    return {
+      FromDate: toUTCDateTime(fromDate, false),
+      ToDate: toUTCDateTime(toDate, true),
+    };
+  }, [fromDate, toDate, validDateRange]);
 
   /* ===================================================
      SORT PARAMS
@@ -579,7 +567,9 @@ const loadDashboard = useCallback(async () => {
 
 const handleShowAbsentToday = () => {
   setStatusFilter("Absent");
-  setDateFilter(getLocalDateOnly(new Date()));
+  const today = getLocalDateOnly(new Date());
+  setFromDate(today);
+  setToDate(today);
   setDepartmentFilter("Department");
   setSearch("");
   setCurrentPage(1);
@@ -745,7 +735,8 @@ const handleShowAbsentToday = () => {
     search,
     statusFilter,
     departmentFilter,
-    dateFilter,
+    fromDate,
+    toDate,
     sortFilter,
     rowsPerPage,
   ]);
@@ -1367,6 +1358,42 @@ font-family: inherit;
           gap: 15px;
           flex-wrap: wrap;
           justify-content: flex-end;
+        }
+
+        .attendance-date-range {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          flex-wrap: nowrap;
+        }
+        .attendance-range-input {
+          width: 130px;
+          min-width: 0;
+          height: 36px;
+          padding: 0 9px;
+          border: 1px solid #dce1e7;
+          border-radius: 6px;
+          background: #fff;
+          color: #182438;
+          font-size: 12px;
+          outline: none;
+          color-scheme: light;
+        }
+        .attendance-range-input:focus { border-color: #bd9138; }
+        .attendance-date-separator { color: #64748b; font-size: 14px; }
+        .attendance-range-clear {
+          border: none;
+          background: transparent;
+          color: #64748b;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+          padding: 3px;
+        }
+        @media (max-width: 400px) {
+          .attendance-range-input { width: 115px; }
+          .attendance-date-range { gap: 6px; }
         }
 
         .date-input-wrapper {
@@ -2226,26 +2253,38 @@ font-family: inherit;
 
             <div className="filter-list">
 
-              {/* DATE */}
-
-              <div className="date-input-wrapper">
+              {/* FROM DATE - TO DATE */}
+              <div className="attendance-date-range">
                 <input
                   type="date"
-                  className="date-input"
-                  value={dateFilter}
-                  onChange={(e) => {
-                    setDateFilter(
-                      e.target.value
-                    );
-                    setCurrentPage(1);
-                  }}
-                  aria-label="Select attendance date"
+                  className="attendance-range-input"
+                  aria-label="From Date"
+                  title="From Date"
+                  value={fromDate}
+                  max={toDate || undefined}
+                  onChange={(e) => setFromDate(e.target.value)}
                 />
-
-                <CalendarDays
-                  className="date-input-icon"
-                  size={16}
+                <span className="attendance-date-separator">-</span>
+                <input
+                  type="date"
+                  className="attendance-range-input"
+                  aria-label="To Date"
+                  title="To Date"
+                  value={toDate}
+                  min={fromDate || undefined}
+                  onChange={(e) => setToDate(e.target.value)}
                 />
+                {(fromDate || toDate) && (
+                  <button
+                    type="button"
+                    className="attendance-range-clear"
+                    aria-label="Clear date range"
+                    title="Clear date range"
+                    onClick={() => { setFromDate(""); setToDate(""); }}
+                  >
+                    <X size={15} />
+                  </button>
+                )}
               </div>
 
               {/* DEPARTMENT */}
